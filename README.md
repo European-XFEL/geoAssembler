@@ -1,4 +1,4 @@
-*** Methods to apply geometry information to detector data
+## Methods to apply geometry information to detector data
 
 This repository aims at applying geometry information to detector image data
 
