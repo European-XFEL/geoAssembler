@@ -1,9 +1,50 @@
-## Methods to apply geometry information to detector data
+# Methods to apply geometry information to detector data
 
 This repository aims at applying geometry information to detector image data
 
-At the moment there are two modes of geometry information available for application
+At the moment there are two modes of geometry information available for
+application
 
 - A generic (crude) one that is currently identical to the one from the online
  preview karabo-device
 - Geometry information provided by a geometry file in CrystFel .geom format
+
+## Usage:
+If you have a geometry file (e.g in CrysFel format) you can apply the geometry
+to you're data by:
+
+```python
+>>> import karabo_data as kd
+>>> from Assembler import Assemble
+>>> runDir = '/gpfs/exfel/exp/SPB/201830/p900022/proc/r0025/'
+>>> crystFelGeo = path_to_crysfel_geometryFile
+>>> A = Assemble(crystFelGeo)
+>>> for iId, data in kd.RunDirectory(run_dir).trains():
+        assemled_ary = A.apply_geo(data)
+        break
+```
+If no geometry information is given a standard (crude) geometry arrangement from
+the Karabo online preview device is applied:
+```python
+>>> from Assembler import Assemble
+>>> A = Assemble()
+>>> A.df
+                              Source  Xoffset  Yoffset  FlipX  FlipY  rotate
+0    SPB_DET_AGIPD1M-1/DET/0CH0:xtdf        0      612   True   True       0
+1    SPB_DET_AGIPD1M-1/DET/1CH0:xtdf      158      612   True   True       0
+2    SPB_DET_AGIPD1M-1/DET/2CH0:xtdf      316      612   True   True       0
+3    SPB_DET_AGIPD1M-1/DET/3CH0:xtdf      474      612   True   True       0
+4    SPB_DET_AGIPD1M-1/DET/4CH0:xtdf      662      612   True   True       0
+5    SPB_DET_AGIPD1M-1/DET/5CH0:xtdf      820      612   True   True       0
+6    SPB_DET_AGIPD1M-1/DET/6CH0:xtdf      978      612   True   True       0
+7    SPB_DET_AGIPD1M-1/DET/7CH0:xtdf     1136      612   True   True       0
+8    SPB_DET_AGIPD1M-1/DET/8CH0:xtdf      712        0  False   True       0
+9    SPB_DET_AGIPD1M-1/DET/9CH0:xtdf      870        0  False   True       0
+10  SPB_DET_AGIPD1M-1/DET/10CH0:xtdf     1028        0  False   True       0
+11  SPB_DET_AGIPD1M-1/DET/11CH0:xtdf     1186        0  False   True       0
+12  SPB_DET_AGIPD1M-1/DET/12CH0:xtdf       50        0  False   True       0
+13  SPB_DET_AGIPD1M-1/DET/13CH0:xtdf      208        0  False   True       0
+14  SPB_DET_AGIPD1M-1/DET/14CH0:xtdf      366        0  False   True       0
+15  SPB_DET_AGIPD1M-1/DET/15CH0:xtdf      524        0  False   True       0
+```
+
