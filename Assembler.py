@@ -85,14 +85,14 @@ class Assemble(object):
 
    def __make_df(self):
       #This method creates a standard geometry, which can be overwritten later
-      self.__df = pd.DataFrame({'Source':['SPB_DET_AGIPD1M-1/DET/0CH0:xtdf',
-                                        'SPB_DET_AGIPD1M-1/DET/1CH0:xtdf',
-                                        'SPB_DET_AGIPD1M-1/DET/2CH0:xtdf',
-                                        'SPB_DET_AGIPD1M-1/DET/3CH0:xtdf',
-                                        'SPB_DET_AGIPD1M-1/DET/4CH0:xtdf',
-                                        'SPB_DET_AGIPD1M-1/DET/5CH0:xtdf',
+      self.__df = pd.DataFrame({'Source':['SPB_DET_AGIPD1M-1/DET/7CH0:xtdf',
                                         'SPB_DET_AGIPD1M-1/DET/6CH0:xtdf',
-                                        'SPB_DET_AGIPD1M-1/DET/7CH0:xtdf',
+                                        'SPB_DET_AGIPD1M-1/DET/5CH0:xtdf',
+                                        'SPB_DET_AGIPD1M-1/DET/4CH0:xtdf',
+                                        'SPB_DET_AGIPD1M-1/DET/3CH0:xtdf',
+                                        'SPB_DET_AGIPD1M-1/DET/2CH0:xtdf',
+                                        'SPB_DET_AGIPD1M-1/DET/1CH0:xtdf',
+                                        'SPB_DET_AGIPD1M-1/DET/0CH0:xtdf',
                                         'SPB_DET_AGIPD1M-1/DET/8CH0:xtdf',
                                         'SPB_DET_AGIPD1M-1/DET/9CH0:xtdf',
                                         'SPB_DET_AGIPD1M-1/DET/10CH0:xtdf',
@@ -134,12 +134,16 @@ class Assemble(object):
       self.__maxOffY = max(self.__offsetY)
 
       return self.__df
-   def apply_geo(self, data):
+   def apply_geo(self, data, modules_only=False):
       ''' This method applies the geometry to the recorded detector image
 
       Parameters:
          data (dict) : karabo_data dict. Containing the detector information
                        of a given trainId.
+      Keywords:
+         modules_only (bool) : only for testing, assing each module image
+                               a unique number. This can be used to see where
+                               the modules are located
       Returns:
          Nd-array : numpy ND array for the image.data of the detector
       '''
@@ -177,19 +181,29 @@ class Assemble(object):
 
          if d.shape[-1] > arr.shape[-1]:
             arr = np.resize(arr, arr.shape[:-1]+[d.shape[-1]])
-         arr[..., ox:ox+d.shape[-2], oy:oy+d.shape[-1]] = d
+
+         if modules_only :
+            arr[..., ox:ox+d.shape[-2], oy:oy+d.shape[-1]] = index
+         else:
+            arr[..., ox:ox+d.shape[-2], oy:oy+d.shape[-1]] = d
 
 
-      arr = arr.astype(dtype)[...,::-1]
-      return np.transpose(arr, axis)
+      #arr = arr.astype(dtype)[...,::-1]
+      arr = np.transpose(arr, axis)
+      return arr.astype(dtype)[...,::-1]
 
-   def stack(self, data):
+
+   def stack(self, data, modules_only=False):
       ''' This method only stacks the detector modules into an array without
           applying any geometry
 
       Parameters:
          data (dict) : karabo_data dict. Containing the detector information
                        of a given trainId.
+      Keywords:
+         modules_only (bool) : only for testing, assing each module image
+                               a unique number. This can be used to see where
+                               the modules are located
       Returns:
          Nd-array : numpy ND array for the image.data of the detector
       '''
@@ -209,8 +223,10 @@ class Assemble(object):
                newshape= [shape[0], 2*shape[-2], 8*shape[-1]]
                shape = [shape[0], 16]+shape[-2:]
             arr = np.zeros(shape)
-
-         arr[...,index,:,:] = d
+         if modules_only:
+            arr[...,index,:,:] = index
+         else:
+            arr[...,index,:,:] = d
 
       return arr.reshape(*newshape)
 
@@ -250,8 +266,8 @@ class Assemble(object):
       self.__df[['Yoffset','Xoffset']] = df[['Yoffset','Xoffset']]
       self.df = self.__set_df
 
-   @staticmethod
-   def __rearange(df):
+   #@staticmethod
+   def __rearange(self,df):
       '''Method that moves the center of reference from the detector center
          to the upper left corner
       '''
@@ -262,12 +278,16 @@ class Assemble(object):
          data['Xoffset'].append(p_data.x.min())
          data['Yoffset'].append(p_data.y.min())
 
+      dx=min(data['Xoffset'])
+      dy=min(data['Yoffset'])
+      data['Xoffset']=np.array(data['Xoffset']-dx)
+      data['Yoffset']=np.array(data['Yoffset']-dy)
       new_data = pd.DataFrame(data).sort_values('Yoffset')
       for offset in (('Xoffset','Yoffset')):
          d = new_data[offset]+np.fabs(new_data[offset].min())
          new_data[offset] = d.max() - d
-      data = new_data['Yoffset'].values
-      new_data['Yoffset'] = data
+      data = new_data['Yoffset'][::2].values - 158
+      new_data['Yoffset'][::2] = data
 
       new_data.columns = ['panel', 'Yoffset', 'Xoffset']
       return new_data.sort_index()
