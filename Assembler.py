@@ -85,14 +85,14 @@ class Assemble(object):
 
    def __make_df(self):
       #This method creates a standard geometry, which can be overwritten later
-      self.__df = pd.DataFrame({'Source':['SPB_DET_AGIPD1M-1/DET/7CH0:xtdf',
-                                        'SPB_DET_AGIPD1M-1/DET/6CH0:xtdf',
-                                        'SPB_DET_AGIPD1M-1/DET/5CH0:xtdf',
-                                        'SPB_DET_AGIPD1M-1/DET/4CH0:xtdf',
-                                        'SPB_DET_AGIPD1M-1/DET/3CH0:xtdf',
-                                        'SPB_DET_AGIPD1M-1/DET/2CH0:xtdf',
+      self.__df = pd.DataFrame({'Source':['SPB_DET_AGIPD1M-1/DET/0CH0:xtdf',
                                         'SPB_DET_AGIPD1M-1/DET/1CH0:xtdf',
-                                        'SPB_DET_AGIPD1M-1/DET/0CH0:xtdf',
+                                        'SPB_DET_AGIPD1M-1/DET/2CH0:xtdf',
+                                        'SPB_DET_AGIPD1M-1/DET/3CH0:xtdf',
+                                        'SPB_DET_AGIPD1M-1/DET/4CH0:xtdf',
+                                        'SPB_DET_AGIPD1M-1/DET/5CH0:xtdf',
+                                        'SPB_DET_AGIPD1M-1/DET/6CH0:xtdf',
+                                        'SPB_DET_AGIPD1M-1/DET/7CH0:xtdf',
                                         'SPB_DET_AGIPD1M-1/DET/8CH0:xtdf',
                                         'SPB_DET_AGIPD1M-1/DET/9CH0:xtdf',
                                         'SPB_DET_AGIPD1M-1/DET/10CH0:xtdf',
@@ -111,8 +111,8 @@ class Assemble(object):
                                          True,  True,  True, False,  False,
                                          False, False, False, False, False,
                                          False],
-                              'FlipY': [ True,  True,  True,  True,  True,
-                                         True,  True,  True,  True,  True,
+                              'FlipY': [ False, False, False, False, False,
+                                         False, False, False, True,  True,
                                          True,  True,  True,  True,  True,
                                          True],
                                'rotate': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -187,8 +187,8 @@ class Assemble(object):
          else:
             arr[..., ox:ox+d.shape[-2], oy:oy+d.shape[-1]] = d
 
-
-      #arr = arr.astype(dtype)[...,::-1]
+      #return arr
+      arr = arr.astype(dtype)[...,::-1]
       arr = np.transpose(arr, axis)
       return arr.astype(dtype)[...,::-1]
 
@@ -254,7 +254,7 @@ class Assemble(object):
             corners[jj] = corner
       c = corners.round(0).astype('i')
 
-      df = pd.DataFrame({'x':c[:,1], 'y':c[:,0], 'panel':geometry[:,0],
+      df = pd.DataFrame({'y':c[:,1], 'x':c[:,0], 'panel':geometry[:,0],
                            'asics':geometry[:,-1]})
       #The reference frame is in the center of the detector, move it to the
       #Upper left corner
@@ -282,14 +282,20 @@ class Assemble(object):
       dy=min(data['Yoffset'])
       data['Xoffset']=np.array(data['Xoffset']-dx)
       data['Yoffset']=np.array(data['Yoffset']-dy)
-      new_data = pd.DataFrame(data).sort_values('Yoffset')
+      self.test=pd.DataFrame(data)
+      new_data = pd.DataFrame(data).sort_values('Xoffset')
+      dx = abs(new_data['Xoffset'][7])
       for offset in (('Xoffset','Yoffset')):
          d = new_data[offset]+np.fabs(new_data[offset].min())
          new_data[offset] = d.max() - d
-      data = new_data['Yoffset'][::2].values - 158
-      new_data['Yoffset'][::2] = data
-
-      new_data.columns = ['panel', 'Yoffset', 'Xoffset']
+      #data = new_data['Xoffset'][::2].values  - 
+      #new_data['Xoffset'][::2] = data
+      #new_data['Xoffset'][8:] -= dx
+      X=new_data['Xoffset'].values
+      X[::2] -= 128
+      new_data['Xoffset'] = X
+      new_data.columns = ['panel', 'Xoffset', 'Yoffset']
+      print(new_data)
       return new_data.sort_index()
 
 
