@@ -13,7 +13,10 @@ from itertools import product
 
 def Test():
     '''
-    create a simple environment that fakes data from carabo data
+    Method that creates a simple data-set that fakes data from karabo-data
+
+    Returns:
+        dict-object : Karabo-data like image.data
     '''
     data_array = np.ones((64, 512, 128))
     return {source: {'image.data': i*data_array} for (i, source) in
@@ -281,28 +284,24 @@ class Assemble(object):
         self.__df[['Yoffset', 'Xoffset']] = df[['Yoffset', 'Xoffset']]
         self.df = self.__set_df
 
-    # @staticmethod
-    def __rearange(self, df):
+    @staticmethod
+    def __rearange(df):
         '''Method that moves the center of reference from the detector center
            to the upper left corner
         '''
         data = {'panel': [], 'Xoffset': [], 'Yoffset': []}
         df.y = df.y.max() - df.y
         df.x += abs(df.x.min())
-        #df.x.loc[df.x < 0] += 128//2
-        #df.y -= df.y.min()
-        #df.x += abs(df.x.min())
-        self.test=df
-        
+
         for p in df.panel.unique():
             p_data = df.loc[df.panel == p]
             data['panel'].append(p)
             data['Xoffset'].append(p_data.x.min())
             data['Yoffset'].append(p_data.y.min())
-        
+
         dx = min(data['Xoffset'])
         dy = min(data['Yoffset'])
-        new_data = pd.DataFrame(data)#.sort_values('Xoffset')
-        for i in range(8,16):
-            new_data.at[i,'Xoffset'] += 128
+        new_data = pd.DataFrame(data).sort_values('Xoffset')
+        for i in range(8, 16):
+            new_data.at[i, 'Xoffset'] += 128
         return new_data
