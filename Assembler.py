@@ -134,6 +134,7 @@ class Assemble(object):
                              'rotate': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                         0, 0, 0, 0]})
 
+
     @property
     def __set_df(self):
         # Update some useful information once the geometry data frame is set
@@ -223,26 +224,52 @@ class Assemble(object):
            Nd-array : numpy ND array for the image.data of the detector
         '''
 
+        Yoffset=[542, 542, 542, 542, 542, 542, 542, 542, 0, 0, 0, 0, 0, 0, 0, 0]
+        Xoffset=[   0,  158,  316,  474,  632,  790,  948, 1106, 632,  790,  948,
+             1106, 0, 158, 316, 474]
+        self.__df = pd.DataFrame({'Source':self.df.Source, 'Xoffset':Xoffset, 
+            'Yoffset':Yoffset, 'FlipX':self.df.FlipX, 'FlipY':self.df.FlipY,
+            'rotate':self.df.rotate}, index=self.df.index)
+
+        self.df = self.__set_df
+        return self.apply_geo(data, modules_only)#[...,80:,70:]
         arr = None  # Output array
         for index, path in enumerate(self.df['Source'].values):
             d = np.squeeze(data[path]['image.data'])
+            M={0:(0,1), 1:(1,1), 2:(2,1), 3:(3,1), 4:(4,1), 5:(5,1), 6:(6,1),
+               7:(7,1), 12:(0,0), 13:(1,0), 14:(2,0), 15:(3,0), 8:(4,0), 9:(5,0),
+               10:(6,0), 11:(7,0)}
 
             if arr is None:
                 shape = list(d.shape)
                 # Check for 4D or 3D shapes
+                shapey,shapex = shape[-1], shape[0]
                 if len(shape) > 3:
-                    shape = shape[:-2]+[16]+shape[-2:]
+                    shape = shape[:-2]+shape[-2:]
                     newshape = shape[:-2] + [2*shape[-2]] + [8*shape[-1]]
-                else:
+                elif len(shape) == 3:
                     newshape = [shape[0], 2*shape[-2], 8*shape[-1]]
-                    shape = [shape[0], 16]+shape[-2:]
-                arr = np.zeros(shape)
-            if modules_only:
-                arr[..., index, :, :] = index
-            else:
-                arr[..., index, :, :] = d
+                    shape = [shape[0]]+shape[-2:]
+                else:
+                    newshape = [2*shape[-2], 8*shape[-1]]
+                    shape = [shape[0], shape[1]]
 
-        return arr.reshape(*newshape)
+                arr = np.zeros(newshape)
+            posy, posx = M[index]
+            if self.__flipY[index]:
+                d = np.flip(d, axis=-1)
+
+            if self.__flipX[index]:
+                d = np.flip(d, axis=-2)
+            d = np.rot90(d, k=self.__rot[index]//90, axes=(-2, -1))
+            ix=posx*shapex
+            iy=posy*shapey
+            if modules_only:
+                arr[...,iy:iy+shapey, ix:ix+shapex] = index
+            else:
+                arr[...,iy:iy+shapey, ix:ix+shapex] = d.T
+
+        return arr#.reshape(*newshape)
 
     def __from_crystfel(self, filename):
         '''
@@ -299,9 +326,7 @@ class Assemble(object):
             data['Xoffset'].append(p_data.x.min())
             data['Yoffset'].append(p_data.y.min())
 
-        dx = min(data['Xoffset'])
-        dy = min(data['Yoffset'])
-        new_data = pd.DataFrame(data).sort_values('Xoffset')
+        new_data = pd.DataFrame(data)#.sort_values('Xoffset')
         for i in range(8, 16):
             new_data.at[i, 'Xoffset'] += 128
         return new_data
