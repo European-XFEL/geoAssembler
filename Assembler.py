@@ -132,7 +132,9 @@ class Assemble(object):
                                        True,  True,  True,  True,  True,
                                        True],
                              'rotate': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                        0, 0, 0, 0]})
+                                        0, 0, 0, 0],
+                             'Quadrant':[2, 2, 2, 2, 4, 4, 4, 4, 3, 3, 3, 3,
+                                         1, 1, 1, 1]})
 
 
     @property
@@ -167,6 +169,8 @@ class Assemble(object):
         '''
 
         arr = None  # Output array
+        self.__df = self.df
+        self.df = self.__set_df
         for index, path in enumerate(self.df['Source'].values):
             d = np.squeeze(data[path]['image.data'])
 
@@ -229,7 +233,8 @@ class Assemble(object):
              1106, 0, 158, 316, 474]
         self.__df = pd.DataFrame({'Source':self.df.Source, 'Xoffset':Xoffset, 
             'Yoffset':Yoffset, 'FlipX':self.df.FlipX, 'FlipY':self.df.FlipY,
-            'rotate':self.df.rotate}, index=self.df.index)
+            'rotate':self.df.rotate, 'Quadrant':self.df.Quadrant},
+             index=self.df.index)
 
         self.df = self.__set_df
         return self.apply_geo(data, modules_only)#[...,80:,70:]
