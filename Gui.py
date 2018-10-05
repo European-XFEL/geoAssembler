@@ -2,16 +2,17 @@ import numpy as np
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph as pg
 from collections import namedtuple
-
+import sys
+from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 
 class MyCircleOverlay(pg.EllipseROI):
     '''An Elliptic Region of interest'''
-     def __init__(self, pos, size, **args):
+    def __init__(self, pos, size, **args):
          pg.ROI.__init__(self, pos, size, **args)
          self.aspectLocked = True
 class MyRectOverlay(pg.RectROI):
     '''An Rectangular Region of interest'''
-     def __init__(self, pos, size, sideScalers=True,**args):
+    def __init__(self, pos, size, sideScalers=True,**args):
          pg.ROI.__init__(self, pos, size, **args)
          self.aspectLocked = False
 
@@ -75,77 +76,135 @@ class PanelView(object):
         self.win.resize(800,800)
         ## Create new image view
         self.imv = pg.ImageView()
-        self.win.setCentralWidget(self.imv)
+        #self.win.setCentralWidget(self.imv)
 
-        self.pen = QtGui.QPen(QtCore.Qt.red, 0.2)
+        self.pen = QtGui.QPen(QtCore.Qt.red, 1)
 
         self.posistions=[] ## Postions of the circle points
-
+        self.fit_method = 'circle' ## The default fit-method to create the rings
         ## Circle Points by Quadrant
         P = namedtuple('Point', 'x y')
+        self.P = P
         self.points = {1:P(x=[], y=[]), 2:P(x=[], y=[]),
                        3:P(x=[], y=[]), 4:P(x=[], y=[])}
 
         ## Display the data and assign each frame a time value from 1.0 to 3.0
         self.imv.setImage(data, xvals=np.linspace(1., 3., data.shape[0]))
         self.imv.getImageItem().mouseClickEvent = self.click
+
+
         ## Set a custom color map
-        colors = [
-            (0, 0, 0),
-            (45, 5, 61),
-            (84, 42, 55),
-            (150, 87, 60),
-            (208, 171, 141),
-            (255, 255, 255)
-        ]
-        cmap = pg.ColorMap(pos=np.linspace(0.0, 1.0, 6), color=colors)
+        # Get the colormap
+        cmap =  pg.ColorMap(*zip(*Gradients["grey"]["ticks"]))
         self.imv.setColorMap(cmap)
 
-        ## Add widgets to the layout in their proper positions
-        self.btn = QtGui.QPushButton('Apply Coordinates')
-        layout = QtGui.QGridLayout()
-        w = QtGui.QWidget()
-        w.setLayout(layout)
-        self.btn.clicked.connect(self.destroy)
-        layout.addWidget(self.imv, 0, 0, 3, 1)  ## plot goes on right side, spanning 3 rows
-        layout.addWidget(self.btn, 3, 0)   ## button goes to the bottom
-        pg.LabelItem(justify='right')
 
+        w = QtGui.QWidget()
+        layout = QtGui.QGridLayout()
+        self.sel1 = QtGui.QRadioButton('Circle Fit')
+        self.sel1.setChecked(True)
+        self.sel1.toggled.connect(lambda:self.__set_method(self.sel1))
+        self.sel2 = QtGui.QRadioButton('Ellipse Fit')
+        self.sel2.toggled.connect(lambda:self.__set_method(self.sel2))
+
+
+        ## Add widgets to the layout in their proper positions
+        self.btn1 = QtGui.QPushButton('Apply Coordinates')
+        self.btn2 = QtGui.QPushButton('Set Test-Coordinates')
+        self.btn3 = QtGui.QPushButton('Clear Points')
+        self.btn4 = QtGui.QPushButton('Cancel')
+
+
+
+        self.btn4.clicked.connect(self.__destroy)
+        self.btn2.clicked.connect(self.__preset)
+        self.btn1.clicked.connect(self.__apply)
+        self.btn3.clicked.connect(self.__clear)
+        layout.addWidget(self.imv,  1, 0, 5, 4)  ## plot goes on right side, spanning 3 rows
+        layout.addWidget(self.btn1, 5, 0, 1, 1)   ## button goes to the bottom
+        layout.addWidget(self.btn2, 5, 1, 1, 1)   ## button goes to the bottom
+        layout.addWidget(self.btn3, 5, 2, 1, 1)   ## button goes to the bottom
+        layout.addWidget(self.btn4, 5, 3, 1, 1)   ## button goes to the bottom
+
+        layout.addWidget(self.sel1, 0, 0, 1, 1)
+        layout.addWidget(self.sel2, 0, 1, 1, 1)
+
+        pg.LabelItem(justify='right')
+        self.exit = 0
+        w.setLayout(layout)
         w.show()
-        if test:
-            self.__test_points()
+
         self.app.exec_()
+
+    def __set_method(self, b):
+
+        if b.text().lower().startswith("circle"):
+         if b.isChecked() == True:
+            self.fit_method = 'circle'
+            self.sel2.setChecked(False)
+
+        if b.text().lower().startswith('ellipse'):
+         if b.isChecked() == True:
+            self.fit_method = 'ellipse'
+            self.sel1.setChecked(False)
 
 
     def __test_points(self):
         '''Display pre-selected points on the circle for testing'''
-            X = [378, 351, 301, 429, 474, 276, 249, 193, 167, 148, 117,
-                  111, 103, 105, 920, 929, 935, 939, 894, 871, 825, 765,
-                  725, 686, 634, 565, 85, 96, 131, 164, 201, 329, 293,
-                  378, 432, 485, 593, 639, 696, 743, 770, 878, 863, 844,
-                  824, 922, 921, 916, 910]
+        X = np.array([447, 383, 320, 255, 191, 153, 127, 114, 109, 507,
+                     925, 942, 887, 862, 824, 734, 670, 605, 545,
+                     88, 96, 111, 137, 158, 176, 192, 256, 320, 384, 447,
+                     606, 670, 733, 862, 891, 926])
 
-            Y = [198, 209, 236, 182, 176, 251, 272, 335, 371, 408, 492,
-                 522, 572, 545, 485, 513, 539, 574, 416, 383, 326, 269,
-                 245, 224, 209, 196, 665, 716, 804, 855, 901, 992, 972,
-                 1010, 1022, 1029, 1041, 1028, 1004, 975, 954, 812, 843,
-                 871, 896, 641, 668, 703, 731]
+        Y = np.array([184, 203, 231, 277, 347, 412, 480, 528, 571, 179,
+               489, 562, 404, 368, 323, 252, 222, 206, 200, 650,
+               701, 747, 810, 843, 868, 889, 952, 988, 1015, 1029,
+               1043, 1022, 991, 860, 804, 672])
 
-            for i in range(len(X)):
-                r = MyCircleOverlay(pos=(X[i],Y[i]), size=15,
-                        pen=self.pen, movable=True, removable=False)
+        for i in range(len(X)):
+            r = MyCrosshairOverlay(pos=(X[i],Y[i]), size=15,
+                    pen=self.pen, movable=True, removable=False)
 
-                self.posistions.append(r)
+            self.posistions.append(r)
 
-    def destroy(self):
-        '''Close all Windows and the coordinates of the selected points'''
+    def __clear(self):
+        for roi in self.posistions:
+            self.imv.getView().removeItem(roi)
+        self.posistions = []
+    def __destroy(self):
+        '''destroy the window'''
+
         self.app.closeAllWindows()
+        self.exit = 1
+        sys.exit(1)
+
+    def __apply(self):
+        '''get the coordinates of the selected points and destroy the window'''
         for roi in self.posistions:
             x, y  = roi.pos()
             ## Get the quadrant of the position
             quad = self.get_quadrant(int(x), int(y))
             self.points[quad].x.append(int(x))
             self.points[quad].y.append(int(y))
+        ## Test if there are enough points in each quadrant
+        for quad, points in self.points.items():
+            if not len(points.x):
+                raise RuntimeError('Each Quadrant must contain data points')
+            elif len(points.x) < 4:
+                import warnings
+                warnings.warn('Each Quadrant should have more than 4 points',
+                        RuntimeWarning)
+
+
+        self.app.closeAllWindows()
+
+    def __preset(self):
+        '''Apply a set of test_points to the region (testing purpose)'''
+        self.__test_points()
+        ## This is only for testing, display only all pre-defined points
+        for r in self.posistions:
+            self.imv.getView().addItem(r)
+
 
     def get_quadrant(self, x, y):
         ''' Return the quadrant that a given set of coordinates lies in'''
@@ -156,105 +215,26 @@ class PanelView(object):
     def click(self, event):
         '''Event for mouse-click into ImageRegion'''
         event.accept()
-        if self.test:
-            ## This is only for testing, display only all pre-defined points
-            for r in self.posistions:
-                self.imv.getView().addItem(r)
-        else:
-            # Get postion of mouse-click and display it
-            pos = event.pos()
-            x = int(pos.x())
-            y = int(pos.y())
-            r = MyCircleOverlay(pos=(x,y), size=15, pen=self.pen, movable=True,
-                    removable=False)
-            self.imv.getView().addItem(r)
-            self.posistions.append(r)
+        # Get postion of mouse-click and display it
+        pos = event.pos()
+        x = int(pos.x())
+        y = int(pos.y())
+        r = MyCrosshairOverlay(pos=(x,y), size=15, pen=self.pen, movable=True,
+                removable=False)
+        self.imv.getView().addItem(r)
+        self.posistions.append(r)
 
-def shift(image, points=None, vmax=5000, vmin=-1000):
-    if points is None:
-        Point = namedtuple('Point', 'x y')
-        P= {1: Point(x=[378, 351, 301, 429, 474, 276, 249, 193, 167, 148, 117, 111, 103, 105],
-                     y=[198, 209, 236, 182, 176, 251, 272, 335, 371, 408, 492, 522, 572, 545]),
-            2: Point(x=[920, 929, 935, 939, 894, 871, 825, 765, 725, 686, 634, 565],
-                     y=[485, 513, 539, 574, 416, 383, 326, 269, 245, 224, 209, 196]),
-            3: Point(x=[85, 96, 131, 164, 201, 329, 293, 378, 432, 485],
-                     y=[665, 716, 804, 855, 901, 992, 972, 1010, 1022, 1029]),
-            4: Point(x=[593, 639, 696, 743, 770, 878, 863, 844, 824, 922, 921, 916, 910],
-                     y=[1041, 1028, 1004, 975, 954, 812, 843, 871, 896, 641, 668, 703, 731])}
-    else:
-        P = points
-    center = []
-    radius =[]
-
-
-    for quad, pnt in P.items():
-        x, y, c_x, c_y, r = fit_circle(pnt)
-        center.append(np.array([c_x, c_y]))
-        radius.append(r)
-
-    from Assembler import Assemble, Test
-    A = Assemble()
-    data = Test()
-    for n,k in enumerate(data.keys()):
-         data[k]['image.data'] = np.load('image.npz')['image.%02i'%n]
-
-    A.stack(data)
-    radius = np.array(radius)
-    center = np.array(center)
-    shift = center[0] - center[1:,]
-    X=A.df.Xoffset.values
-    Y=A.df.Yoffset.values
-    box = np.array([(1,1),(1,1),(1,1)])
-    theta_fit = np.linspace(-np.pi, np.pi, 180)
-
-    R=[radius[0]]
-    C=[(center[0,0], center[0,1])]
-    names=['Quad. 1']
-    for i in range(len(shift)):
-        quad=i+2
-        print(quad, shift[i,0], shift[i,1])
-        idx=np.array(A.df.loc[A.df.Quadrant == quad].index)
-        X[idx] += int(shift[i,1].astype('i')*box[i,1])
-        Y[idx] += int(shift[i,0].astype('i')*box[i,0])
-        c = center[i+1]
-        R.append(radius[i+1])
-        C.append((c[0]+shift[i,0], c[1]+shift[i,1]))
-        names.append('Quad. %i'%quad)
-
-    C=np.array(C)
-    R=np.array(R)
-    A.df['Xoffset']=X
-    A.df['Yoffset']=Y
-    img = A.apply_geo(data)
-    shape1 = np.array(img.shape)
-    shape2 = np.array(image.shape)
-    dx = np.fabs(shape1-shape2).max()
-    dy = np.fabs(shape1-shape2).min()
-    ds = dx - dy
-    from matplotlib import pyplot as plt
-    img[img>vmax] = np.nan
-    img[img<vmin] = np.nan
-    plt.imshow(img, vmin=-1000, vmax=5000)
-    for i in range(4):
-        print(R[i], names[i])
-    x_fit2 = C[:,0].mean()+ds-13 + R.mean()*np.cos(theta_fit)
-    y_fit2 = C[:,1].mean()+ds+3 + R.mean()*np.sin(theta_fit)
-    plt.plot(x_fit2, y_fit2, linestyle='--', lw=1, label='Mean', color='r')
-    plt.scatter(C[:,0]+ds-13,C[:,1]+ds+3, s= 20, color='r')
-    plt.legend(loc=0)
-    plt.show()
-    return img
 if __name__ == '__main__':
 
     #import sys
     data = np.load('image.npz')['image']
     data[data>=5000] = np.nan
     data[data<=-1000] = np.nan
-    Viewer=PanelView(data, test=False)
+    Viewer=PanelView(data)
     #print(Viewer.points)
     Point = namedtuple('Point', 'x y')
     #test_plot(data, Viewer.points)
     #shift(data, points = Viewer.points)
     #image_n = shift(data)
-    np.savez('data.npz', image=data)
+    #np.savez('data.npz', image=data)
 
