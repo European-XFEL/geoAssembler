@@ -188,12 +188,11 @@ class PanelView(object):
             self.points[quad].y.append(int(y))
         ## Test if there are enough points in each quadrant
         for quad, points in self.points.items():
-            if not len(points.x):
-                raise RuntimeError('Each Quadrant must contain data points')
-            elif len(points.x) < 4:
+            if len(points.x) < 4:
                 import warnings
                 warnings.warn('Each Quadrant should have more than 4 points',
                         RuntimeWarning)
+                return
 
 
         self.app.closeAllWindows()
