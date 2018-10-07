@@ -467,7 +467,7 @@ class Assemble(object):
             x_fit2 = self.center[0] + self.radius*np.cos(theta_fit)
             y_fit2 = self.center[1] + self.radius*np.sin(theta_fit)
 
-            plt.plot(x_fit2, y_fit2, linestyle='--', lw=1, label='Fit', color='r')
+            #plt.plot(x_fit2, y_fit2, linestyle='--', lw=1, label='Fit', color='r')
             plt.scatter([self.center[0]], self.center[1], s=20, color='r')
             plt.scatter(self.points.x, self.points.y, s=15, color='b')
 
