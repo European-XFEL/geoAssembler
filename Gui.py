@@ -30,7 +30,7 @@ class MyCrosshairOverlay(pg.CrosshairROI):
 class PanelView(object):
     '''Class that plots detector data that has been roughly arranged'''
     def __init__(self, data, bounding_boxes=None, vmin=-1000, vmax=5000,
-            test=False):
+            test=False, init=True, pre_points=[]):
         '''Parameters:
             data (2d-array)  : The 2d roughly assembled detector data that has
                                to be re-aligned
@@ -47,6 +47,7 @@ class PanelView(object):
            vmax (int) : maximum value in the data array (default: 5000)
                         anything above this value will be masked
         '''
+
 
         if vmin is not None:
             data[data<vmin] = np.nan
@@ -71,16 +72,16 @@ class PanelView(object):
         self.app = QtGui.QApplication([])
 
         ## Create window with ImageView widget
-        self.win = QtGui.QMainWindow()
-        self.win.setWindowTitle('Select Points on a Circle')
+        self.win = QtGui.QWindow()
         self.win.resize(800,800)
+        #self.win.setWindowTitle('Select Points on a Circle')
         ## Create new image view
         self.imv = pg.ImageView()
         #self.win.setCentralWidget(self.imv)
 
         self.pen = QtGui.QPen(QtCore.Qt.red, 1)
 
-        self.posistions=[] ## Postions of the circle points
+        self.positions = pre_points ## Postions of the circle points
         self.fit_method = 'circle' ## The default fit-method to create the rings
         ## Circle Points by Quadrant
         P = namedtuple('Point', 'x y')
@@ -97,10 +98,24 @@ class PanelView(object):
         # Get the colormap
         cmap =  pg.ColorMap(*zip(*Gradients["grey"]["ticks"]))
         self.imv.setColorMap(cmap)
+        self.exit = 0
+        if init:
+            self.init()
+            pg.LabelItem(justify='right')
+
+            self.w.setLayout(self.layout)
+            self.w.show()
+            self.app.exec_()
+
+    def init(self):
+
+        ## This is only for testing, display only all pre-defined points
+        for r in self.positions:
+            self.imv.getView().addItem(r)
 
 
-        w = QtGui.QWidget()
-        layout = QtGui.QGridLayout()
+        self.w = QtGui.QWidget()
+        self.layout = QtGui.QGridLayout()
         self.sel1 = QtGui.QRadioButton('Circle Fit')
         self.sel1.setChecked(True)
         self.sel1.toggled.connect(lambda:self.__set_method(self.sel1))
@@ -120,22 +135,14 @@ class PanelView(object):
         self.btn2.clicked.connect(self.__preset)
         self.btn1.clicked.connect(self.__apply)
         self.btn3.clicked.connect(self.__clear)
-        layout.addWidget(self.imv,  1, 0, 5, 4)  ## plot goes on right side, spanning 3 rows
-        layout.addWidget(self.btn1, 5, 0, 1, 1)   ## button goes to the bottom
-        layout.addWidget(self.btn2, 5, 1, 1, 1)   ## button goes to the bottom
-        layout.addWidget(self.btn3, 5, 2, 1, 1)   ## button goes to the bottom
-        layout.addWidget(self.btn4, 5, 3, 1, 1)   ## button goes to the bottom
+        self.layout.addWidget(self.imv,  1, 0, 5, 4)  ## plot goes on right side, spanning 3 rows
+        self.layout.addWidget(self.btn1, 5, 0, 1, 1)   ## button goes to the bottom
+        self.layout.addWidget(self.btn2, 5, 1, 1, 1)   ## button goes to the bottom
+        self.layout.addWidget(self.btn3, 5, 2, 1, 1)   ## button goes to the bottom
+        self.layout.addWidget(self.btn4, 5, 3, 1, 1)   ## button goes to the bottom
 
-        layout.addWidget(self.sel1, 0, 0, 1, 1)
-        layout.addWidget(self.sel2, 0, 1, 1, 1)
-
-        pg.LabelItem(justify='right')
-        self.exit = 0
-        w.setLayout(layout)
-        w.show()
-
-        self.app.exec_()
-
+        self.layout.addWidget(self.sel1, 0, 0, 1, 1)
+        self.layout.addWidget(self.sel2, 0, 1, 1, 1)
     def __set_method(self, b):
 
         if b.text().lower().startswith("circle"):
@@ -163,14 +170,14 @@ class PanelView(object):
 
         for i in range(len(X)):
             r = MyCrosshairOverlay(pos=(X[i],Y[i]), size=15,
-                    pen=self.pen, movable=True, removable=False)
+                    pen=self.pen, movable=True, removable=True)
 
-            self.posistions.append(r)
+            self.positions.append(r)
 
     def __clear(self):
-        for roi in self.posistions:
+        for roi in self.positions:
             self.imv.getView().removeItem(roi)
-        self.posistions = []
+        self.positions = []
     def __destroy(self):
         '''destroy the window'''
 
@@ -180,7 +187,7 @@ class PanelView(object):
 
     def __apply(self):
         '''get the coordinates of the selected points and destroy the window'''
-        for roi in self.posistions:
+        for roi in self.positions:
             x, y  = roi.pos()
             ## Get the quadrant of the position
             quad = self.get_quadrant(int(x), int(y))
@@ -191,17 +198,19 @@ class PanelView(object):
             if len(points.x) < 4:
                 import warnings
                 warnings.warn('Each Quadrant should have more than 4 points',
-                        RuntimeWarning)
+                        UserWarning)
                 return
 
-
+        
         self.app.closeAllWindows()
+        del self.layout, self.w, self.app #self.win
+        QtCore.QCoreApplication.quit()
 
     def __preset(self):
         '''Apply a set of test_points to the region (testing purpose)'''
         self.__test_points()
         ## This is only for testing, display only all pre-defined points
-        for r in self.posistions:
+        for r in self.positions:
             self.imv.getView().addItem(r)
 
 
@@ -219,9 +228,73 @@ class PanelView(object):
         x = int(pos.x())
         y = int(pos.y())
         r = MyCrosshairOverlay(pos=(x,y), size=15, pen=self.pen, movable=True,
-                removable=False)
+                removable=True)
         self.imv.getView().addItem(r)
-        self.posistions.append(r)
+        self.positions.append(r)
+
+class ResultView(PanelView):
+    '''Display the result of the goemetric assemply'''
+    def __init__(self, data, geo, shift=0, vmin=None, vmax=None, bounding_boxes=None):
+        PanelView.__init__(self, data, vmin=vmin, vmax=vmax, init=False)
+        self.w = QtGui.QWidget()
+        self.layout = QtGui.QGridLayout()
+        self.shift = shift
+        self.apply = True
+        self.points = geo.old_points
+        ## Add widgets to the layout in their proper positions
+        self.btn2 = QtGui.QPushButton('Get Geometry')
+        self.btn1 = QtGui.QPushButton('Back to Selection')
+        self.btn3 = QtGui.QPushButton('Cancel')
+
+
+
+        self.btn3.clicked.connect(self.__cancel)
+        self.btn2.clicked.connect(self.__saveGeo)
+        self.btn1.clicked.connect(self.__back)
+        self.layout.addWidget(self.imv,  0, 0, 4, 3)  ## plot goes on right side, spanning 3 rows
+        self.layout.addWidget(self.btn1, 4, 0, 1, 1)   ## button goes to the bottom
+        self.layout.addWidget(self.btn2, 4, 1, 1, 1)   ## button goes to the bottom
+        self.layout.addWidget(self.btn3, 4, 2, 1, 1)   ## button goes to the bottom
+
+        pg.LabelItem(justify='right')
+        self.positions = []
+        self.w.setLayout(self.layout)
+        self.plot_data(geo)
+        self.w.show()
+        self.app.exec_()
+
+
+    def plot_data(self, geo):
+        pen = QtGui.QPen(QtCore.Qt.blue, 1)
+        for p in range(len(geo.points.x)):
+            x, y = geo.points.x[p], geo.points.y[p]
+            r = MyCircleOverlay(pos=(x,y), size=5,
+                    pen=pen, movable=False, removable=False)
+            self.imv.getView().addItem(r)
+
+    def __saveGeo(self):
+        '''This should crate a geometry file'''
+        self.app.closeAllWindows()
+        QtCore.QCoreApplication.quit()
+        del self.layout, self.w #self.win
+
+
+        return
+
+    def __back(self):
+        '''Set back stage'''
+        self.apply = False
+        self.app.closeAllWindows()
+        for point in self.points.values():
+            for i in range(len(point.x)):
+                x, y = point.x[i], point.y[i]
+                r = MyCrosshairOverlay(pos=(x,y), size=15,
+                    pen=self.pen, movable=True, removable=True)
+                self.positions.append(r)
+        del self.layout, self.w #self.win
+
+    def __cancel(self):
+        sys.exit(0)
 
 if __name__ == '__main__':
 
@@ -230,7 +303,6 @@ if __name__ == '__main__':
     data[data>=5000] = np.nan
     data[data<=-1000] = np.nan
     Viewer=PanelView(data)
-    #print(Viewer.points)
     Point = namedtuple('Point', 'x y')
     #test_plot(data, Viewer.points)
     #shift(data, points = Viewer.points)

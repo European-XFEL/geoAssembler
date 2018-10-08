@@ -341,7 +341,7 @@ class Assemble(object):
         return new_data
 
 
-    def get_geometry(self, data, vmax=5000, vmin=-1000):
+    def get_geometry(self, data, vmax=5000, vmin=-1000, **kwargs):
         '''Method that creates a new detector geometry according to a given fit
             method
             Parameters:
@@ -359,11 +359,15 @@ class Assemble(object):
         from Gui import PanelView
 
         ## 1.0 Let the user define the points for alignment
-        View = PanelView(self.stack(data), vmax=vmax, vmin=vmin)
-
+        View = PanelView(self.stack(data), vmax=vmax, vmin=vmin, **kwargs)
+        self.old_points = View.points
         self.fit_method = View.fit_method
         if self.fit_method.lower() == 'circle':
-            return self.__shift_circle(View.points)
+            shift = self.__shift_circle(View.points)
+            del View
+            from pyqtgraph import QtCore
+            QtCore.QCoreApplication.quit()
+            return shift
 
         else:
             raise NotImplementedError('At the moment only circle, fits are available')
@@ -412,10 +416,10 @@ class Assemble(object):
 
         dx2 = abs(self.__df.loc[self.__df.Quadrant == 2].Yoffset.values[0])
         dx1 = abs(self.__df.loc[self.__df.Quadrant == 4].Yoffset.values[0])
-        #dy1 = abs(self.__df.loc[self.__df.Quadrant == 1].Xoffset.values[0])
-        #dy2 = abs(self.__df.loc[self.__df.Quadrant == 2].Xoffset.values[0])
+        dy1 = abs(self.__df.loc[self.__df.Quadrant == 1].Xoffset.values[0])
+        dy2 = abs(self.__df.loc[self.__df.Quadrant == 2].Xoffset.values[0])
         dx = dx1 - dx2
-        #dy = dy1 - dy2
+        dy = dy1 - dy2
         #I don't understand why this works but is does
         new_points = tpoints(x=np.array(x_comb)+dx/2, y=np.array(y_comb))
 
@@ -437,7 +441,7 @@ class Assemble(object):
         self.center[0] #+= dx
         self.center[1] #+= dy
         self.points = new_points
-
+        return dx/2 , -dx/2
 
     def plot_data(self, data, *args, vmin=-1000, vmax=5000, **kwargs):
         '''Visualize assembled data from
