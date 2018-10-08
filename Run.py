@@ -77,6 +77,12 @@ def main(argv=None):
             QtCore.QCoreApplication.quit()
         log.info('Re-assembling...')
 
+    from PIL import Image
+    data = np.ma.masked_invalid(A.apply_geo(data))
+    
+    im = Image.fromarray(np.ma.masked_outside(data, -10, 50).filled(-10))
+    im.save('test.tif')
+
 
 
 if __name__ == '__main__':

@@ -244,33 +244,54 @@ class ResultView(PanelView):
         ## Add widgets to the layout in their proper positions
         self.btn2 = QtGui.QPushButton('Get Geometry')
         self.btn1 = QtGui.QPushButton('Back to Selection')
-        self.btn3 = QtGui.QPushButton('Cancel')
+        self.btn3 = QtGui.QPushButton('Plot Fit-Object')
+        self.btn4 = QtGui.QPushButton('Cancel')
 
 
 
-        self.btn3.clicked.connect(self.__cancel)
+        self.btn4.clicked.connect(self.__cancel)
         self.btn2.clicked.connect(self.__saveGeo)
         self.btn1.clicked.connect(self.__back)
-        self.layout.addWidget(self.imv,  0, 0, 4, 3)  ## plot goes on right side, spanning 3 rows
+        self.btn3.clicked.connect(self.plot_circle)
+        self.layout.addWidget(self.imv,  0, 0, 4, 4)  ## plot goes on right side, spanning 3 rows
         self.layout.addWidget(self.btn1, 4, 0, 1, 1)   ## button goes to the bottom
         self.layout.addWidget(self.btn2, 4, 1, 1, 1)   ## button goes to the bottom
         self.layout.addWidget(self.btn3, 4, 2, 1, 1)   ## button goes to the bottom
+        self.layout.addWidget(self.btn4, 4, 3, 1, 1)   ## button goes to the bottom
 
         pg.LabelItem(justify='right')
         self.positions = []
         self.w.setLayout(self.layout)
-        self.plot_data(geo)
+        self.geo = geo
+        self.center, self.circle = None, None
+        self.plot_data()
         self.w.show()
         self.app.exec_()
 
 
-    def plot_data(self, geo):
+    def plot_data(self):
         pen = QtGui.QPen(QtCore.Qt.blue, 1)
-        for p in range(len(geo.points.x)):
-            x, y = geo.points.x[p], geo.points.y[p]
+        for p in range(len(self.geo.points.x)):
+            x, y = self.geo.points.x[p], self.geo.points.y[p]
             r = MyCircleOverlay(pos=(x,y), size=5,
                     pen=pen, movable=False, removable=False)
             self.imv.getView().addItem(r)
+    def plot_circle(self):
+        if self.center is None and self.circle is None:
+            pen = QtGui.QPen(QtCore.Qt.red, 0.002)
+            pen2 = QtGui.QPen(QtCore.Qt.red, 3)
+            d = 2*self.geo.radius
+            x, y = self.geo.center[0]-d/2, self.geo.center[1]-d/2
+            self.circle = MyCircleOverlay(pos=(x,y), size=d, pen=pen,
+                    movable=False, removable=False)
+            self.imv.getView().addItem(self.circle)
+            self.center = MyCrosshairOverlay(pos=self.geo.center, size=8, pen=pen2,
+                    movable=False, removable=False)
+            self.imv.getView().addItem(self.center)
+        else:
+            self.imv.getView().removeItem(self.center)
+            self.imv.getView().removeItem(self.circle)
+            self.center, self.circle = None, None
 
     def __saveGeo(self):
         '''This should crate a geometry file'''

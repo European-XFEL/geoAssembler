@@ -404,6 +404,7 @@ class Assemble(object):
 
         x_comb = []
         y_comb = []
+
         for i in range(len(shift)):
             quad=i+1
             idx=np.array(self.__df.loc[self.__df.Quadrant == quad].index)
