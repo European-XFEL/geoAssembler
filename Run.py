@@ -17,9 +17,9 @@ def main(argv=None):
     The program will open a GUI where points that will be fitted to a defined
     structure are chosen.''')
 
-    ap.add_argument('-i', '--input', dest='input', action='store_false',
+    ap.add_argument('-i', '--input',
                     help='Directory containing the run')
-    ap.add_argument('-t','--train', dest='train', action='store_false',
+    ap.add_argument('-t','--train',
             help='TrainId that contains the data, if none is given the first train will be taken')
     ap.add_argument('--test', help='Only a test with is performed', dest='test', action='store_false')
     ap.add_argument('--vmin', help=('Minimum value to be displayed in the Gui\n'
@@ -46,8 +46,8 @@ def main(argv=None):
         if os.path.isdir(args.input):
             Run_Dir = kd.RunDirectory(args.input)
             if args.train is not None:
-                log.info('Getting train ID #%i:'%int(args.train))
-                trainID, data = Run_Dir.train_from_id(int(args.train))
+                log.info('Getting train ID # %i:'%int(args.train))
+                trainID, data = Run_Dir.train_from_index(int(args.train))
             else:
                 log.info('Getting first Train')
                 trainID, data = Run_Dir.train_from_index(0)
