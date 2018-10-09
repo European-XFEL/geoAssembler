@@ -2,6 +2,9 @@
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=ImportWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 from Assembler import *
 from Gui import *
 from pyqtgraph import QtCore
@@ -10,7 +13,7 @@ from argparse import ArgumentParser
 import logging
 import os
 from Gui import ResultView
-warnings.resetwarnings()
+#warnings.resetwarnings()
 
 
 def main(argv=None):
@@ -42,8 +45,6 @@ def main(argv=None):
     log = logging.getLogger(os.path.basename(__file__))
     args = ap.parse_args(argv)
 
-    warnings.filterwarnings("ignore", category=FutureWarning)
-    warnings.filterwarnings("ignore", category=RuntimeWarning)
     if args.input is None and args.test is False:
         log.warning(
             'No input was given and test is set to false, turning test on')
