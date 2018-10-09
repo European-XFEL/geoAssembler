@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 from Assembler import *
 from Gui import *
 from pyqtgraph import QtCore
-import  gc
+import gc
 from argparse import ArgumentParser
 import logging
 import os
 from Gui import ResultView
-import warnings
+warnings.resetwarnings()
+
+
 def main(argv=None):
-    
+
     ap = ArgumentParser(description='''
     Create an initial geometry based on pre-defined structures.
 
@@ -19,9 +23,12 @@ def main(argv=None):
 
     ap.add_argument('-i', '--input',
                     help='Directory containing the run')
-    ap.add_argument('-t','--train',
-            help='TrainId that contains the data, if none is given the first train will be taken')
-    ap.add_argument('--test', help='Only a test with is performed', dest='test', action='store_false')
+    ap.add_argument('-t', '--train',
+                    help='TrainId that contains the data, if none is given the first train will be taken')
+    ap.add_argument('-o', '--output',
+                    help='Write data to tiff format with given filename')
+    ap.add_argument('--test', help='Only a test with is performed',
+                    dest='test', action='store_false')
     ap.add_argument('--vmin', help=('Minimum value to be displayed in the Gui\n'
                                     '(default: -1000)'), dest='vmin')
     ap.add_argument('--vmax', help=('Maximum value to be displayed in the Gui\n'
@@ -38,24 +45,25 @@ def main(argv=None):
     warnings.filterwarnings("ignore", category=FutureWarning)
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     if args.input is None and args.test is False:
-        log.warning('No input was given and test is set to false, turning test on')
+        log.warning(
+            'No input was given and test is set to false, turning test on')
         args.test = True
     if args.input is not None:
-        ## Taking trains with karabo-data
+        # Taking trains with karabo-data
         import karabo_data as kd
         if os.path.isdir(args.input):
             Run_Dir = kd.RunDirectory(args.input)
             if args.train is not None:
-                log.info('Getting train ID # %i:'%int(args.train))
+                log.info('Getting train ID # %i:' % int(args.train))
                 trainID, data = Run_Dir.train_from_index(int(args.train))
             else:
                 log.info('Getting first Train')
                 trainID, data = Run_Dir.train_from_index(0)
         else:
-            log.error('Error: Directory %s does not exist'%args.input)
+            log.error('Error: Directory %s does not exist' % args.input)
             raise RuntimeError('No such file or directory')
     else:
-        ## Get some mock data for testing
+        # Get some mock data for testing
         data = get_testdata()
 
     log.info('Starting to assemble')
@@ -69,20 +77,25 @@ def main(argv=None):
         p = View.positions
         del View
         gc.collect()
+
         QtCore.QCoreApplication.quit()
         if appl:
             break
         else:
-            points=p
+            points = p
             QtCore.QCoreApplication.quit()
+            X=[]
+            Y=[]
         log.info('Re-assembling...')
 
-    from PIL import Image
-    data = np.ma.masked_invalid(A.apply_geo(data))
-    
-    im = Image.fromarray(np.ma.masked_outside(data, -10, 50).filled(-10))
-    im.save('test.tif')
+    if args.output is not None:
+        output = args.output.replace('.tiff', '').replace('.tif', '')
 
+        from PIL import Image
+        data = np.ma.masked_invalid(A.apply_geo(data))
+
+        im = Image.fromarray(np.ma.masked_outside(data, -10, 50).filled(-10))
+        im.save(output+'.tif')
 
 
 if __name__ == '__main__':
@@ -90,4 +103,3 @@ if __name__ == '__main__':
     vmin, vmax = -1000, 5000
     main()
     sys.exit()
-    
