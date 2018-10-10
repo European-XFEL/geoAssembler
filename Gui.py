@@ -61,7 +61,7 @@ class PanelView(object):
             data[data < vmin] = np.nan
         if vmax is not None:
             data[data > vmax] = np.nan
-
+        self.data = data
         if bounding_boxes is None:
             # If no bounding boxes are given (default) define them by
             # cutting the data into 4 even pieces
@@ -132,14 +132,16 @@ class PanelView(object):
         self.btn1 = QtGui.QPushButton('Apply Coordinates')
         self.btn2 = QtGui.QPushButton('Set Test-Coordinates')
         self.btn3 = QtGui.QPushButton('Clear Points')
-        self.btn4 = QtGui.QPushButton('Cancel')
-
-        self.btn4.clicked.connect(self.__destroy)
+        self.btn4 = QtGui.QPushButton('Get helper circle')
+        self.btn5 = QtGui.QPushButton('Cancel')
+        
+        self.btn5.clicked.connect(self.__destroy)
+        self.btn4.clicked.connect(self.__drawCircle)
         self.btn2.clicked.connect(self.__preset)
         self.btn1.clicked.connect(self.__apply)
         self.btn3.clicked.connect(self.__clear)
         # plot goes on right side, spanning 3 rows
-        self.layout.addWidget(self.imv,  1, 0, 5, 4)
+        self.layout.addWidget(self.imv,  1, 0, 5, 5)
         # button goes to the bottom
         self.layout.addWidget(self.btn1, 5, 0, 1, 1)
         # button goes to the bottom
@@ -148,9 +150,27 @@ class PanelView(object):
         self.layout.addWidget(self.btn3, 5, 2, 1, 1)
         # button goes to the bottom
         self.layout.addWidget(self.btn4, 5, 3, 1, 1)
+        self.layout.addWidget(self.btn5, 5, 4, 1, 1)
 
         self.layout.addWidget(self.sel1, 0, 0, 1, 1)
         self.layout.addWidget(self.sel2, 0, 1, 1, 1)
+
+    def __drawCircle(self):
+        x, y = self.data.shape[0]//2, self.data.shape[1]//2
+        pen = QtGui.QPen(QtCore.Qt.blue, 0.002)
+        
+        circle = MyCircleOverlay(pos=(x,y), size=x//4,
+                removable=True, movable=True, pen=pen)
+
+        circle.handleSize = 3
+        # Add top and right Handles
+        circle.addScaleHandle([0.5, 0], [0.5, 1])
+        circle.addScaleHandle([0, 0.5], [0.5, 0.5])
+        circle.addScaleHandle([1, 0.5], [0.5, 0.5])
+        circle.addScaleHandle([0.5, 1], [0.5, 0])
+        #circle.addScaleHandle([0.5, 0.5], [0, 0])
+        self.imv.getView().addItem(circle)
+
 
     def __set_method(self, b):
 
