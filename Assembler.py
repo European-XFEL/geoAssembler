@@ -100,6 +100,8 @@ class Assemble(object):
 
         ## Which method is used for fitting (default None)
         self.fit_method = None
+        ## Postitions of the Quadrants
+        self.pos = None
 
     @staticmethod
     def _make_df():
@@ -340,6 +342,33 @@ class Assemble(object):
             new_data.at[i, 'Xoffset'] += 128
         return new_data
 
+    def get_corners(self, center, shift):
+        '''Method to get the croners of the quadrants'''
+        shift = shift[0]
+        xMax, yMax = self.df.Yoffset.values.max(), self.df.Xoffset.values.max()
+        xMax += 512
+        yMax += 128
+        print(self.df[['Yoffset','Xoffset']])
+        center = xMax/2., yMax/2.
+        X, Y = self.df.Yoffset.values - center[0], center[1] - self.df.Xoffset.values
+        quad = self.df.Quadrant
+
+        df = pd.DataFrame({'X': X, 'Y': Y, 'Quadrant': quad})
+        pos = {}
+        lookup = {1:(12, shift, 2*shift),
+                  2:(8, -3*shift,2*shift),
+                  3:(4,512-3*shift,-128-shift),
+                  4:(0, 512+shift, -128-shift)}
+        for q in lookup.keys():
+            i, shiftx, shifty = lookup[q]
+            x, y = tuple((df[['X','Y']].values[i]).astype('i'))
+            pos[q] = (x+shiftx,y+shifty)
+        self.pos = [pos[i] for i in range(1,5)]
+        pos1 = [(-525, 625),(-550, -10),(520, -160),(542.5, 475)]
+        for i in range(4):
+            print(self.pos[i][0] -pos1[i][0], self.pos[i][1] - pos1[i][1])
+
+        
 
     def get_geometry(self, data, vmax=5000, vmin=-1000, **kwargs):
         '''Method that creates a new detector geometry according to a given fit

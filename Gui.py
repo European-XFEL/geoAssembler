@@ -305,6 +305,7 @@ class ResultView(PanelView):
 
     def __saveGeo(self):
         '''This should crate a geometry file'''
+        self.geo.get_corners(self.geo.center, self.shift)
         self.app.closeAllWindows()
         QtCore.QCoreApplication.quit()
         del self.layout, self.w  # self.win
