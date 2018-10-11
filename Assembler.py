@@ -348,7 +348,7 @@ class Assemble(object):
         xMax, yMax = self.df.Yoffset.values.max(), self.df.Xoffset.values.max()
         xMax += 512
         yMax += 128
-        print(self.df[['Yoffset','Xoffset']])
+        #print(self.df[['Yoffset','Xoffset']])
         center = xMax/2., yMax/2.
         X, Y = self.df.Yoffset.values - center[0], center[1] - self.df.Xoffset.values
         quad = self.df.Quadrant
@@ -356,8 +356,8 @@ class Assemble(object):
         df = pd.DataFrame({'X': X, 'Y': Y, 'Quadrant': quad})
         pos = {}
         lookup = {1:(12, shift, 2*shift),
-                  2:(8, -3*shift,2*shift),
-                  3:(4,512-3*shift,-128-shift),
+                  2:(8, -2*shift,2*shift),
+                  3:(4,512-2*shift,-128-shift),
                   4:(0, 512+shift, -128-shift)}
         for q in lookup.keys():
             i, shiftx, shifty = lookup[q]

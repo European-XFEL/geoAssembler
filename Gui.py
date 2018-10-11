@@ -57,10 +57,15 @@ class PanelView(object):
                         anything above this value will be masked
         '''
 
-        if vmin is not None:
-            data[data < vmin] = np.nan
-        if vmax is not None:
-            data[data > vmax] = np.nan
+        data = np.nanmean(data[:10,0],axis=0).astype(np.float)
+        print(data.shape, data.dtype, np.nanmax(data), np.nanmin(data))
+        #from matplotlib import pyplot as plt
+        #plt.imshow(data)
+        #plt.show()
+        #if vmin is not None:
+        #    data[data < vmin] = np.nan
+        #if vmax is not None:
+        #    data[data > vmax] = np.nan
         self.data = data
         if bounding_boxes is None:
             # If no bounding boxes are given (default) define them by
@@ -118,7 +123,10 @@ class PanelView(object):
 
         # This is only for testing, display only all pre-defined points
         for r in self.positions:
-            self.imv.getView().addItem(r)
+           try:
+              self.imv.getView().addItem(r)
+           except RuntimeError:
+              pass
 
         self.w = QtGui.QWidget()
         self.layout = QtGui.QGridLayout()
@@ -162,7 +170,7 @@ class PanelView(object):
         circle = MyCircleOverlay(pos=(x,y), size=x//4,
                 removable=True, movable=True, pen=pen)
 
-        circle.handleSize = 3
+        circle.handleSize = 5
         # Add top and right Handles
         circle.addScaleHandle([0.5, 0], [0.5, 1])
         circle.addScaleHandle([0, 0.5], [0.5, 0.5])

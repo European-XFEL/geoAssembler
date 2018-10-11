@@ -16,6 +16,22 @@ import os
 #warnings.resetwarnings()
 
 
+def crate_testData(run_dir, pattern='*.h5'):
+   from h5py import File
+   import os, glob
+   from Assemble import Test
+   files = glob.glob(os.path.join(run_dir, pattern))
+   files.sort()
+   h5=[File(fn, 'r') for fn in files]
+   data=Test()
+   kwargs={}
+
+   for n,k in enumerate(data.keys()):
+      data[k]['image.data'] = h5[n]['/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image'.format(n)]['data'][12345]
+      kwargs['image.%02i'%n] =  data[k]['image.data']
+
+   return data
+
 def main(argv=None):
 
     ap = ArgumentParser(description='''
@@ -89,11 +105,14 @@ photon_energy = 10235'''
     points = []
     vmin, vmax = int(args.vmin), int(args.vmax)
     while True:
+
         shift = A.get_geometry(data, pre_points=points, vmin=vmin,
                                vmax=vmax)
+        print(data)
         View = ResultView(A.apply_geo(data), A, shift=shift, vmin=vmin,
                           vmax=vmax)
         appl = View.apply
+        print(appl)
         p = View.positions
         geo = A.df
         del View
