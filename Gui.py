@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph as pg
 from collections import namedtuple
