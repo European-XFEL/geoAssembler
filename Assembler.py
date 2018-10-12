@@ -451,7 +451,7 @@ class Assemble(object):
         dx = dx1 - dx2
         dy = dy1 - dy2
         #I don't understand why this works but is does
-        new_points = tpoints(x=np.array(x_comb)+dx/2, y=np.array(y_comb))
+        new_points = tpoints(x=np.array(x_comb)+dx/2, y=np.array(y_comb)+dy/2)
 
         nc_x, nc_y, self.radius, nres, ncalls =fit_circle(new_points)
         X = np.array(X)

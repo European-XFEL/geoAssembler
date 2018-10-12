@@ -6,6 +6,7 @@ warnings.simplefilter(action='ignore', category=ImportWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import numpy as np
+import pandas as pd
 from Assembler import Assemble, get_testdata
 from Gui import ResultView
 from pyqtgraph import QtCore
@@ -114,6 +115,12 @@ photon_energy = 10235'''
         appl = View.apply
         print(appl)
         p = View.positions
+        xx = []
+        yy = []
+        for pp in p:
+            xx.append(pp.pos().x())
+            yy.append(pp.pos().y())
+        pp = pd.DataFrame(dict(X=xx, Y=yy))
         geo = A.df
         del View
         gc.collect()
@@ -132,6 +139,7 @@ photon_energy = 10235'''
 
         im = Image.fromarray(np.ma.masked_outside(data, -10, 50).filled(-10))
         im.save(output+'.tif')
+    pp.to_csv('points.csv')
     geo.to_csv('geo.csv')
 
     ## Create the Geometry file

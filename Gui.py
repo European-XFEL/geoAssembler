@@ -58,6 +58,7 @@ class PanelView(object):
         '''
 
         data = np.nanmean(data[:10,0],axis=0).astype(np.float)
+        #data = np.nanmean(data[:10],axis=0).astype(np.float)
         print(data.shape, data.dtype, np.nanmax(data), np.nanmin(data))
         #from matplotlib import pyplot as plt
         #plt.imshow(data)
@@ -194,13 +195,21 @@ class PanelView(object):
 
     def __test_points(self):
         '''Display pre-selected points on the circle for testing'''
-        X = np.array([501, 448, 354, 316, 281, 260, 215, 196, 854, 830,
-                      784, 721, 661, 846, 763, 206, 276, 373, 311, 188,
-                      178, 830, 547, 579, 688, 708, 725, 743, 773, 818, 838])
+        pp = pd.read_csv('points.csv')
+        X = np.array(pp.X)
+        Y = np.array(pp.Y)
+        try:
+            pp = pd.read_csv('points.csv')
+            X = np.array(pp.X)
+            Y = np.array(pp.Y)
+        except :
+            X = np.array([501, 448, 354, 316, 281, 260, 215, 196, 854, 830,
+                          784, 721, 661, 846, 763, 206, 276, 373, 311, 188,
+                          178, 830, 547, 579, 688, 708, 725, 743, 773, 818, 838])
 
-        Y = np.array([271, 279, 320, 347, 380, 406, 497, 585, 568, 491, 413,
-                      355, 320, 534, 390, 746, 844, 909, 873, 693, 646, 699,
-                      960, 954, 908, 894, 880, 862, 827, 741, 658])
+            Y = np.array([271, 279, 320, 347, 380, 406, 497, 585, 568, 491, 413,
+                          355, 320, 534, 390, 746, 844, 909, 873, 693, 646, 699,
+                          960, 954, 908, 894, 880, 862, 827, 741, 658])
 
         for i in range(len(X)):
             r = MyCrosshairOverlay(pos=(X[i], Y[i]), size=15,
