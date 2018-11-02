@@ -8,13 +8,14 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 import numpy as np
 import pandas as pd
 from Assembler import Assemble, get_testdata
-from Gui import ResultView
+from Gui import ResultView, PanelView
 from pyqtgraph import QtCore
 import gc
 from argparse import ArgumentParser
 import logging
 import os
-#warnings.resetwarnings()
+from geometry import AGIPD_1MGeometry
+warnings.resetwarnings()
 
 
 def crate_testData(run_dir, pattern='*.h5'):
@@ -102,35 +103,34 @@ photon_energy = 10235'''
         data = get_testdata()
 
     log.info('Starting to assemble')
-    A = Assemble()
+    #A = Assemble()
+    quad_pos = [ (-540, 610), (-540, -15), (540, -143), (540, 482)]
+    geom =  AGIPD_1MGeometry.from_quad_positions(quad_pos=quad_pos)
     points = []
     vmin, vmax = int(args.vmin), int(args.vmax)
-    while True:
-
-        shift = A.get_geometry(data, pre_points=points, vmin=vmin,
-                               vmax=vmax)
-        print(data)
-        View = ResultView(A.apply_geo(data), A, shift=shift, vmin=vmin,
-                          vmax=vmax)
-        appl = View.apply
-        print(appl)
-        p = View.positions
-        xx = []
-        yy = []
-        for pp in p:
-            xx.append(pp.pos().x())
-            yy.append(pp.pos().y())
-        pp = pd.DataFrame(dict(X=xx, Y=yy))
-        geo = A.df
-        del View
-        gc.collect()
+    #while True:
+    View = PanelView(data, geom, vmin=vmin,
+                      vmax=vmax)
+    appl = View.apply
+    print(appl)
+    p = View.positions
+    xx = []
+    yy = []
+    for pp in p:
+        xx.append(pp.pos().x())
+        yy.append(pp.pos().y())
+    pp = pd.DataFrame(dict(X=xx, Y=yy))
+    del View
+    gc.collect()
+    QtCore.QCoreApplication.quit()
+    '''
+    if appl:
+        break
+    else:
+        points = p
         QtCore.QCoreApplication.quit()
-        if appl:
-            break
-        else:
-            points = p
-            QtCore.QCoreApplication.quit()
-        log.info('Re-assembling...')
+    '''
+    log.info('Re-assembling...')
     if args.output is not None:
         output = args.output.replace('.tiff', '').replace('.tif', '')
 
@@ -143,7 +143,6 @@ photon_energy = 10235'''
     geo.to_csv('geo.csv')
 
     ## Create the Geometry file
-    from geometry import AGIPD_1MGeometry
     geof=args.geof.replace('.geom','')
     geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=A.pos, panel_gap=29, asic_gap=0)
 

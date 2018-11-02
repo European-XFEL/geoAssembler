@@ -16,11 +16,12 @@ class AGIPDGeometryFragment:
     ss_pixels = 64
     fs_pixels = 128
 
-    # The coordinates in this class are (x, y, z)
+    # The coordinates in this class are (x, y, z), in pixel units
     def __init__(self, corner_pos, ss_vec, fs_vec):
         self.corner_pos = corner_pos
         self.ss_vec = ss_vec
         self.fs_vec = fs_vec
+
 
     @classmethod
     def from_panel_dict(cls, d):
@@ -89,17 +90,20 @@ class GridGeometryFragment:
             ])
             self.pixel_dims = np.array([self.fs_pixels, self.ss_pixels])
         self.corner_idx = corner_pos + corner_shift
+        self.corner_pos = corner_pos
         self.opp_corner_idx = self.corner_idx + self.pixel_dims
 
 
 class AGIPD_1MGeometry:
     """Detector layout for AGIPD-1M
 
-    The coordinates used in this class are 3D (x, y, z).
+    The coordinates used in this class are 3D (x, y, z), and represent multiples
+    of the pixel size.
     """
     pixel_size = 2e-7  # 2e-7 metres == 0.2 mm
-    def __init__(self, modules):
+    def __init__(self, modules, quad_pos):
         self.modules = modules  # List of 16 lists of 8 fragments
+        self.quad_pos = quad_pos
 
     @classmethod
     def from_quad_positions(cls, quad_pos, asic_gap=2, panel_gap=29):
@@ -131,23 +135,55 @@ class AGIPD_1MGeometry:
                     corner_pos=np.array([corner_x, corner_y, 0.]),
                     ss_vec=np.array([x_orient, 0, 0]),
                     fs_vec=np.array([0, y_orient, 0]),
-                ))
-        return cls(modules)
+                ).snap())
 
+        return cls(modules, quad_pos)
+
+    def move_quad(self, quad, inc):
+        pos = (quad - 1) * 4
+        for i, module in enumerate(self.modules[pos:pos + 4]):
+            for j, tile in enumerate(module):
+                module[j] = GridGeometryFragment(tile.corner_pos+inc,
+                                                 tile.ss_vec, tile.fs_vec)
+
+
+
+
+    def get_quad_corners(self, quad):
+        pos = (quad - 1) * 4
+        X = []
+        Y = []
+        size_yx, centre = self._plotting_dimensions()
+        for i, module in enumerate(self.modules[pos:pos + 4]):
+            for j, tile in enumerate(module):
+                # Offset by centre to make all coordinates positive
+                y, x = tile.corner_idx + centre
+                h, w = tile.pixel_dims
+                Y.append(y)
+                Y.append(y+h)
+                X.append(x)
+                X.append(x)
+        dy = abs(max(Y) - min(Y))
+        dx = abs(max(X) - min(X))
+        return (min(X), min(Y)), dx+w, dy
+
+    
     @classmethod
     def from_crystfel_geom(cls, filename):
         geom_dict = load_crystfel_geometry(filename)
         modules = []
+        quad_pos = []
         for p in range(16):
             tiles = []
             modules.append(tiles)
             for a in range(8):
                 d = geom_dict['panels']['p{}a{}'.format(p, a)]
                 tiles.append(AGIPDGeometryFragment.from_panel_dict(d))
-        return cls(modules)
+                if p%4 == 0 and a == 0:
+                    quad_pos.append(tuple(tiles[-1].corner_pos[:-1]))
+        return cls(modules, quad_pos)
 
-    def write_crystfel_geom(self, filename, header=''):
-        #from . import __version__
+    def write_crystfel_geom(self, filename):
 
         panel_chunks = []
         for p, module in enumerate(self.modules):
@@ -155,7 +191,7 @@ class AGIPD_1MGeometry:
                 panel_chunks.append(fragment.to_crystfel_geom(p, a))
 
         with open(filename, 'w') as f:
-            f.write(CRYSTFEL_HEADER_TEMPLATE.format(version='0.2.0', header=header))
+            f.write(CRYSTFEL_HEADER_TEMPLATE.format(version=1))
             for chunk in panel_chunks:
                 f.write(chunk)
 
@@ -181,11 +217,13 @@ class AGIPD_1MGeometry:
                 rects.append(Polygon(corners))
 
                 if a in {0, 7}:
-                    ax.text(*fragment.centre()[:2], str(a),
+                    cx, cy, _ = fragment.centre()
+                    ax.text(cx, cy, str(a),
                             verticalalignment='center',
                             horizontalalignment='center')
                 elif a == 4:
-                    ax.text(*fragment.centre()[:2], 'p{}'.format(p),
+                    cx, cy, _ = fragment.centre()
+                    ax.text(cx, cy, 'p{}'.format(p),
                             verticalalignment='center',
                             horizontalalignment='center')
 
@@ -198,144 +236,14 @@ class AGIPD_1MGeometry:
         ax.set_title('AGIPD-1M detector geometry')
         return fig
 
-    def position_all_modules(self, data):
-        """Assemble data from this detector according to where the pixels are.
-
-        This performs interpolation, which is very slow.
-        To efficiently copy the data into a 2D array, first use the snap()
-        method to get a pixel-aligned approximation of the geometry.
-
-        Parameters
-        ----------
-
-        data : ndarray
-          The three dimensions should be channelno, pixel_ss, pixel_fs
-          (lengths 16, 512, 128). ss/fs are slow-scan and fast-scan.
-
-        Returns
-        -------
-        out : ndarray
-          Array with the one dimension fewer than the input.
-          The last two dimensions represent pixel y and x in the detector space.
-        centre : ndarray
-          (x, y) pixel location of the detector centre in this geometry.
-        """
-        assert data.shape == (16, 512, 128)
-        size_xy, centre = self._plotting_dimensions()
-        size_yx = size_xy[::-1]
-        tmp = np.empty((16 * 8,) + size_yx, dtype=data.dtype)
-
-        for i, (module, mod_data) in enumerate(zip(self.modules, data)):
-            tiles_data = np.split(mod_data, 8)
-            for j, (tile, tile_data) in enumerate(zip(module, tiles_data)):
-                # We store (x, y, z), but numpy indexing, and hence affine_transform,
-                # work like [y, x]. Rearrange the numbers:
-                fs_vec_yx = tile.fs_vec[:2][::-1]
-                ss_vec_yx = tile.ss_vec[:2][::-1]
-
-                # Offset by centre to make all coordinates positive
-                corner_pos = (tile.corner_pos[:2] + centre)
-                corner_pos_yx = corner_pos[::-1]
-
-                # Make the rotation matrix
-                rotn = np.stack((ss_vec_yx, fs_vec_yx), axis=-1)
-
-                # affine_transform takes a mapping from *output* to *input*.
-                # So we reverse the forward transformation.
-                transform = np.linalg.inv(rotn)
-                offset = np.dot(rotn, corner_pos_yx)  # this seems to work, but is it right?
-
-                affine_transform(tile_data, transform, offset=offset, cval=np.nan,
-                                 output_shape=size_yx, output=tmp[i * 8 + j])
-
-        # Silence warnings about nans - we expect gaps in the result
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            out = np.nanmax(tmp, axis=0)
-
-        return out, centre
-
-    def _plotting_dimensions(self):
-        """Calculate appropriate dimensions for plotting assembled data
-
-        Returns (size_x, size_y), (centre_x, centre_y)
-        """
-        corners = []
-        for module in self.modules:
-            for tile in module:
-                corners.append(tile.corners())
-        corners = np.concatenate(corners)[:, :2]
-
-        # Find extremes, add 20 px margin
-        min_xy = corners.min(axis=0).astype(int) - 20
-        max_xy = corners.max(axis=0).astype(int) + 20
-
-        size = max_xy - min_xy
-        centre = -min_xy
-        return tuple(size), centre
-
-    def plot_data(self, modules_data):
-        """Plot data from the detector using this geometry.
-
-        Returns a matplotlib figure.
-
-        Parameters
-        ----------
-
-        modules_data : ndarray
-          Should have exactly 3 dimensions: channelno, pixel_ss, pixel_fs
-          (lengths 16, 512, 128). ss/fs are slow-scan and fast-scan.
-        """
-        from matplotlib.cm import viridis
-        from matplotlib.backends.backend_agg import FigureCanvasAgg
-        from matplotlib.figure import Figure
-
-        fig = Figure((10, 10))
-        FigureCanvasAgg(fig)
-        ax = fig.add_subplot(1, 1, 1)
-        my_viridis = copy(viridis)
-        # Use a dark grey for missing data
-        my_viridis.set_bad('0.25', 1.)
-
-        res, centre = self.position_all_modules(modules_data)
-        ax.imshow(res, origin='lower', cmap=my_viridis)
-
-        cx, cy = centre
-        ax.hlines(cy, cx - 20, cx + 20, colors='w', linewidths=1)
-        ax.vlines(cx, cy - 20, cy + 20, colors='w', linewidths=1)
-        return fig
-
-    def snap(self):
-        """Snap geometry to a 2D pixel grid
-
-        This returns a new geometry object. The 'snapped' geometry is
-        less accurate, but can assemble data into a 2D array more efficiently,
-        because it doesn't do any interpolation.
-        """
-        new_modules = []
-        for module in self.modules:
-            new_tiles = [t.snap() for t in module]
-            new_modules.append(new_tiles)
-        return AGIPD_1M_SnappedGeometry(new_modules)
-
-class AGIPD_1M_SnappedGeometry:
-    """AGIPD geometry approximated to align modules to a 2D grid
-
-    The coordinates used in this class are (y, x) suitable for indexing a
-    Numpy array; this does not match the (x, y) coordinates in the more
-    precise geometry above.
-    """
-    def __init__(self, modules):
-        self.modules = modules
-
-    def position_all_modules(self, data):
+    def position_all_modules(self, data, canvas=None):
         """Assemble data from this detector according to where the pixels are.
 
         Parameters
         ----------
 
         data : ndarray
-          The three dimensions should be channelno, pixel_ss, pixel_fs
+          The last three dimensions should be channelno, pixel_ss, pixel_fs
           (lengths 16, 512, 128). ss/fs are slow-scan and fast-scan.
 
         Returns
@@ -346,19 +254,22 @@ class AGIPD_1M_SnappedGeometry:
         centre : ndarray
           (y, x) pixel location of the detector centre in this geometry.
         """
-        assert data.shape == (16, 512, 128)
-        size_yx, centre = self._plotting_dimensions()
-        out = np.full(size_yx, np.nan, dtype=data.dtype)
-
-        for i, (module, mod_data) in enumerate(zip(self.modules, data)):
-            tiles_data = np.split(mod_data, 8)
-            for j, (tile, tile_data) in enumerate(zip(module, tiles_data)):
-
+        assert data.shape[-3:] == (16, 512, 128)
+        if canvas is None:
+            size_yx, centre = self._plotting_dimensions()
+        else:
+            size_yx = canvas
+            centre  = (canvas[0]//2, canvas[-1]//2)
+        out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
+        for i, module in enumerate(self.modules):
+            mod_data = data[..., i, :, :]
+            tiles_data = np.split(mod_data, 8, axis=-2)
+            for j, tile in enumerate(module):
+                tile_data = tiles_data[j]
                 # Offset by centre to make all coordinates positive
                 y, x = tile.corner_idx + centre
                 h, w = tile.pixel_dims
-
-                out[y:y+h, x:x+w] = tile.transform(tile_data)
+                out[..., y:y+h, x:x+w] = tile.transform(tile_data)
 
         return out, centre
 
@@ -374,13 +285,114 @@ class AGIPD_1M_SnappedGeometry:
                 corners.append(tile.opp_corner_idx)
         corners = np.stack(corners)
 
-        # Find extremes, add 20 px margin
-        min_yx = corners.min(axis=0) - 20
-        max_yx = corners.max(axis=0) + 20
+        # Find extremes
+        min_yx = corners.min(axis=0)
+        max_yx = corners.max(axis=0)
 
         size = max_yx - min_yx
         centre = -min_yx
         return tuple(size), centre
+
+    def get_shfit(self, data, vmax=5000, vmin=-1000, **kwargs):
+        '''Method that creates a new detector geometry according to a given fit
+            method
+            Parameters:
+                data (dict-object): dectector data stored in modules that is 
+                typically returned by karabo-data
+            Keywords:
+                fit_method (str) : the mothod that is used for fitting 
+                                   (default : circle)
+                                   at the moment there are the following options:
+                                     - circle : for fitting circles to the data
+                vmax (int) :  maximum value to be displayed when plotting the data
+                vmin (int) :  minimum value to be displayed when plotting the data
+        '''
+        ## Start with the Gui
+        from Gui import PanelView
+
+        ## 1.0 Let the user define the points for alignment
+        View = PanelView(self.position_all_modules(data)[-1], vmax=vmax, vmin=vmin, **kwargs)
+        self.old_points = View.points
+        self.fit_method = View.fit_method
+        if self.fit_method.lower() == 'circle':
+            shift = self.__shift_circle(View.points)
+            del View
+            from pyqtgraph import QtCore
+            QtCore.QCoreApplication.quit()
+            return shift
+
+        else:
+            raise NotImplementedError('At the moment only circle, fits are available')
+
+
+    def __shift_circle(self, points):
+        '''Method to shift detector Quadrants in order to make circles
+
+            Parameters:
+                points (namedtuple): The points in each quadrant that will make
+                                     the circle
+                geometry (pandas dataframe): A pandas dataframe containing the 
+                                             detector information
+        '''
+        tpoints = namedtuple('Points','x y')
+        from Fit import fit_circle
+        center = []
+        radius =[]
+        residu = []
+        for quad, pnt in points.items():
+            c_x, c_y, r, res, ncalls = fit_circle(pnt)
+            center.append(np.array([c_x, c_y]))
+            radius.append(r)
+            residu.append(res)
+        residu = np.array(residu)
+        radius = np.array(radius)
+        center = np.array(center)
+        c_mean = np.average(center, weights=1-residu/residu.sum(), axis=0)
+
+        shift = c_mean - center
+
+        x_comb = []
+        y_comb = []
+
+        for i in range(len(shift)):
+            quad=i+1
+            idx=np.array(self.__df.loc[self.__df.Quadrant == quad].index)
+            X[idx] += int(shift[i,1].astype('i'))
+            Y[idx] += int(shift[i,0].astype('i'))
+            for ii in range(len(points[quad].x)):
+                x_comb.append(points[quad].x[ii] + int(shift[i,0]))
+                y_comb.append(points[quad].y[ii] + int(shift[i,1]))
+
+
+        dx2 = abs(self.__df.loc[self.__df.Quadrant == 2].Yoffset.values[0])
+        dx1 = abs(self.__df.loc[self.__df.Quadrant == 4].Yoffset.values[0])
+        dy1 = abs(self.__df.loc[self.__df.Quadrant == 1].Xoffset.values[0])
+        dy2 = abs(self.__df.loc[self.__df.Quadrant == 2].Xoffset.values[0])
+        dx = dx1 - dx2
+        dy = dy1 - dy2
+        #I don't understand why this works but is does
+        new_points = tpoints(x=np.array(x_comb)+dx/2, y=np.array(y_comb)+dy/2)
+
+        nc_x, nc_y, self.radius, nres, ncalls =fit_circle(new_points)
+        X = np.array(X)
+        Y = np.array(Y)
+
+        if Y.min() < 0:
+            Y += np.fabs(Y.min()).astype(Y.dtype)
+        if X.min() < 0:
+            X += np.fabs(X.min()).astype(X.dtype)
+
+        self.__df['Xoffset']=X
+        self.__df['Yoffset']=Y
+
+        self.df = self.__set_df
+        self.radius = radius.mean()
+        self.center = np.array([nc_x,nc_y])
+        self.center[0] #+= dx
+        self.center[1] #+= dy
+        self.points = new_points
+        return dx/2 , -dx/2
+
 
     def plot_data(self, modules_data):
         """Plot data from the detector using this geometry.
@@ -424,11 +436,10 @@ CRYSTFEL_HEADER_TEMPLATE = """\
 ;
 ; See: http://www.desy.de/~twhite/crystfel/manual-crystfel_geometry.html
 
-{header}
-
 dim0 = %
 res = 5000 ; 200 um pixels
-
+clen = 5.5 ;
+adu_per_eV = 0.0075  ; no idea
 rigid_group_q0 = p0a0,p0a1,p0a2,p0a3,p0a4,p0a5,p0a6,p0a7,p1a0,p1a1,p1a2,p1a3,p1a4,p1a5,p1a6,p1a7,p2a0,p2a1,p2a2,p2a3,p2a4,p2a5,p2a6,p2a7,p3a0,p3a1,p3a2,p3a3,p3a4,p3a5,p3a6,p3a7
 rigid_group_q1 = p4a0,p4a1,p4a2,p4a3,p4a4,p4a5,p4a6,p4a7,p5a0,p5a1,p5a2,p5a3,p5a4,p5a5,p5a6,p5a7,p6a0,p6a1,p6a2,p6a3,p6a4,p6a5,p6a6,p6a7,p7a0,p7a1,p7a2,p7a3,p7a4,p7a5,p7a6,p7a7
 rigid_group_q2 = p8a0,p8a1,p8a2,p8a3,p8a4,p8a5,p8a6,p8a7,p9a0,p9a1,p9a2,p9a3,p9a4,p9a5,p9a6,p9a7,p10a0,p10a1,p10a2,p10a3,p10a4,p10a5,p10a6,p10a7,p11a0,p11a1,p11a2,p11a3,p11a4,p11a5,p11a6,p11a7
@@ -480,4 +491,6 @@ if __name__ == '__main__':
         (520, -160),
         (542.5, 475),
     ])
+
     geom.write_crystfel_geom('sample.geom')
+    geom = AGIPD_1MGeometry.from_crystfel_geom('sample.geom')

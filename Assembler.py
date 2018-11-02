@@ -368,121 +368,17 @@ class Assemble(object):
         for i in range(4):
             print(self.pos[i][0] -pos1[i][0], self.pos[i][1] - pos1[i][1])
 
-        
 
-    def get_geometry(self, data, vmax=5000, vmin=-1000, **kwargs):
-        '''Method that creates a new detector geometry according to a given fit
-            method
-            Parameters:
-                data (dict-object): dectector data stored in modules that is 
-                typically returned by karabo-data
-            Keywords:
-                fit_method (str) : the mothod that is used for fitting 
-                                   (default : circle)
-                                   at the moment there are the following options:
-                                     - circle : for fitting circles to the data
-                vmax (int) :  maximum value to be displayed when plotting the data
-                vmin (int) :  minimum value to be displayed when plotting the data
-        '''
-        ## Start with the Gui
-        from Gui import PanelView
+        def plot_data(self, data, *args, vmin=-1000, vmax=5000, **kwargs):
+            '''Visualize assembled data from
+                Parameters:
+                    data : dictionary that contains the detector image
 
-        ## 1.0 Let the user define the points for alignment
-        View = PanelView(self.stack(data), vmax=vmax, vmin=vmin, **kwargs)
-        self.old_points = View.points
-        self.fit_method = View.fit_method
-        if self.fit_method.lower() == 'circle':
-            shift = self.__shift_circle(View.points)
-            del View
-            from pyqtgraph import QtCore
-            QtCore.QCoreApplication.quit()
-            return shift
-
-        else:
-            raise NotImplementedError('At the moment only circle, fits are available')
-
-
-    def __shift_circle(self, points):
-        '''Method to shift detector Quadrants in order to make circles
-
-            Parameters:
-                points (namedtuple): The points in each quadrant that will make
-                                     the circle
-                geometry (pandas dataframe): A pandas dataframe containing the 
-                                             detector information
-        '''
-        tpoints = namedtuple('Points','x y')
-        from Fit import fit_circle
-        center = []
-        radius =[]
-        residu = []
-        for quad, pnt in points.items():
-            c_x, c_y, r, res, ncalls = fit_circle(pnt)
-            center.append(np.array([c_x, c_y]))
-            radius.append(r)
-            residu.append(res)
-        residu = np.array(residu)
-        radius = np.array(radius)
-        center = np.array(center)
-        c_mean = np.average(center, weights=1-residu/residu.sum(), axis=0)
-        #c_mean = np.average(center, axis=0)
-        shift = c_mean - center
-        X = self.__df.Xoffset.values
-        Y = self.__df.Yoffset.values
-        ## That should be the shape of current array (dy, dx)
-
-        x_comb = []
-        y_comb = []
-
-        for i in range(len(shift)):
-            quad=i+1
-            idx=np.array(self.__df.loc[self.__df.Quadrant == quad].index)
-            X[idx] += int(shift[i,1].astype('i'))
-            Y[idx] += int(shift[i,0].astype('i'))
-            for ii in range(len(points[quad].x)):
-                x_comb.append(points[quad].x[ii] + int(shift[i,0]))
-                y_comb.append(points[quad].y[ii] + int(shift[i,1]))
-
-
-        dx2 = abs(self.__df.loc[self.__df.Quadrant == 2].Yoffset.values[0])
-        dx1 = abs(self.__df.loc[self.__df.Quadrant == 4].Yoffset.values[0])
-        dy1 = abs(self.__df.loc[self.__df.Quadrant == 1].Xoffset.values[0])
-        dy2 = abs(self.__df.loc[self.__df.Quadrant == 2].Xoffset.values[0])
-        dx = dx1 - dx2
-        dy = dy1 - dy2
-        #I don't understand why this works but is does
-        new_points = tpoints(x=np.array(x_comb)+dx/2, y=np.array(y_comb)+dy/2)
-
-        nc_x, nc_y, self.radius, nres, ncalls =fit_circle(new_points)
-        X = np.array(X)
-        Y = np.array(Y)
-
-        if Y.min() < 0:
-            Y += np.fabs(Y.min()).astype(Y.dtype)
-        if X.min() < 0:
-            X += np.fabs(X.min()).astype(X.dtype)
-
-        self.__df['Xoffset']=X
-        self.__df['Yoffset']=Y
-
-        self.df = self.__set_df
-        self.radius = radius.mean()
-        self.center = np.array([nc_x,nc_y])
-        self.center[0] #+= dx
-        self.center[1] #+= dy
-        self.points = new_points
-        return dx/2 , -dx/2
-
-    def plot_data(self, data, *args, vmin=-1000, vmax=5000, **kwargs):
-        '''Visualize assembled data from
-            Parameters:
-                data : dictionary that contains the detector image
-
-            Keywords:
-                vmin : minimum value of the plot to be displayed
-                vmax : maximum value of the plot to be displayed
-                kwargs : additional arguments for the plotting
-        '''
+                Keywords:
+                    vmin : minimum value of the plot to be displayed
+                    vmax : maximum value of the plot to be displayed
+                    kwargs : additional arguments for the plotting
+            '''
 
         img = self.apply_geo(data)
         from matplotlib import pyplot as plt
@@ -516,9 +412,9 @@ def get_testdata():
     import os
     array = np.load(os.path.join(os.path.dirname(__file__), 'image.npz'))
     ## Create some mock test data as it would be comming from karabo-data
-    data = Test()
-    for n,k in enumerate(data.keys()):
-         data[k]['image.data'] = array['image.%02i'%n]
+    data = np.empty((16, 512, 128))
+    for k in range(len(data)):
+         data[k] = array['image.%02i'%k]
 
     return data
 

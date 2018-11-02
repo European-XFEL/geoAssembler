@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from collections import namedtuple
+from itertools import product
 import sys
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 
@@ -39,7 +40,7 @@ class MyCrosshairOverlay(pg.CrosshairROI):
 class PanelView(object):
     '''Class that plots detector data that has been roughly arranged'''
 
-    def __init__(self, data, bounding_boxes=None, vmin=-1000, vmax=5000,
+    def __init__(self, data, geometry, vmin=-1000, vmax=5000,
                  test=False, init=True, pre_points=[]):
         '''Parameters:
             data (2d-array)  : The 2d roughly assembled detector data that has
@@ -57,35 +58,32 @@ class PanelView(object):
            vmax (int) : maximum value in the data array (default: 5000)
                         anything above this value will be masked
         '''
-
-        data = np.nanmean(data[:10,0],axis=0).astype(np.float)
+        #data = np.nanmean(data[:10,0],axis=0).astype(np.float)
         #data = np.nanmean(data[:10],axis=0).astype(np.float)
-        print(data.shape, data.dtype, np.nanmax(data), np.nanmin(data))
         #from matplotlib import pyplot as plt
         #plt.imshow(data)
         #plt.show()
-        #if vmin is not None:
-        #    data[data < vmin] = np.nan
-        #if vmax is not None:
-        #    data[data > vmax] = np.nan
-        self.data = data
-        if bounding_boxes is None:
-            # If no bounding boxes are given (default) define them by
-            # cutting the data into 4 even pieces
+        self.raw_data = data
+        self.vmin = vmin
+        self.vmax = vmax
+        self.data, self.centre = geometry.position_all_modules(data)
+        self.data = np.clip(self.data, vmin, vmax)
+        self.margin = np.empty(np.array(self.data.shape)+100) * np.nan
+        self.margin[50:-50,50:-50] = self.data
+        # If no bounding boxes are given (default) define them by
+        # cutting the data into 4 even pieces
 
-            x1, x2, x3 = 0, data.shape[-1]/2, data.shape[-1]
-            y1, y2, y3 = 0, data.shape[-2]/2, data.shape[-2]
-            self.bounding_boxes = {1: (x1, x2, y1, y2),
-                                   2: (x2, x3, y1, y2),
-                                   3: (x1, x2, y2, y3),
-                                   4: (x2, x3, y2, y3)}
-        else:
-            self.bounding_boxes = bounding_boxes
+        y1, y2, y3 = 0, self.margin.shape[-1]/2, self.margin.shape[-1]
+        x1, x2, x3 = 0, self.margin.shape[-2]/2, self.margin.shape[-2]
+        self.bounding_boxes = {1: (x1, x2, y2, y3),
+                               2: (x1, x2, y1, y2),
+                               3: (x2, x3, y1, y2),
+                               4: (x2, x3, y2, y3)}
         # Interpret image data as row-major instead of col-major
         pg.setConfigOptions(imageAxisOrder='row-major')
 
         self.app = QtGui.QApplication([])
-
+        self.geom  = geometry
         # Create window with ImageView widget
         self.win = QtGui.QWindow()
         self.win.resize(800, 800)
@@ -95,17 +93,12 @@ class PanelView(object):
         # self.win.setCentralWidget(self.imv)
 
         self.pen = QtGui.QPen(QtCore.Qt.red, 1)
-
-        self.positions = pre_points  # Postions of the circle points
+        self.positions = -1  # Postions of the circle points
         self.fit_method = 'circle'  # The default fit-method to create the rings
         # Circle Points by Quadrant
-        P = namedtuple('Point', 'x y')
-        self.P = P
-        self.points = {1: P(x=[], y=[]), 2: P(x=[], y=[]),
-                       3: P(x=[], y=[]), 4: P(x=[], y=[])}
-
+        self.circles = []
         # Display the data and assign each frame a time value from 1.0 to 3.0
-        self.imv.setImage(data, xvals=np.linspace(1., 3., data.shape[0]))
+        self.imv.setImage(self.margin, xvals=np.linspace(1., 3., self.margin.shape[0]))
         self.imv.getImageItem().mouseClickEvent = self.click
 
         # Set a custom color map
@@ -114,21 +107,25 @@ class PanelView(object):
         self.imv.setColorMap(cmap)
         self.exit = 0
         if init:
+            for action, keys in ((self.moveLeft, ('left','H')),
+                                 (self.moveUp, ('up','K')),
+                                 (self.moveDown, ('down','J')),
+                                 (self.moveRight, ('right','L'))):
+                for key in keys:
+                    shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+%s"%key),
+                                               self.imv)
+                    shortcut.activated.connect(action)
             self.init()
             pg.LabelItem(justify='right')
 
             self.w.setLayout(self.layout)
             self.w.show()
             self.app.exec_()
+    
+        return action
 
+            
     def init(self):
-
-        # This is only for testing, display only all pre-defined points
-        for r in self.positions:
-           try:
-              self.imv.getView().addItem(r)
-           except RuntimeError:
-              pass
 
         self.w = QtGui.QWidget()
         self.layout = QtGui.QGridLayout()
@@ -141,7 +138,7 @@ class PanelView(object):
         # Add widgets to the layout in their proper positions
         self.btn1 = QtGui.QPushButton('Apply Coordinates')
         self.btn2 = QtGui.QPushButton('Set Test-Coordinates')
-        self.btn3 = QtGui.QPushButton('Clear Points')
+        self.btn3 = QtGui.QPushButton('Clear Circles')
         self.btn4 = QtGui.QPushButton('Get helper circle')
         self.btn5 = QtGui.QPushButton('Cancel')
         
@@ -164,13 +161,45 @@ class PanelView(object):
 
         self.layout.addWidget(self.sel1, 0, 0, 1, 1)
         self.layout.addWidget(self.sel2, 0, 1, 1, 1)
+    
+    def moveDown(self):
+        self.__move('d')
+    def moveUp(self):
+        self.__move('u')
+    def moveRight(self):
+        self.__move('r')
+    def moveLeft(self):
+        self.__move('l')
+
+    def __move(self, d):
+
+        quad = self.positions
+        if not quad > 0:
+            return
+        inc = 2
+        dd = dict(u=(-inc, 0), d=(inc, 0), r=(0, inc), l=(0, -inc))[d]
+        self.geom.move_quad(quad, np.array(dd))
+        data, self.centre = self.geom.position_all_modules(self.raw_data,
+                canvas=self.margin.shape)
+        self.data = np.clip(data, self.vmin, self.vmax)
+        dx = (self.margin.shape[1] - self.data.shape[1]) // 2
+        dy = (self.margin.shape[0] - self.data.shape[0]) // 2
+        self.dr1 += dd[1]
+        self.dr2 += dd[0]
+        self.click(quad)
+        self.imv.setImage(self.data, xvals=np.linspace(1., 3., self.data.shape[0]))
+
+        
+
+
 
     def __drawCircle(self):
-        x, y = self.data.shape[0]//2, self.data.shape[1]//2
+        y, x = int(self.centre[0]), int(self.centre[1])
+        y, x = int(self.margin.shape[0]//2), int(self.margin.shape[1]//2)
         pen = QtGui.QPen(QtCore.Qt.blue, 0.002)
         
-        circle = MyCircleOverlay(pos=(x,y), size=x//4,
-                removable=True, movable=True, pen=pen)
+        circle = MyCircleOverlay(pos=(x-x//4,y-x//4), size=x//2,
+                removable=True, movable=False, pen=pen)
 
         circle.handleSize = 5
         # Add top and right Handles
@@ -180,6 +209,7 @@ class PanelView(object):
         circle.addScaleHandle([0.5, 1], [0.5, 0])
         #circle.addScaleHandle([0.5, 0.5], [0, 0])
         self.imv.getView().addItem(circle)
+        self.circles.append(circle)
 
 
     def __set_method(self, b):
@@ -219,9 +249,8 @@ class PanelView(object):
             self.positions.append(r)
 
     def __clear(self):
-        for roi in self.positions:
+        for roi in self.circles:
             self.imv.getView().removeItem(roi)
-        self.positions = []
 
     def __destroy(self):
         '''destroy the window'''
@@ -254,8 +283,6 @@ class PanelView(object):
         '''Apply a set of test_points to the region (testing purpose)'''
         self.__test_points()
         # This is only for testing, display only all pre-defined points
-        for r in self.positions:
-            self.imv.getView().addItem(r)
 
     def get_quadrant(self, x, y):
         ''' Return the quadrant that a given set of coordinates lies in'''
@@ -265,15 +292,40 @@ class PanelView(object):
 
     def click(self, event):
         '''Event for mouse-click into ImageRegion'''
-        event.accept()
-        # Get postion of mouse-click and display it
-        pos = event.pos()
-        x = int(pos.x())
-        y = int(pos.y())
-        r = MyCrosshairOverlay(pos=(x, y), size=15, pen=self.pen, movable=True,
-                               removable=True)
-        self.imv.getView().addItem(r)
-        self.positions.append(r)
+        try:
+            event.accept()
+            # Get postion of mouse-click and display it
+            pos = event.pos()
+            x = int(pos.x())
+            y = int(pos.y())
+            delete = False
+        
+            quad = self.get_quadrant(x, y)
+        except:
+            quad = event
+            delete = True
+        if quad != self.positions or delete:
+            try:
+                self.imv.getView().removeItem(self.rect)
+            except:
+                pass
+            self.positions = quad
+
+            dr1 = (self.margin.shape[1] - self.data.shape[1]) // 2
+            dr2 = (self.margin.shape[0] - self.data.shape[0]) // 2
+            if dr1 > 0:
+                self.dr1 = dr1
+            if dr2 > 0:
+                self.dr2 = dr1
+            print(self.dr1, self.dr2)
+            P, dx, dy = self.geom.get_quad_corners(quad)
+            pen = QtGui.QPen(QtCore.Qt.red, 0.002)
+            self.rect = pg.RectROI(pos=(P[0]+min(self.dr1,50), P[1]+min(self.dr2,50)), size=(dx,dy),
+                                   removable=False, pen=pen, invertible=False)
+            self.rect.handleSize = 0
+            self.imv.getView().addItem(self.rect)
+            [self.rect.removeHandle(handle) for handle in self.rect.getHandles()]
+        print(self.positions)
 
 
 class ResultView(PanelView):
@@ -285,7 +337,6 @@ class ResultView(PanelView):
         self.layout = QtGui.QGridLayout()
         self.shift = shift
         self.apply = True
-        self.points = geo.old_points
         # Add widgets to the layout in their proper positions
         self.btn2 = QtGui.QPushButton('Get Geometry')
         self.btn1 = QtGui.QPushButton('Back to Selection')
@@ -312,7 +363,6 @@ class ResultView(PanelView):
         self.w.setLayout(self.layout)
         self.geo = geo
         self.center, self.circle = None, None
-        self.plot_data()
         self.w.show()
         self.app.exec_()
 
