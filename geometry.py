@@ -8,8 +8,11 @@ def _crystfel_format_vec(vec):
     """Convert an array of 3 numbers to CrystFEL format like "+1.0x -0.1y"
     """
     s = '{:+}x {:+}y'.format(*vec[:2])
-    if vec[2] != 0:
-        s += ' {:+}z'.format(vec[2])
+    try:
+        if vec[2] != 0:
+            s += ' {:+}z'.format(vec[2])
+    except IndexError:
+        pass
     return s
 
 class AGIPDGeometryFragment:
@@ -25,9 +28,9 @@ class AGIPDGeometryFragment:
 
     @classmethod
     def from_panel_dict(cls, d):
-        corner_pos = np.array([d['cnx'], d['cny'], d['coffset']])
-        ss_vec = np.array([d['ssx'], d['ssy'], d['ssz']])
-        fs_vec = np.array([d['fsx'], d['fsy'], d['fsz']])
+        corner_pos = np.array([d['cnx'], d['cny']])
+        ss_vec = np.array([d['ssx'], d['ssy']])
+        fs_vec = np.array([d['fsx'], d['fsy']])
         return cls(corner_pos, ss_vec, fs_vec)
 
     def corners(self):
@@ -42,17 +45,7 @@ class AGIPDGeometryFragment:
         return self.corner_pos + (.5 * self.ss_vec * self.ss_pixels) \
                                + (.5 * self.fs_vec * self.fs_pixels)
 
-    def to_crystfel_geom(self, p, a):
-        name = 'p{}a{}'.format(p, a)
-        c = self.corner_pos
-        return CRYSTFEL_PANEL_TEMPLATE.format(
-            name=name, p=p,
-            min_ss=(a * self.ss_pixels), max_ss=(((a + 1) * self.ss_pixels) - 1),
-            ss_vec=_crystfel_format_vec(self.ss_vec),
-            fs_vec=_crystfel_format_vec(self.fs_vec),
-            corner_x=c[0], corner_y=c[1], coffset=c[2],
-        )
-
+    
     def snap(self):
         corner_pos = np.around(self.corner_pos[:2]).astype(np.int32)
         ss_vec = np.around(self.ss_vec[:2]).astype(np.int32)
@@ -92,6 +85,18 @@ class GridGeometryFragment:
         self.corner_idx = corner_pos + corner_shift
         self.corner_pos = corner_pos
         self.opp_corner_idx = self.corner_idx + self.pixel_dims
+
+    def to_crystfel_geom(self, p, a):
+        name = 'p{}a{}'.format(p, a)
+        c = self.corner_pos[::1]
+        cr = CRYSTFEL_PANEL_TEMPLATE.format(
+            name=name, p=p,
+            min_ss=(a * self.ss_pixels), max_ss=(((a + 1) * self.ss_pixels) - 1),
+            ss_vec=_crystfel_format_vec(self.ss_vec[::-1]),
+            fs_vec=_crystfel_format_vec(self.fs_vec[::-1]),
+            corner_x=c[1], corner_y=c[0], coffset=0,
+        )
+        return cr
 
 
 class AGIPD_1MGeometry:
@@ -141,19 +146,21 @@ class AGIPD_1MGeometry:
 
     def move_quad(self, quad, inc):
         pos = (quad - 1) * 4
+
         for i, module in enumerate(self.modules[pos:pos + 4]):
+            n = pos + i
             for j, tile in enumerate(module):
-                module[j] = GridGeometryFragment(tile.corner_pos+inc,
-                                                 tile.ss_vec, tile.fs_vec)
+
+                self.modules[n][j] = GridGeometryFragment(tile.corner_pos+inc,
+                                                          tile.ss_vec,
+                                                          tile.fs_vec)
 
 
 
-
-    def get_quad_corners(self, quad):
+    def get_quad_corners(self, quad, centre):
         pos = (quad - 1) * 4
         X = []
         Y = []
-        size_yx, centre = self._plotting_dimensions()
         for i, module in enumerate(self.modules[pos:pos + 4]):
             for j, tile in enumerate(module):
                 # Offset by centre to make all coordinates positive
@@ -165,7 +172,7 @@ class AGIPD_1MGeometry:
                 X.append(x)
         dy = abs(max(Y) - min(Y))
         dx = abs(max(X) - min(X))
-        return (min(X), min(Y)), dx+w, dy
+        return (min(X)-2, min(Y)-2), dx+w+4, dy+4
 
     
     @classmethod
@@ -178,7 +185,7 @@ class AGIPD_1MGeometry:
             modules.append(tiles)
             for a in range(8):
                 d = geom_dict['panels']['p{}a{}'.format(p, a)]
-                tiles.append(AGIPDGeometryFragment.from_panel_dict(d))
+                tiles.append(AGIPDGeometryFragment.from_panel_dict(d).snap())
                 if p%4 == 0 and a == 0:
                     quad_pos.append(tuple(tiles[-1].corner_pos[:-1]))
         return cls(modules, quad_pos)
