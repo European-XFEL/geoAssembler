@@ -104,49 +104,21 @@ photon_energy = 10235'''
 
     log.info('Starting to assemble')
     #A = Assemble()
-    quad_pos = [ (-540, 610), (-540, -15), (540, -143), (540, 482)]
-    geom =  AGIPD_1MGeometry.from_quad_positions(quad_pos=quad_pos)
     points = []
     vmin, vmax = int(args.vmin), int(args.vmax)
     #while True:
-    View = PanelView(data, geom, vmin=vmin,
-                      vmax=vmax)
-    appl = View.apply
-    print(appl)
-    p = View.positions
-    xx = []
-    yy = []
-    for pp in p:
-        xx.append(pp.pos().x())
-        yy.append(pp.pos().y())
-    pp = pd.DataFrame(dict(X=xx, Y=yy))
-    del View
-    gc.collect()
-    QtCore.QCoreApplication.quit()
-    '''
-    if appl:
-        break
-    else:
-        points = p
-        QtCore.QCoreApplication.quit()
-    '''
-    log.info('Re-assembling...')
+    View = PanelView(data, None, vmin=vmin, vmax=vmax)
+    log.info('Saved output to %s'%View.geofile)
     if args.output is not None:
+        log.info('Saving output tiff...')
         output = args.output.replace('.tiff', '').replace('.tif', '')
 
         from PIL import Image
-        data = np.ma.masked_invalid(A.apply_geo(data))
+        data = np.ma.masked_invalid(View.data)
 
-        im = Image.fromarray(np.ma.masked_outside(data, -10, 50).filled(-10))
+        im = Image.fromarray(np.ma.masked_outside(data, -10, 50).filled(0))
         im.save(output+'.tif')
-    pp.to_csv('points.csv')
-    geo.to_csv('geo.csv')
 
-    ## Create the Geometry file
-    geof=args.geof.replace('.geom','')
-    geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=A.pos, panel_gap=29, asic_gap=0)
-
-    geom.write_crystfel_geom(geof+'.geom', header=header)
 
 
 if __name__ == '__main__':
