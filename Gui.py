@@ -4,8 +4,53 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 from collections import namedtuple
 from itertools import product
+from geometry import AGIPD_1MGeometry
 import sys
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
+
+
+class FixedWidthLineEdit(QtWidgets.QFrame):
+    def __init__(self, width, txt, preset):
+        super(FixedWidthLineEdit, self).__init__()
+        self.widget = FixedWidthLineEditWidget(width, txt, preset, self)
+        self.button = self.widget.button
+        self.line = self.widget.line
+    @property
+    def value(self):
+        return self.line.text()
+
+    def clear(self, buttontxt='Apply', linetxt=None, buttonfunc=lambda : None):
+        self.line.setText(linetxt)
+        #self.button.clicked.connect(buttonfunc)
+        self.button.setText(buttontxt)
+
+class FixedWidthLineEditWidget(QtWidgets.QHBoxLayout):
+    def __init__(self, width, txt, preset, parent=None):
+        super(FixedWidthLineEditWidget, self).__init__(parent)
+
+        self.label = QtGui.QLabel(txt)
+        self.label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.addWidget(self.label)
+        self.line = QtGui.QLineEdit(preset)
+        self.line.setMaximumHeight(22)
+        #self.label.setFixedWidth(width)
+        self.addWidget(self.line)
+
+        self.button=QtGui.QPushButton("Apply")
+        self.addWidget(self.button)
+
+
+class CustomGroupBox(QtGui.QGroupBox):
+    GROUP_BOX_STYLE_SHEET = 'QGroupBox:title {' \
+                            'border: 1px;' \
+                            'subcontrol-origin: margin;' \
+                            'subcontrol-position: top left;' \
+                            'padding-left: 10px;' \
+                            'padding-top: 10px;' \
+                            'margin-top: 0.0em;}'
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setStyleSheet(self.GROUP_BOX_STYLE_SHEET)
 
 
 class MyCircleOverlay(pg.EllipseROI):
@@ -40,8 +85,7 @@ class MyCrosshairOverlay(pg.CrosshairROI):
 class PanelView(object):
     '''Class that plots detector data that has been roughly arranged'''
 
-    def __init__(self, data, geometry, vmin=-1000, vmax=5000,
-                 test=False, init=True, pre_points=[]):
+    def __init__(self, data, geofile, vmin=-1000, vmax=5000):
         '''Parameters:
             data (2d-array)  : The 2d roughly assembled detector data that has
                                to be re-aligned
@@ -58,32 +102,20 @@ class PanelView(object):
            vmax (int) : maximum value in the data array (default: 5000)
                         anything above this value will be masked
         '''
-        #data = np.nanmean(data[:10,0],axis=0).astype(np.float)
-        #data = np.nanmean(data[:10],axis=0).astype(np.float)
-        #from matplotlib import pyplot as plt
-        #plt.imshow(data)
-        #plt.show()
-        self.raw_data = data
-        self.vmin = vmin
-        self.vmax = vmax
-        self.data, self.centre = geometry.position_all_modules(data)
-        self.data = np.clip(self.data, vmin, vmax)
-        self.margin = np.empty(np.array(self.data.shape)+100) * np.nan
-        self.margin[50:-50,50:-50] = self.data
+
+        self.raw_data = np.clip(data, vmin, vmax)
+        geofile = 'sample.geom'
+        self.geofile = geofile
+        size_xy = data.shape[-2:]
+        self.canvas = np.full(( (size_xy[1]+29)*8 + 200,
+                                2*size_xy[0]+8*3+29), np.nan)
         # If no bounding boxes are given (default) define them by
         # cutting the data into 4 even pieces
 
-        y1, y2, y3 = 0, self.margin.shape[-1]/2, self.margin.shape[-1]
-        x1, x2, x3 = 0, self.margin.shape[-2]/2, self.margin.shape[-2]
-        self.bounding_boxes = {1: (x1, x2, y2, y3),
-                               2: (x1, x2, y1, y2),
-                               3: (x2, x3, y1, y2),
-                               4: (x2, x3, y2, y3)}
         # Interpret image data as row-major instead of col-major
         pg.setConfigOptions(imageAxisOrder='row-major')
 
         self.app = QtGui.QApplication([])
-        self.geom  = geometry
         # Create window with ImageView widget
         self.win = QtGui.QWindow()
         self.win.resize(800, 800)
@@ -93,160 +125,139 @@ class PanelView(object):
         # self.win.setCentralWidget(self.imv)
 
         self.pen = QtGui.QPen(QtCore.Qt.red, 1)
-        self.positions = -1  # Postions of the circle points
-        self.fit_method = 'circle'  # The default fit-method to create the rings
+        self.quad = 0  #  The selected quadrants
+        self.fit_method = MyCircleOverlay  # The default fit-method to create the rings
         # Circle Points by Quadrant
         self.circles = []
-        # Display the data and assign each frame a time value from 1.0 to 3.0
-        self.imv.setImage(self.margin, xvals=np.linspace(1., 3., self.margin.shape[0]))
-        self.imv.getImageItem().mouseClickEvent = self.click
-
-        # Set a custom color map
-        # Get the colormap
-        cmap = pg.ColorMap(*zip(*Gradients["grey"]["ticks"]))
-        self.imv.setColorMap(cmap)
-        self.exit = 0
-        if init:
-            for action, keys in ((self.moveLeft, ('left','H')),
-                                 (self.moveUp, ('up','K')),
-                                 (self.moveDown, ('down','J')),
-                                 (self.moveRight, ('right','L'))):
-                for key in keys:
-                    shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+%s"%key),
-                                               self.imv)
-                    shortcut.activated.connect(action)
-            self.init()
-            pg.LabelItem(justify='right')
-
-            self.w.setLayout(self.layout)
-            self.w.show()
-            self.app.exec_()
-    
-        return action
-
-            
-    def init(self):
-
-        self.w = QtGui.QWidget()
-        self.layout = QtGui.QGridLayout()
-        self.sel1 = QtGui.QRadioButton('Circle Fit')
-        self.sel1.setChecked(True)
-        self.sel1.toggled.connect(lambda: self.__set_method(self.sel1))
-        self.sel2 = QtGui.QRadioButton('Ellipse Fit')
-        self.sel2.toggled.connect(lambda: self.__set_method(self.sel2))
+        for action, keys in ((self.__move_left, ('left','H')),
+                             (self.__move_up, ('up','K')),
+                             (self.__move_down, ('down','J')),
+                             (self.__move_right, ('right','L'))):
+            for key in keys:
+                shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+%s"%key),
+                                           self.imv)
+                shortcut.activated.connect(action)
 
         # Add widgets to the layout in their proper positions
-        self.btn1 = QtGui.QPushButton('Apply Coordinates')
-        self.btn2 = QtGui.QPushButton('Set Test-Coordinates')
-        self.btn3 = QtGui.QPushButton('Clear Circles')
-        self.btn4 = QtGui.QPushButton('Get helper circle')
-        self.btn5 = QtGui.QPushButton('Cancel')
-        
-        self.btn5.clicked.connect(self.__destroy)
-        self.btn4.clicked.connect(self.__drawCircle)
-        self.btn2.clicked.connect(self.__preset)
-        self.btn1.clicked.connect(self.__apply)
-        self.btn3.clicked.connect(self.__clear)
-        # plot goes on right side, spanning 3 rows
-        self.layout.addWidget(self.imv,  1, 0, 5, 5)
-        # button goes to the bottom
-        self.layout.addWidget(self.btn1, 5, 0, 1, 1)
-        # button goes to the bottom
-        self.layout.addWidget(self.btn2, 5, 1, 1, 1)
-        # button goes to the bottom
-        self.layout.addWidget(self.btn3, 5, 2, 1, 1)
-        # button goes to the bottom
-        self.layout.addWidget(self.btn4, 5, 3, 1, 1)
-        self.layout.addWidget(self.btn5, 5, 4, 1, 1)
+        self.w = QtGui.QWidget()
+        self.layout = QtGui.QGridLayout()
 
+        # circle/ellipse selection and input dialogs go to the top
+        self.sel1 = QtGui.QRadioButton('Circle Helper')
+        self.sel1.setChecked(True)
+        self.sel1.toggled.connect(lambda: self.__set_method(self.sel1))
         self.layout.addWidget(self.sel1, 0, 0, 1, 1)
+        self.sel2 = QtGui.QRadioButton('Ellipse Helper')
+        self.sel2.toggled.connect(lambda: self.__set_method(self.sel2))
         self.layout.addWidget(self.sel2, 0, 1, 1, 1)
-    
-    def moveDown(self):
-        self.__move('d')
-    def moveUp(self):
-        self.__move('u')
-    def moveRight(self):
-        self.__move('r')
-    def moveLeft(self):
-        self.__move('l')
+        self.sel3 = FixedWidthLineEdit(254, 'Geometry File:', geofile)
+        self.layout.addWidget(self.sel3, 0, 3, 1, 1)
+
+        # plot goes into the centre on right side, spanning 4 rows
+        self.layout.addWidget(self.imv,  1, 0, 4, 4)
+
+        # buttons go to the bottom
+        self.btn1 = self.sel3.button
+        self.btn1.clicked.connect(self.__apply)
+        self.btn2 = QtGui.QPushButton('Clear Helpers')
+        self.btn2.clicked.connect(self.__clear)
+        self.layout.addWidget(self.btn2, 4, 0, 1, 1)
+        self.btn3 = QtGui.QPushButton('Draw Helper Objects')
+        self.btn3.clicked.connect(self.__drawCircle)
+        self.layout.addWidget(self.btn3, 4, 1, 1, 1)
+        self.btn4 = QtGui.QPushButton('Cancel')
+        self.btn4.clicked.connect(self.__destroy)
+        self.layout.addWidget(self.btn4, 4, 2, 1, 1)
+
+
+        pg.LabelItem(justify='right')
+
+        self.w.setLayout(self.layout)
+        self.w.show()
+        self.app.exec_()
+
+    def __apply(self):
+        '''Read the geometry file and position all modules'''
+        if self.quad == 0:
+            try:
+                self.geom = AGIPD_1MGeometry.from_crystfel_geom(self.sel3.value)
+            except:
+                quad_pos = [ (-540, 610), (-540, -15), (540, -143), (540, 482)]
+                self.geom =  AGIPD_1MGeometry.from_quad_positions(quad_pos=quad_pos)
+
+            data, self.centre = self.geom.position_all_modules(self.raw_data)
+            self.canvas = np.full(np.array(data.shape) + 300, np.nan)
+
+            d_size = np.array(self.canvas.shape) - np.array(data.shape)
+            self.data, self.centre = self.geom.position_all_modules(self.raw_data,
+                                                           canvas=self.canvas.shape)
+            # Display the data and assign each frame a time value from 1.0 to 3.0
+            self.imv.setImage(self.data,
+                              xvals=np.linspace(1., 3., self.canvas.shape[0]))
+            self.imv.getImageItem().mouseClickEvent = self.__click
+
+            # Set a custom color map
+            # Get the colormap
+            cmap = pg.ColorMap(*zip(*Gradients["grey"]["ticks"]))
+            self.imv.setColorMap(cmap)
+
+            self.sel3.clear(buttontxt='Save', linetxt='sample.geom')
+            self.quad = -1
+        else:
+            if not self.sel3.line.text():
+                self.geofile = 'sample.geom'
+            else:
+                self.geofile = self.sel3.line.text()
+
+            try:
+                os.remove(self.geofile)
+            except:
+                pass
+            self.geom.write_crystfel_geom(self.geofile)
+            self.app.closeAllWindows()
+            self.data, self.centre = self.geom.position_all_modules(self.raw_data)
+            QtCore.QCoreApplication.quit()
 
     def __move(self, d):
 
-        quad = self.positions
+        quad = self.quad
         if not quad > 0:
             return
-        inc = 2
+        inc = 1
         dd = dict(u=(-inc, 0), d=(inc, 0), r=(0, inc), l=(0, -inc))[d]
         self.geom.move_quad(quad, np.array(dd))
-        data, self.centre = self.geom.position_all_modules(self.raw_data,
-                canvas=self.margin.shape)
-        self.data = np.clip(data, self.vmin, self.vmax)
-        dx = (self.margin.shape[1] - self.data.shape[1]) // 2
-        dy = (self.margin.shape[0] - self.data.shape[0]) // 2
-        self.dr1 += dd[1]
-        self.dr2 += dd[0]
-        self.click(quad)
-        self.imv.setImage(self.data, xvals=np.linspace(1., 3., self.data.shape[0]))
-
-        
-
-
+        self.data, self.centre = self.geom.position_all_modules(self.raw_data,
+                                                           canvas=self.canvas.shape)
+        self.__click(quad)
+        self.imv.getImageItem().updateImage(self.data)
 
     def __drawCircle(self):
-        y, x = int(self.centre[0]), int(self.centre[1])
-        y, x = int(self.margin.shape[0]//2), int(self.margin.shape[1]//2)
-        pen = QtGui.QPen(QtCore.Qt.blue, 0.002)
-        
-        circle = MyCircleOverlay(pos=(x-x//4,y-x//4), size=x//2,
+        #y, x = int(self.centre[0]), int(self.centre[1])
+        if self.quad == 0:
+            return
+        y, x = int(self.canvas.shape[0]//2), int(self.canvas.shape[1]//2)
+        pen = QtGui.QPen(QtCore.Qt.red, 0.002)
+        fit_helper = self.fit_method(pos=(x-x//4,y-x//4), size=x//2,
                 removable=True, movable=False, pen=pen)
 
-        circle.handleSize = 5
+        fit_helper.handleSize = 5
         # Add top and right Handles
-        circle.addScaleHandle([0.5, 0], [0.5, 1])
-        circle.addScaleHandle([0, 0.5], [0.5, 0.5])
-        circle.addScaleHandle([1, 0.5], [0.5, 0.5])
-        circle.addScaleHandle([0.5, 1], [0.5, 0])
-        #circle.addScaleHandle([0.5, 0.5], [0, 0])
-        self.imv.getView().addItem(circle)
-        self.circles.append(circle)
-
+        fit_helper.addScaleHandle([0.5, 0], [0.5, 1])
+        fit_helper.addScaleHandle([0.5, 1], [0.5, 0])
+        self.imv.getView().addItem(fit_helper)
+        self.circles.append(fit_helper)
 
     def __set_method(self, b):
 
         if b.text().lower().startswith("circle"):
             if b.isChecked() == True:
-                self.fit_method = 'circle'
+                self.fit_method = MyCircleOverlay
                 self.sel2.setChecked(False)
 
         if b.text().lower().startswith('ellipse'):
             if b.isChecked() == True:
-                self.fit_method = 'ellipse'
+                self.fit_method =  pg.EllipseROI
                 self.sel1.setChecked(False)
-
-    def __test_points(self):
-        '''Display pre-selected points on the circle for testing'''
-        pp = pd.read_csv('points.csv')
-        X = np.array(pp.X)
-        Y = np.array(pp.Y)
-        try:
-            pp = pd.read_csv('points.csv')
-            X = np.array(pp.X)
-            Y = np.array(pp.Y)
-        except :
-            X = np.array([501, 448, 354, 316, 281, 260, 215, 196, 854, 830,
-                          784, 721, 661, 846, 763, 206, 276, 373, 311, 188,
-                          178, 830, 547, 579, 688, 708, 725, 743, 773, 818, 838])
-
-            Y = np.array([271, 279, 320, 347, 380, 406, 497, 585, 568, 491, 413,
-                          355, 320, 534, 390, 746, 844, 909, 873, 693, 646, 699,
-                          960, 954, 908, 894, 880, 862, 827, 741, 658])
-
-        for i in range(len(X)):
-            r = MyCrosshairOverlay(pos=(X[i], Y[i]), size=15,
-                                   pen=self.pen, movable=True, removable=True)
-
-            self.positions.append(r)
 
     def __clear(self):
         for roi in self.circles:
@@ -259,39 +270,24 @@ class PanelView(object):
         self.exit = 1
         sys.exit(1)
 
-    def __apply(self):
-        '''get the coordinates of the selected points and destroy the window'''
-        for roi in self.positions:
-            x, y = roi.pos()
-            # Get the quadrant of the position
-            quad = self.get_quadrant(int(x), int(y))
-            self.points[quad].x.append(int(x))
-            self.points[quad].y.append(int(y))
-        # Test if there are enough points in each quadrant
-        for quad, points in self.points.items():
-            if len(points.x) < 4:
-                import warnings
-                warnings.warn('Each Quadrant should have more than 4 points',
-                              UserWarning)
-                return
-
-        self.app.closeAllWindows()
-        del self.layout, self.w, self.app  # self.win
-        QtCore.QCoreApplication.quit()
-
-    def __preset(self):
-        '''Apply a set of test_points to the region (testing purpose)'''
-        self.__test_points()
-        # This is only for testing, display only all pre-defined points
-
-    def get_quadrant(self, x, y):
+    def __get_quadrant(self, y, x):
         ''' Return the quadrant that a given set of coordinates lies in'''
+        y1, y2, y3 = 0, self.data.shape[-1]/2, self.data.shape[-1]
+        x1, x2, x3 = 0, self.data.shape[-2]/2, self.data.shape[-2]
+        self.bounding_boxes = {1: (x2, x3, y1, y2),
+                               2: (x1, x2, y1, y2),
+                               3: (x1, x2, y2, y3),
+                               4: (x2, x3, y2, y3)}
+        self.lookup ={1:2, 3:4, 2:1, 4:3}
         for quadrant, bbox in self.bounding_boxes.items():
             if x >= bbox[0] and x < bbox[1] and y >= bbox[2] and y < bbox[3]:
                 return quadrant
 
-    def click(self, event):
+    def __click(self, event):
         '''Event for mouse-click into ImageRegion'''
+        if self.quad == 0:
+            return
+
         try:
             event.accept()
             # Get postion of mouse-click and display it
@@ -299,33 +295,43 @@ class PanelView(object):
             x = int(pos.x())
             y = int(pos.y())
             delete = False
-        
-            quad = self.get_quadrant(x, y)
+            quad  = self.__get_quadrant(x, y)
         except:
             quad = event
             delete = True
-        if quad != self.positions or delete:
+        if quad is None:
+            self.imv.getView().removeItem(self.rect)
+            self.rect = None
+            self.quad = -1
+            return
+
+        if quad != self.quad or delete:
             try:
                 self.imv.getView().removeItem(self.rect)
             except:
                 pass
-            self.positions = quad
-
-            dr1 = (self.margin.shape[1] - self.data.shape[1]) // 2
-            dr2 = (self.margin.shape[0] - self.data.shape[0]) // 2
-            if dr1 > 0:
-                self.dr1 = dr1
-            if dr2 > 0:
-                self.dr2 = dr1
-            print(self.dr1, self.dr2)
-            P, dx, dy = self.geom.get_quad_corners(quad)
+            self.quad = quad
+            P, dx, dy = self.geom.get_quad_corners(quad,
+                                                   np.array(self.data.shape,
+                                                            dtype='i')//2 )
             pen = QtGui.QPen(QtCore.Qt.red, 0.002)
-            self.rect = pg.RectROI(pos=(P[0]+min(self.dr1,50), P[1]+min(self.dr2,50)), size=(dx,dy),
+            self.rect = pg.RectROI(pos=P, size=(dx,dy), movable=False,
                                    removable=False, pen=pen, invertible=False)
             self.rect.handleSize = 0
             self.imv.getView().addItem(self.rect)
             [self.rect.removeHandle(handle) for handle in self.rect.getHandles()]
-        print(self.positions)
+
+    def __move_up(self):
+        self.__move('u')
+
+    def __move_down(self):
+        self.__move('d')
+
+    def __move_right(self):
+        self.__move('r')
+
+    def __move_left(self):
+        self.__move('l')
 
 
 class ResultView(PanelView):
