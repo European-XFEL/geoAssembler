@@ -6,7 +6,52 @@ from collections import namedtuple
 from itertools import product
 from geometry import AGIPD_1MGeometry
 import sys
+from copy import deepcopy
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
+
+
+class RadiusSetter(QtWidgets.QFrame):
+    def __init__(self, labels, button, fit_object):
+        super(RadiusSetter, self).__init__()
+        self.widgets = RadiusSetterWidget(labels, button, fit_object,
+                                          parent=self)
+
+
+class RadiusSetterWidget(QtWidgets.QHBoxLayout):
+    def __init__(self, labels, button, fit_object,parent=None):
+        super(RadiusSetterWidget, self).__init__(parent)
+        self.sp = []
+        self.fit_object = fit_object
+        self.button = button
+        for nn, label in enumerate(labels):
+            self.label = QtGui.QLabel(label)
+            self.addWidget(self.label)
+            if len(label):
+                size = int(self.fit_object.size()[nn])
+                self.sp.append(QtGui.QSpinBox())
+                self.sp[-1].setMinimum(0)
+                self.sp[-1].setMaximum(10000)
+                self.sp[-1].setValue(size)
+                self.sp[-1].valueChanged.connect(self.valuechange)
+                self.addWidget(self.sp[-1])
+    def update(self, fit_object):
+        self.fit_object = fit_object
+        for nn in range(len(self.sp)):
+            size = int(fit_object.size()[nn])
+            self.sp[nn].setValue(size)
+
+    def valuechange(self):
+        size = []
+        for nn, sp1 in enumerate(self.sp):
+            size.append(self.sp[nn].value())
+
+        if len(size) == 1:
+            size += size
+        pos = self.fit_object.pos()
+        centre = pos[0] + self.fit_object.size()[0]//2, pos[1] + self.fit_object.size()[1]//2
+        new_pos = centre[0] - size[0]//2, centre[1] - size[1]//2
+        self.fit_object.setPos(new_pos)
+        self.fit_object.setSize(size)
 
 
 class FixedWidthLineEdit(QtWidgets.QFrame):
@@ -23,6 +68,7 @@ class FixedWidthLineEdit(QtWidgets.QFrame):
         self.line.setText(linetxt)
         #self.button.clicked.connect(buttonfunc)
         self.button.setText(buttontxt)
+
 
 class FixedWidthLineEditWidget(QtWidgets.QHBoxLayout):
     def __init__(self, width, txt, preset, parent=None):
@@ -128,7 +174,10 @@ class PanelView(object):
         self.quad = 0  #  The selected quadrants
         self.fit_method = MyCircleOverlay  # The default fit-method to create the rings
         # Circle Points by Quadrant
-        self.circles = []
+        self.circles = {}
+        self.fit_type = 'Circ.'
+        self.bottom_buttons = {}
+        self.bottom_select = None
         for action, keys in ((self.__move_left, ('left','H')),
                              (self.__move_up, ('up','K')),
                              (self.__move_down, ('down','J')),
@@ -145,19 +194,21 @@ class PanelView(object):
         # circle/ellipse selection and input dialogs go to the top
         self.sel1 = QtGui.QRadioButton('Circle Helper')
         self.sel1.setChecked(True)
-        self.sel1.toggled.connect(lambda: self.__set_method(self.sel1))
+        self.sel1.clicked.connect(lambda: self.__set_method(self.sel1))
         self.layout.addWidget(self.sel1, 0, 0, 1, 1)
         self.sel2 = QtGui.QRadioButton('Ellipse Helper')
-        self.sel2.toggled.connect(lambda: self.__set_method(self.sel2))
+        self.sel2.clicked.connect(lambda: self.__set_method(self.sel2))
         self.layout.addWidget(self.sel2, 0, 1, 1, 1)
-        self.sel3 = FixedWidthLineEdit(254, 'Geometry File:', geofile)
-        self.layout.addWidget(self.sel3, 0, 3, 1, 1)
+        self.sel3 = RadiusSetter(('',''), self.bottom_select, None)
+        self.layout.addWidget(self.sel3, 0, 2, 1, 1)
+        self.sel4 = FixedWidthLineEdit(254, 'Geometry File:', geofile)
+        self.layout.addWidget(self.sel4, 0, 9, 1, 1)
 
-        # plot goes into the centre on right side, spanning 4 rows
-        self.layout.addWidget(self.imv,  1, 0, 4, 4)
+        # plot goes into the centre on right side, spanning 10 rows
+        self.layout.addWidget(self.imv,  1, 0, 4, 10)
 
         # buttons go to the bottom
-        self.btn1 = self.sel3.button
+        self.btn1 = self.sel4.button
         self.btn1.clicked.connect(self.__apply)
         self.btn2 = QtGui.QPushButton('Clear Helpers')
         self.btn2.clicked.connect(self.__clear)
@@ -170,6 +221,7 @@ class PanelView(object):
         self.layout.addWidget(self.btn4, 4, 2, 1, 1)
 
 
+
         pg.LabelItem(justify='right')
 
         self.w.setLayout(self.layout)
@@ -180,7 +232,7 @@ class PanelView(object):
         '''Read the geometry file and position all modules'''
         if self.quad == 0:
             try:
-                self.geom = AGIPD_1MGeometry.from_crystfel_geom(self.sel3.value)
+                self.geom = AGIPD_1MGeometry.from_crystfel_geom(self.sel4.value)
             except:
                 quad_pos = [ (-540, 610), (-540, -15), (540, -143), (540, 482)]
                 self.geom =  AGIPD_1MGeometry.from_quad_positions(quad_pos=quad_pos)
@@ -201,13 +253,13 @@ class PanelView(object):
             cmap = pg.ColorMap(*zip(*Gradients["grey"]["ticks"]))
             self.imv.setColorMap(cmap)
 
-            self.sel3.clear(buttontxt='Save', linetxt='sample.geom')
+            self.sel4.clear(buttontxt='Save', linetxt='sample.geom')
             self.quad = -1
         else:
-            if not self.sel3.line.text():
+            if not self.sel4.line.text():
                 self.geofile = 'sample.geom'
             else:
-                self.geofile = self.sel3.line.text()
+                self.geofile = self.sel4.line.text()
 
             try:
                 os.remove(self.geofile)
@@ -233,7 +285,7 @@ class PanelView(object):
 
     def __drawCircle(self):
         #y, x = int(self.centre[0]), int(self.centre[1])
-        if self.quad == 0:
+        if self.quad == 0 or len(self.circles) > 9:
             return
         y, x = int(self.canvas.shape[0]//2), int(self.canvas.shape[1]//2)
         pen = QtGui.QPen(QtCore.Qt.red, 0.002)
@@ -245,23 +297,55 @@ class PanelView(object):
         fit_helper.addScaleHandle([0.5, 0], [0.5, 1])
         fit_helper.addScaleHandle([0.5, 1], [0.5, 0])
         self.imv.getView().addItem(fit_helper)
-        self.circles.append(fit_helper)
+        sel1 = QtGui.QRadioButton(self.fit_type)
+        sel1.setChecked(True)
+        num = len(self.circles)
+        [sel.setChecked(False) for sel in self.bottom_buttons.values()]
+        self.bottom_buttons[num] = sel1
+        if len(self.circles) == 0:
+            self.bottom_select = sel1
+        self.circles[num] = (fit_helper, self.fit_type)
+        sel1.clicked.connect(lambda: self.__set_bottom(sel1, num, fit_helper))
+        self.layout.addWidget(sel1, 5, num, 1, 1)
+
+        labels = dict(c=('r:',''), e=('a:','b:'))[self.fit_type.lower()[0]]
+        self.layout.removeWidget(self.sel3)
+        self.sel3.close()
+        self.sel3 = RadiusSetter(labels, self.bottom_select, fit_helper)
+        self.layout.addWidget(self.sel3, 0, 2, 1, 1)
+        self.layout.update()
+
+    def __set_bottom(self, b, num, fit_helper):
+        self.sel3.widgets.fit_method = self.circles[num][0]
+        self.sel3.widgets.update(self.circles[num][0])
+        self.sel3.widgets.button = b
+        self.bottom_select.setChecked(False)
+        self.bottom_select = b
+        [sel.setChecked(False) for sel in self.bottom_buttons.values()]
+        b.setChecked(True)
+
 
     def __set_method(self, b):
-
         if b.text().lower().startswith("circle"):
             if b.isChecked() == True:
                 self.fit_method = MyCircleOverlay
                 self.sel2.setChecked(False)
+                self.fit_type = 'Circ.'
 
         if b.text().lower().startswith('ellipse'):
             if b.isChecked() == True:
                 self.fit_method =  pg.EllipseROI
                 self.sel1.setChecked(False)
+                self.fit_type = 'Ellip.'
+
+        self.sel2.setChecked(False)
+        self.sel1.setChecked(False)
+        b.setChecked(True)
 
     def __clear(self):
-        for roi in self.circles:
-            self.imv.getView().removeItem(roi)
+        for num in list(self.circles.keys()):
+            self.imv.getView().removeItem(self.circles[num][0])
+            del self.circles[num]
 
     def __destroy(self):
         '''destroy the window'''
