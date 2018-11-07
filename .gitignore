@@ -4,3 +4,4 @@ __pycache__
 *.png
 *.geom
 *.csv
+sax_run.npz
