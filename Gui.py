@@ -1,13 +1,18 @@
-import numpy as np
-import pandas as pd
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
-import pyqtgraph as pg
-from collections import namedtuple
-from itertools import product
-from geometry import AGIPD_1MGeometry
+import os
 import sys
-from copy import deepcopy
+import logging
+
+
+import numpy as np
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
+
+from geometry import AGIPD_1MGeometry
+
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(os.path.basename(__file__))
 
 
 class RadiusSetter(QtWidgets.QFrame):
@@ -15,7 +20,6 @@ class RadiusSetter(QtWidgets.QFrame):
         super(RadiusSetter, self).__init__()
         self.widgets = RadiusSetterWidget(labels, button, fit_object,
                                           parent=self)
-
 
 class RadiusSetterWidget(QtWidgets.QHBoxLayout):
     def __init__(self, labels, button, fit_object,parent=None):
@@ -36,9 +40,15 @@ class RadiusSetterWidget(QtWidgets.QHBoxLayout):
                 self.addWidget(self.sp[-1])
     def update(self, fit_object):
         self.fit_object = fit_object
+        self.sp = []
         for nn in range(len(self.sp)):
             size = int(fit_object.size()[nn])
-            self.sp[nn].setValue(size)
+            sp = QtGui.QSpinBox()
+            sp.setMinimum(0)
+            sp.setMaximum(10000)
+            sp.setValue(size)
+            sp.valueChanged.connect(self.valuechange)
+            self.sp.append(sp)
 
     def valuechange(self):
         size = []
@@ -66,37 +76,20 @@ class FixedWidthLineEdit(QtWidgets.QFrame):
 
     def clear(self, buttontxt='Apply', linetxt=None, buttonfunc=lambda : None):
         self.line.setText(linetxt)
-        #self.button.clicked.connect(buttonfunc)
         self.button.setText(buttontxt)
 
 
 class FixedWidthLineEditWidget(QtWidgets.QHBoxLayout):
     def __init__(self, width, txt, preset, parent=None):
         super(FixedWidthLineEditWidget, self).__init__(parent)
-
         self.label = QtGui.QLabel(txt)
         self.label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.addWidget(self.label)
         self.line = QtGui.QLineEdit(preset)
         self.line.setMaximumHeight(22)
-        #self.label.setFixedWidth(width)
         self.addWidget(self.line)
-
         self.button=QtGui.QPushButton("Apply")
         self.addWidget(self.button)
-
-
-class CustomGroupBox(QtGui.QGroupBox):
-    GROUP_BOX_STYLE_SHEET = 'QGroupBox:title {' \
-                            'border: 1px;' \
-                            'subcontrol-origin: margin;' \
-                            'subcontrol-position: top left;' \
-                            'padding-left: 10px;' \
-                            'padding-top: 10px;' \
-                            'margin-top: 0.0em;}'
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setStyleSheet(self.GROUP_BOX_STYLE_SHEET)
 
 
 class MyCircleOverlay(pg.EllipseROI):
@@ -131,13 +124,14 @@ class MyCrosshairOverlay(pg.CrosshairROI):
 class PanelView(object):
     '''Class that plots detector data that has been roughly arranged'''
 
-    def __init__(self, data, geofile, vmin=-1000, vmax=5000):
+    def __init__(self, data, geofile=None, vmin=-1000, vmax=5000):
         '''Parameters:
-            data (2d-array)  : The 2d roughly assembled detector data that has
-                               to be re-aligned
+            data (2d-array)  : File name of the geometry file, if none is given
+                               (default) the image will be assembled with 29 Px
+                               gaps between all modules.
 
             Keywords:
-            bounding_boxes (dict) : The x,y corners that define the quadrant
+            geofile (str) : The x,y corners that define the quadrant
                                      postions in the data-array, if
                                      bounding_boxes is None (default), the
                                      quadrants are assumed to be the same as
@@ -148,15 +142,10 @@ class PanelView(object):
            vmax (int) : maximum value in the data array (default: 5000)
                         anything above this value will be masked
         '''
-
+        assert len(data.shape) == 2 #Only one image should be passed
         self.raw_data = np.clip(data, vmin, vmax)
-        geofile = 'sample.geom'
         self.geofile = geofile
-        size_xy = data.shape[-2:]
-        self.canvas = np.full(( (size_xy[1]+29)*8 + 200,
-                                2*size_xy[0]+8*3+29), np.nan)
-        # If no bounding boxes are given (default) define them by
-        # cutting the data into 4 even pieces
+        size_xy = data.shape
 
         # Interpret image data as row-major instead of col-major
         pg.setConfigOptions(imageAxisOrder='row-major')
@@ -220,10 +209,7 @@ class PanelView(object):
         self.btn4.clicked.connect(self.__destroy)
         self.layout.addWidget(self.btn4, 4, 2, 1, 1)
 
-
-
         pg.LabelItem(justify='right')
-
         self.w.setLayout(self.layout)
         self.w.show()
         self.app.exec_()
@@ -231,9 +217,11 @@ class PanelView(object):
     def __apply(self):
         '''Read the geometry file and position all modules'''
         if self.quad == 0:
+            log.info('Starting to assemble ... ')
             try:
                 self.geom = AGIPD_1MGeometry.from_crystfel_geom(self.sel4.value)
             except:
+                #Fallback to evenly align quadrant positions
                 quad_pos = [ (-540, 610), (-540, -15), (540, -143), (540, 482)]
                 self.geom =  AGIPD_1MGeometry.from_quad_positions(quad_pos=quad_pos)
 
@@ -256,6 +244,7 @@ class PanelView(object):
             self.sel4.clear(buttontxt='Save', linetxt='sample.geom')
             self.quad = -1
         else:
+            log.info('Saving output to %s'%self.geofile)
             if not self.sel4.line.text():
                 self.geofile = 'sample.geom'
             else:
@@ -265,13 +254,24 @@ class PanelView(object):
                 os.remove(self.geofile)
             except:
                 pass
-            self.geom.write_crystfel_geom(self.geofile)
-            self.app.closeAllWindows()
             self.data, self.centre = self.geom.position_all_modules(self.raw_data)
+            if self.geofile.split('.')[-1].lower() == 'geom':
+                self.geom.write_crystfel_geom(self.geofile)
+            elif 'tif' in self.geofil.split('.')[-1]:
+                from PIL import Image
+
+                data = np.ma.masked_invalid(self.data)
+                im = Image.fromarray(\
+                        np.ma.masked_outside(data, self.vmin, self.vmax).filled(0))
+
+                im.save(self.geofile)
+            self.log('Geometry Centre is: y:%.02f / x:%.02f'%(self.centre[0],
+                                                              self.centre[1]))
+            self.app.closeAllWindows()
             QtCore.QCoreApplication.quit()
 
     def __move(self, d):
-
+        '''Move the quadrant'''
         quad = self.quad
         if not quad > 0:
             return
@@ -284,7 +284,7 @@ class PanelView(object):
         self.imv.getImageItem().updateImage(self.data)
 
     def __drawCircle(self):
-        #y, x = int(self.centre[0]), int(self.centre[1])
+        '''add a fit object to the image'''
         if self.quad == 0 or len(self.circles) > 9:
             return
         y, x = int(self.canvas.shape[0]//2), int(self.canvas.shape[1]//2)
@@ -302,20 +302,17 @@ class PanelView(object):
         num = len(self.circles)
         [sel.setChecked(False) for sel in self.bottom_buttons.values()]
         self.bottom_buttons[num] = sel1
-        if len(self.circles) == 0:
-            self.bottom_select = sel1
         self.circles[num] = (fit_helper, self.fit_type)
+        #if len(self.circles) == 0:
+        self.bottom_select = sel1
         sel1.clicked.connect(lambda: self.__set_bottom(sel1, num, fit_helper))
+        self.__update_bottom(fit_helper)
         self.layout.addWidget(sel1, 5, num, 1, 1)
 
         labels = dict(c=('r:',''), e=('a:','b:'))[self.fit_type.lower()[0]]
-        self.layout.removeWidget(self.sel3)
-        self.sel3.close()
-        self.sel3 = RadiusSetter(labels, self.bottom_select, fit_helper)
-        self.layout.addWidget(self.sel3, 0, 2, 1, 1)
-        self.layout.update()
 
     def __set_bottom(self, b, num, fit_helper):
+        '''add a selection button for a fit object to the bottom region'''
         self.sel3.widgets.fit_method = self.circles[num][0]
         self.sel3.widgets.update(self.circles[num][0])
         self.sel3.widgets.button = b
@@ -323,9 +320,53 @@ class PanelView(object):
         self.bottom_select = b
         [sel.setChecked(False) for sel in self.bottom_buttons.values()]
         b.setChecked(True)
+        self.fit_method = self.circles[num][0]
+        self.__update_bottom(fit_helper)
 
+    def __del_bottom(self):
+        '''del. selected fit method from the bottom region'''
+        if not len(self.circles):
+            return
+        btn_nums = list(self.bottom_buttons.keys())
+        for num in btn_nums:
+            if self.bottom_buttons[num].isChecked():
+                self.bottom_buttons[num].close()
+                break
+
+        nn = num - 1
+        self.bottom_buttons[num].close()
+        del self.bottom_buttons[num]
+        self.imv.getView().removeItem(self.circles[num][0])
+        del self.circles[num]
+        for btn in self.bottom_buttons.values():
+            self.layout.removeWidget(btn)
+            btn.close()
+            self.layout.update()
+        circles, bottom_buttons = {}, {}
+        for n, num in enumerate(self.circles.keys()):
+            circles[n] = self.circles[num]
+            sel1 = QtGui.QRadioButton(circles[n][1])
+            sel1.setChecked(False)
+            sel1.clicked.connect(lambda: self.__set_bottom(sel1, n,
+                                        self.circles[n][0]))
+            if n == nn:
+                sel1.setChecked(True)
+            self.layout.addWidget(sel1, 5, n, 1, 1)
+            bottom_buttons[n] = sel1
+        self.circles, self.bottom_buttons = circles, bottom_buttons
+
+    def __update_bottom(self, fit_helper):
+        '''update the selection region of the fit objects at the bottom'''
+        self.fit_type = self.bottom_select.text()
+        labels = dict(c=('r:',''), e=('a:','b:'),n=('',''))[self.fit_type.lower()[0]]
+        self.layout.removeWidget(self.sel3)
+        self.sel3.close()
+        self.sel3 = RadiusSetter(labels, self.bottom_select, fit_helper)
+        self.layout.addWidget(self.sel3, 0, 2, 1, 1)
+        self.layout.update()
 
     def __set_method(self, b):
+        '''update the helper and the referred widget'''
         if b.text().lower().startswith("circle"):
             if b.isChecked() == True:
                 self.fit_method = MyCircleOverlay
@@ -343,16 +384,18 @@ class PanelView(object):
         b.setChecked(True)
 
     def __clear(self):
+        '''delate all helper objects'''
         for num in list(self.circles.keys()):
             self.imv.getView().removeItem(self.circles[num][0])
             del self.circles[num]
+            self.layout.removeWidget(self.bottom_buttons[num])
+            self.bottom_buttons[num].close()
+            self.layout.update()
+            del self.bottom_buttons[num]
 
     def __destroy(self):
-        '''destroy the window'''
-
+        '''destroy the window and exit'''
         self.app.closeAllWindows()
-        self.exit = 1
-        sys.exit(1)
 
     def __get_quadrant(self, y, x):
         ''' Return the quadrant that a given set of coordinates lies in'''
@@ -416,105 +459,3 @@ class PanelView(object):
 
     def __move_left(self):
         self.__move('l')
-
-
-class ResultView(PanelView):
-    '''Display the result of the goemetric assemply'''
-
-    def __init__(self, data, geo, shift=0, vmin=None, vmax=None, bounding_boxes=None):
-        PanelView.__init__(self, data, vmin=vmin, vmax=vmax, init=False)
-        self.w = QtGui.QWidget()
-        self.layout = QtGui.QGridLayout()
-        self.shift = shift
-        self.apply = True
-        # Add widgets to the layout in their proper positions
-        self.btn2 = QtGui.QPushButton('Get Geometry')
-        self.btn1 = QtGui.QPushButton('Back to Selection')
-        self.btn3 = QtGui.QPushButton('Plot Fit-Object')
-        self.btn4 = QtGui.QPushButton('Cancel')
-
-        self.btn4.clicked.connect(self.__cancel)
-        self.btn2.clicked.connect(self.__saveGeo)
-        self.btn1.clicked.connect(self.__back)
-        self.btn3.clicked.connect(self.plot_circle)
-        # plot goes on right side, spanning 3 rows
-        self.layout.addWidget(self.imv,  0, 0, 4, 4)
-        # button goes to the bottom
-        self.layout.addWidget(self.btn1, 4, 0, 1, 1)
-        # button goes to the bottom
-        self.layout.addWidget(self.btn2, 4, 1, 1, 1)
-        # button goes to the bottom
-        self.layout.addWidget(self.btn3, 4, 2, 1, 1)
-        # button goes to the bottom
-        self.layout.addWidget(self.btn4, 4, 3, 1, 1)
-
-        pg.LabelItem(justify='right')
-        self.positions = []
-        self.w.setLayout(self.layout)
-        self.geo = geo
-        self.center, self.circle = None, None
-        self.w.show()
-        self.app.exec_()
-
-    def plot_data(self):
-        pen = QtGui.QPen(QtCore.Qt.blue, 1)
-        for p in range(len(self.geo.points.x)):
-            x, y = self.geo.points.x[p], self.geo.points.y[p]
-            r = MyCircleOverlay(pos=(x, y), size=5,
-                                pen=pen, movable=False, removable=False)
-            self.imv.getView().addItem(r)
-
-    def plot_circle(self):
-        if self.center is None and self.circle is None:
-            pen = QtGui.QPen(QtCore.Qt.red, 0.002)
-            pen2 = QtGui.QPen(QtCore.Qt.red, 3)
-            d = 2*self.geo.radius
-            x, y = self.geo.center[0]-d/2, self.geo.center[1]-d/2
-            self.circle = MyCircleOverlay(pos=(x, y), size=d, pen=pen,
-                                          movable=False, removable=False)
-            self.imv.getView().addItem(self.circle)
-            self.center = MyCrosshairOverlay(pos=self.geo.center, size=8, pen=pen2,
-                                             movable=False, removable=False)
-            self.imv.getView().addItem(self.center)
-        else:
-            self.imv.getView().removeItem(self.center)
-            self.imv.getView().removeItem(self.circle)
-            self.center, self.circle = None, None
-
-    def __saveGeo(self):
-        '''This should crate a geometry file'''
-        self.geo.get_corners(self.geo.center, self.shift)
-        self.app.closeAllWindows()
-        QtCore.QCoreApplication.quit()
-        del self.layout, self.w  # self.win
-
-        return
-
-    def __back(self):
-        '''Set back stage'''
-        self.apply = False
-        self.app.closeAllWindows()
-        for point in self.points.values():
-            for i in range(len(point.x)):
-                x, y = point.x[i], point.y[i]
-                r = MyCrosshairOverlay(pos=(x, y), size=15,
-                                       pen=self.pen, movable=True, removable=True)
-                self.positions.append(r)
-        del self.layout, self.w  # self.win
-
-    def __cancel(self):
-        sys.exit(0)
-
-
-if __name__ == '__main__':
-
-    #import sys
-    data = np.load('image.npz')['image']
-    data[data >= 5000] = np.nan
-    data[data <= -1000] = np.nan
-    Viewer = PanelView(data)
-    Point = namedtuple('Point', 'x y')
-    #test_plot(data, Viewer.points)
-    #shift(data, points = Viewer.points)
-    #image_n = shift(data)
-    #np.savez('data.npz', image=data)
