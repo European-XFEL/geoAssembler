@@ -1,8 +1,6 @@
 from cfelpyutils.crystfel_utils import load_crystfel_geometry
 from copy import copy
 import numpy as np
-from scipy.ndimage import affine_transform
-import warnings
 
 def _crystfel_format_vec(vec):
     """Convert an array of 3 numbers to CrystFEL format like "+1.0x -0.1y"
@@ -332,76 +330,7 @@ class AGIPD_1MGeometry:
             raise NotImplementedError('At the moment only circle, fits are available')
 
 
-    def __shift_circle(self, points):
-        '''Method to shift detector Quadrants in order to make circles
-
-            Parameters:
-                points (namedtuple): The points in each quadrant that will make
-                                     the circle
-                geometry (pandas dataframe): A pandas dataframe containing the 
-                                             detector information
-        '''
-        tpoints = namedtuple('Points','x y')
-        from Fit import fit_circle
-        center = []
-        radius =[]
-        residu = []
-        for quad, pnt in points.items():
-            c_x, c_y, r, res, ncalls = fit_circle(pnt)
-            center.append(np.array([c_x, c_y]))
-            radius.append(r)
-            residu.append(res)
-        residu = np.array(residu)
-        radius = np.array(radius)
-        center = np.array(center)
-        c_mean = np.average(center, weights=1-residu/residu.sum(), axis=0)
-
-        shift = c_mean - center
-
-        x_comb = []
-        y_comb = []
-
-        for i in range(len(shift)):
-            quad=i+1
-            idx=np.array(self.__df.loc[self.__df.Quadrant == quad].index)
-            X[idx] += int(shift[i,1].astype('i'))
-            Y[idx] += int(shift[i,0].astype('i'))
-            for ii in range(len(points[quad].x)):
-                x_comb.append(points[quad].x[ii] + int(shift[i,0]))
-                y_comb.append(points[quad].y[ii] + int(shift[i,1]))
-
-
-        dx2 = abs(self.__df.loc[self.__df.Quadrant == 2].Yoffset.values[0])
-        dx1 = abs(self.__df.loc[self.__df.Quadrant == 4].Yoffset.values[0])
-        dy1 = abs(self.__df.loc[self.__df.Quadrant == 1].Xoffset.values[0])
-        dy2 = abs(self.__df.loc[self.__df.Quadrant == 2].Xoffset.values[0])
-        dx = dx1 - dx2
-        dy = dy1 - dy2
-        #I don't understand why this works but is does
-        new_points = tpoints(x=np.array(x_comb)+dx/2, y=np.array(y_comb)+dy/2)
-
-        nc_x, nc_y, self.radius, nres, ncalls =fit_circle(new_points)
-        X = np.array(X)
-        Y = np.array(Y)
-
-        if Y.min() < 0:
-            Y += np.fabs(Y.min()).astype(Y.dtype)
-        if X.min() < 0:
-            X += np.fabs(X.min()).astype(X.dtype)
-
-        self.__df['Xoffset']=X
-        self.__df['Yoffset']=Y
-
-        self.df = self.__set_df
-        self.radius = radius.mean()
-        self.center = np.array([nc_x,nc_y])
-        self.center[0] #+= dx
-        self.center[1] #+= dy
-        self.points = new_points
-        return dx/2 , -dx/2
-
-
-    def plot_data(self, modules_data):
+    def plot_data(self, modules_data, ax=None):
         """Plot data from the detector using this geometry.
 
         Returns a matplotlib figure.
@@ -413,24 +342,26 @@ class AGIPD_1MGeometry:
           Should have exactly 3 dimensions: channelno, pixel_ss, pixel_fs
           (lengths 16, 512, 128). ss/fs are slow-scan and fast-scan.
         """
+        from matplotlib import pyplot as plt
         from matplotlib.cm import viridis
-        from matplotlib.backends.backend_agg import FigureCanvasAgg
-        from matplotlib.figure import Figure
+        #from matplotlib.backends.backend_agg import FigureCanvasAgg
+        #from matplotlib.figure import Figure
+        if ax == None:
+            fig = plt.Figure((10, 10))
+            #FigureCanvasAgg(fig)
+            ax = fig.add_subplot(1, 1, 1)
 
-        fig = Figure((10, 10))
-        FigureCanvasAgg(fig)
-        ax = fig.add_subplot(1, 1, 1)
         my_viridis = copy(viridis)
         # Use a dark grey for missing data
         my_viridis.set_bad('0.25', 1.)
 
         res, centre = self.position_all_modules(modules_data)
-        ax.imshow(res, origin='lower', cmap=my_viridis)
+        im = ax.imshow(res, origin='lower', cmap=my_viridis)
 
         cy, cx = centre
         ax.hlines(cy, cx - 20, cx + 20, colors='w', linewidths=1)
         ax.vlines(cx, cy - 20, cy + 20, colors='w', linewidths=1)
-        return fig
+        return im
 
 
 CRYSTFEL_HEADER_TEMPLATE = """\
