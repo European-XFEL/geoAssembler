@@ -8,7 +8,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 
-from geometry import AGIPD_1MGeometry
+from .geometry import AGIPD_1MGeometry
 
 
 logging.basicConfig(level=logging.INFO)
@@ -121,7 +121,7 @@ class MyCrosshairOverlay(pg.CrosshairROI):
         self.aspectLocked = True
 
 
-class PanelView(object):
+class Calibrate(object):
     '''Class that plots detector data that has been roughly arranged'''
 
     def __init__(self, data, geofile=None, vmin=-1000, vmax=5000):
@@ -142,7 +142,7 @@ class PanelView(object):
            vmax (int) : maximum value in the data array (default: 5000)
                         anything above this value will be masked
         '''
-        assert len(data.shape) == 2 #Only one image should be passed
+        assert data.shape == (16, 512, 128) #Only one image should be passed
         self.raw_data = np.clip(data, vmin, vmax)
         self.geofile = geofile
         size_xy = data.shape
@@ -217,7 +217,7 @@ class PanelView(object):
     def __apply(self):
         '''Read the geometry file and position all modules'''
         if self.quad == 0:
-            log.info('Starting to assemble ... ')
+            log.info(' Starting to assemble ... ')
             try:
                 self.geom = AGIPD_1MGeometry.from_crystfel_geom(self.sel4.value)
             except:
@@ -244,7 +244,7 @@ class PanelView(object):
             self.sel4.clear(buttontxt='Save', linetxt='sample.geom')
             self.quad = -1
         else:
-            log.info('Saving output to %s'%self.geofile)
+            log.info(' Saving output to %s'%self.geofile)
             if not self.sel4.line.text():
                 self.geofile = 'sample.geom'
             else:
@@ -265,7 +265,7 @@ class PanelView(object):
                         np.ma.masked_outside(data, self.vmin, self.vmax).filled(0))
 
                 im.save(self.geofile)
-            self.log('Geometry Centre is: y:%.02f / x:%.02f'%(self.centre[0],
+            log.info(' Geometry-centre is P(y: %.02f/x: %.02f)'%(self.centre[0],
                                                               self.centre[1]))
             self.app.closeAllWindows()
             QtCore.QCoreApplication.quit()
