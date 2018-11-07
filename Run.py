@@ -7,32 +7,51 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 import numpy as np
 import pandas as pd
-from Assembler import Assemble, get_testdata
 from Gui import ResultView, PanelView
 from pyqtgraph import QtCore
 import gc
 from argparse import ArgumentParser
 import logging
-import os
+import os, glob
 from geometry import AGIPD_1MGeometry
-warnings.resetwarnings()
+from h5py import File
 
 
-def crate_testData(run_dir, pattern='*.h5'):
-   from h5py import File
-   import os, glob
-   from Assemble import Test
+def read_data(run_dir, events, func=lambda x: x, pattern='*.h5', **kwargs):
+    '''
+        Method that reads AGIPD image data from a given run directory
+
+    Parameters:
+        run_dir (str) : The directory that contains the data in hdf5 format
+        events : The indices of the data, that is to be read
+
+    Keywords:
+        func : a function that apply to the data, default is no function is applied
+               this could be a sum along the first axis
+        pattern : a glob pattern to select certain files (dfault *.h5)
+
+    Return 3D array of shape (16, 128, 512)
+    '''
    files = glob.glob(os.path.join(run_dir, pattern))
    files.sort()
    h5=[File(fn, 'r') for fn in files]
-   data=Test()
+   data=np.empty([16, 128, 512])
    kwargs={}
 
    for n,k in enumerate(data.keys()):
-      data[k]['image.data'] = h5[n]['/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image'.format(n)]['data'][12345]
-      kwargs['image.%02i'%n] =  data[k]['image.data']
-
+      data[n] = func(h5[n]['/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image'.format(n)]['data'][events], **kwargs)
    return data
+
+def get_testdata():
+    '''Method to get some test-data'''
+    array = np.load(os.path.join(os.path.dirname(__file__), 'image.npz'))
+    ## Create some mock test data as it would be comming from karabo-data
+    data = np.empty((16, 512, 128))
+    for k in range(len(data)):
+         data[k] = array['image.%02i'%k]
+
+    return data
+
 
 def main(argv=None):
 
@@ -102,27 +121,10 @@ photon_energy = 10235'''
         # Get some mock data for testing
         data = get_testdata()
 
-    log.info('Starting to assemble')
-    #A = Assemble()
-    points = []
     vmin, vmax = int(args.vmin), int(args.vmax)
-    #while True:
     View = PanelView(data, None, vmin=vmin, vmax=vmax)
-    log.info('Saved output to %s'%View.geofile)
-    if args.output is not None:
-        log.info('Saving output tiff...')
-        output = args.output.replace('.tiff', '').replace('.tif', '')
-
-        from PIL import Image
-        data = np.ma.masked_invalid(View.data)
-
-        im = Image.fromarray(np.ma.masked_outside(data, -10, 50).filled(0))
-        im.save(output+'.tif')
-
 
 
 if __name__ == '__main__':
     import sys
-    vmin, vmax = -1000, 5000
     main()
-    sys.exit()
