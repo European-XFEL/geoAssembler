@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
 
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
-warnings.simplefilter(action='ignore', category=ImportWarning)
-warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=RuntimeWarning)
-import numpy as np
-import pandas as pd
-from Gui import ResultView, PanelView
-from pyqtgraph import QtCore
 import gc
-from argparse import ArgumentParser
+import glob
 import logging
-import os, glob
-from geometry import AGIPD_1MGeometry
-from h5py import File
+import os
+import warnings
 
+from argparse import ArgumentParser
+from h5py import File
+import numpy as np
+from pyqtgraph import QtCore
+
+from geoAssembler.PanelView import Calibrate
+from geoAssembler.geometry import AGIPD_1MGeometry
 
 def read_data(run_dir, events, func=lambda x: x, pattern='*.h5', **kwargs):
     '''
@@ -32,15 +29,15 @@ def read_data(run_dir, events, func=lambda x: x, pattern='*.h5', **kwargs):
 
     Return 3D array of shape (16, 128, 512)
     '''
-   files = glob.glob(os.path.join(run_dir, pattern))
-   files.sort()
-   h5=[File(fn, 'r') for fn in files]
-   data=np.empty([16, 128, 512])
-   kwargs={}
+    files = glob.glob(os.path.join(run_dir, pattern))
+    files.sort()
+    h5=[File(fn, 'r') for fn in files]
+    data=np.empty([16, 512, 128])
+    kwargs={}
 
-   for n,k in enumerate(data.keys()):
-      data[n] = func(h5[n]['/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image'.format(n)]['data'][events], **kwargs)
-   return data
+    for n,k in enumerate(data.keys()):
+        data[n] = func(h5[n]['/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image'.format(n)]['data'][events], **kwargs)
+    return data
 
 def get_testdata():
     '''Method to get some test-data'''
@@ -122,9 +119,8 @@ photon_energy = 10235'''
         data = get_testdata()
 
     vmin, vmax = int(args.vmin), int(args.vmax)
-    View = PanelView(data, None, vmin=vmin, vmax=vmax)
+    cal = Calibrate(data, None, vmin=vmin, vmax=vmax)
 
 
 if __name__ == '__main__':
-    import sys
     main()
