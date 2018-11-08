@@ -289,13 +289,13 @@ class Calibrate(object):
             return
         y, x = int(self.canvas.shape[0]//2), int(self.canvas.shape[1]//2)
         pen = QtGui.QPen(QtCore.Qt.red, 0.002)
-        fit_helper = self.fit_method(pos=(x-x//4,y-x//4), size=x//2,
+        fit_helper = self.fit_method(pos=(x-x//2,y-x//2), size=x//1,
                 removable=True, movable=False, pen=pen)
 
         fit_helper.handleSize = 5
         # Add top and right Handles
-        fit_helper.addScaleHandle([0.5, 0], [0.5, 1])
-        fit_helper.addScaleHandle([0.5, 1], [0.5, 0])
+        #fit_helper.addScaleHandle([0.5, 0], [0.5, 1])
+        #fit_helper.addScaleHandle([0.5, 1], [0.5, 0])
         self.imv.getView().addItem(fit_helper)
         sel1 = QtGui.QRadioButton(self.fit_type)
         sel1.setChecked(True)
