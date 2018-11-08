@@ -43,11 +43,9 @@ def get_testdata():
     '''Method to get some test-data'''
     array = np.load(os.path.join(os.path.dirname(__file__), 'image.npz'))
     ## Create some mock test data as it would be comming from karabo-data
-    data = np.empty((16, 512, 128))
-    for k in range(len(data)):
-         data[k] = array['image.%02i'%k]
-
-    return data
+    data=array['data']
+    print(data.shape)
+    return array['data']
 
 
 def main(argv=None):
