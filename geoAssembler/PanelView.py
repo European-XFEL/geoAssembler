@@ -167,10 +167,10 @@ class Calibrate(object):
         self.fit_type = 'Circ.'
         self.bottom_buttons = {}
         self.bottom_select = None
-        for action, keys in ((self.__move_left, ('left','H')),
-                             (self.__move_up, ('up','K')),
-                             (self.__move_down, ('down','J')),
-                             (self.__move_right, ('right','L'))):
+        for action, keys in ((self._move_left, ('left','H')),
+                             (self._move_up, ('up','K')),
+                             (self._move_down, ('down','J')),
+                             (self._move_right, ('right','L'))):
             for key in keys:
                 shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+%s"%key),
                                            self.imv)
@@ -183,10 +183,10 @@ class Calibrate(object):
         # circle/ellipse selection and input dialogs go to the top
         self.sel1 = QtGui.QRadioButton('Circle Helper')
         self.sel1.setChecked(True)
-        self.sel1.clicked.connect(lambda: self.__set_method(self.sel1))
+        self.sel1.clicked.connect(lambda: self._set_method(self.sel1))
         self.layout.addWidget(self.sel1, 0, 0, 1, 1)
         self.sel2 = QtGui.QRadioButton('Ellipse Helper')
-        self.sel2.clicked.connect(lambda: self.__set_method(self.sel2))
+        self.sel2.clicked.connect(lambda: self._set_method(self.sel2))
         self.layout.addWidget(self.sel2, 0, 1, 1, 1)
         self.sel3 = RadiusSetter(('',''), self.bottom_select, None)
         self.layout.addWidget(self.sel3, 0, 2, 1, 1)
@@ -198,15 +198,15 @@ class Calibrate(object):
 
         # buttons go to the bottom
         self.btn1 = self.sel4.button
-        self.btn1.clicked.connect(self.__apply)
+        self.btn1.clicked.connect(self._apply)
         self.btn2 = QtGui.QPushButton('Clear Helpers')
-        self.btn2.clicked.connect(self.__clear)
+        self.btn2.clicked.connect(self._clear)
         self.layout.addWidget(self.btn2, 4, 0, 1, 1)
         self.btn3 = QtGui.QPushButton('Draw Helper Objects')
-        self.btn3.clicked.connect(self.__drawCircle)
+        self.btn3.clicked.connect(self._drawCircle)
         self.layout.addWidget(self.btn3, 4, 1, 1, 1)
         self.btn4 = QtGui.QPushButton('Cancel')
-        self.btn4.clicked.connect(self.__destroy)
+        self.btn4.clicked.connect(self._destroy)
         self.layout.addWidget(self.btn4, 4, 2, 1, 1)
 
         pg.LabelItem(justify='right')
@@ -214,7 +214,7 @@ class Calibrate(object):
         self.w.show()
         self.app.exec_()
 
-    def __apply(self):
+    def _apply(self):
         '''Read the geometry file and position all modules'''
         if self.quad == 0:
             log.info(' Starting to assemble ... ')
@@ -234,7 +234,7 @@ class Calibrate(object):
             # Display the data and assign each frame a time value from 1.0 to 3.0
             self.imv.setImage(self.data,
                               xvals=np.linspace(1., 3., self.canvas.shape[0]))
-            self.imv.getImageItem().mouseClickEvent = self.__click
+            self.imv.getImageItem().mouseClickEvent = self._click
 
             # Set a custom color map
             # Get the colormap
@@ -270,7 +270,7 @@ class Calibrate(object):
             self.app.closeAllWindows()
             QtCore.QCoreApplication.quit()
 
-    def __move(self, d):
+    def _move(self, d):
         '''Move the quadrant'''
         quad = self.quad
         if not quad > 0:
@@ -280,10 +280,10 @@ class Calibrate(object):
         self.geom.move_quad(quad, np.array(dd))
         self.data, self.centre = self.geom.position_all_modules(self.raw_data,
                                                            canvas=self.canvas.shape)
-        self.__click(quad)
+        self._click(quad)
         self.imv.getImageItem().updateImage(self.data)
 
-    def __drawCircle(self):
+    def _drawCircle(self):
         '''add a fit object to the image'''
         if self.quad == 0 or len(self.circles) > 9:
             return
@@ -294,8 +294,8 @@ class Calibrate(object):
 
         fit_helper.handleSize = 5
         # Add top and right Handles
-        #fit_helper.addScaleHandle([0.5, 0], [0.5, 1])
-        #fit_helper.addScaleHandle([0.5, 1], [0.5, 0])
+        fit_helper.addScaleHandle([0.5, 0], [0.5, 1])
+        fit_helper.addScaleHandle([0.5, 1], [0.5, 0])
         self.imv.getView().addItem(fit_helper)
         sel1 = QtGui.QRadioButton(self.fit_type)
         sel1.setChecked(True)
@@ -305,13 +305,13 @@ class Calibrate(object):
         self.circles[num] = (fit_helper, self.fit_type)
         #if len(self.circles) == 0:
         self.bottom_select = sel1
-        sel1.clicked.connect(lambda: self.__set_bottom(sel1, num, fit_helper))
-        self.__update_bottom(fit_helper)
+        sel1.clicked.connect(lambda: self._set_bottom(sel1, num, fit_helper))
+        self._update_bottom(fit_helper)
         self.layout.addWidget(sel1, 5, num, 1, 1)
 
         labels = dict(c=('r:',''), e=('a:','b:'))[self.fit_type.lower()[0]]
 
-    def __set_bottom(self, b, num, fit_helper):
+    def _set_bottom(self, b, num, fit_helper):
         '''add a selection button for a fit object to the bottom region'''
         self.sel3.widgets.fit_method = self.circles[num][0]
         self.sel3.widgets.update(self.circles[num][0])
@@ -321,9 +321,9 @@ class Calibrate(object):
         [sel.setChecked(False) for sel in self.bottom_buttons.values()]
         b.setChecked(True)
         self.fit_method = self.circles[num][0]
-        self.__update_bottom(fit_helper)
+        self._update_bottom(fit_helper)
 
-    def __del_bottom(self):
+    def _del_bottom(self):
         '''del. selected fit method from the bottom region'''
         if not len(self.circles):
             return
@@ -347,7 +347,7 @@ class Calibrate(object):
             circles[n] = self.circles[num]
             sel1 = QtGui.QRadioButton(circles[n][1])
             sel1.setChecked(False)
-            sel1.clicked.connect(lambda: self.__set_bottom(sel1, n,
+            sel1.clicked.connect(lambda: self._set_bottom(sel1, n,
                                         self.circles[n][0]))
             if n == nn:
                 sel1.setChecked(True)
@@ -355,7 +355,7 @@ class Calibrate(object):
             bottom_buttons[n] = sel1
         self.circles, self.bottom_buttons = circles, bottom_buttons
 
-    def __update_bottom(self, fit_helper):
+    def _update_bottom(self, fit_helper):
         '''update the selection region of the fit objects at the bottom'''
         self.fit_type = self.bottom_select.text()
         labels = dict(c=('r:',''), e=('a:','b:'),n=('',''))[self.fit_type.lower()[0]]
@@ -365,7 +365,7 @@ class Calibrate(object):
         self.layout.addWidget(self.sel3, 0, 2, 1, 1)
         self.layout.update()
 
-    def __set_method(self, b):
+    def _set_method(self, b):
         '''update the helper and the referred widget'''
         if b.text().lower().startswith("circle"):
             if b.isChecked() == True:
@@ -383,7 +383,7 @@ class Calibrate(object):
         self.sel1.setChecked(False)
         b.setChecked(True)
 
-    def __clear(self):
+    def _clear(self):
         '''delate all helper objects'''
         for num in list(self.circles.keys()):
             self.imv.getView().removeItem(self.circles[num][0])
@@ -393,11 +393,11 @@ class Calibrate(object):
             self.layout.update()
             del self.bottom_buttons[num]
 
-    def __destroy(self):
+    def _destroy(self):
         '''destroy the window and exit'''
         self.app.closeAllWindows()
 
-    def __get_quadrant(self, y, x):
+    def _get_quadrant(self, y, x):
         ''' Return the quadrant that a given set of coordinates lies in'''
         y1, y2, y3 = 0, self.data.shape[-1]/2, self.data.shape[-1]
         x1, x2, x3 = 0, self.data.shape[-2]/2, self.data.shape[-2]
@@ -410,7 +410,7 @@ class Calibrate(object):
             if x >= bbox[0] and x < bbox[1] and y >= bbox[2] and y < bbox[3]:
                 return quadrant
 
-    def __click(self, event):
+    def _click(self, event):
         '''Event for mouse-click into ImageRegion'''
         if self.quad == 0:
             return
@@ -422,7 +422,7 @@ class Calibrate(object):
             x = int(pos.x())
             y = int(pos.y())
             delete = False
-            quad  = self.__get_quadrant(x, y)
+            quad  = self._get_quadrant(x, y)
         except:
             quad = event
             delete = True
@@ -448,14 +448,14 @@ class Calibrate(object):
             self.imv.getView().addItem(self.rect)
             [self.rect.removeHandle(handle) for handle in self.rect.getHandles()]
 
-    def __move_up(self):
-        self.__move('u')
+    def _move_up(self):
+        self._move('u')
 
-    def __move_down(self):
-        self.__move('d')
+    def _move_down(self):
+        self._move('d')
 
-    def __move_right(self):
-        self.__move('r')
+    def _move_right(self):
+        self._move('r')
 
-    def __move_left(self):
-        self.__move('l')
+    def _move_left(self):
+        self._move('l')
