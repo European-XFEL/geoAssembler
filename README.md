@@ -1,28 +1,38 @@
-# Methods to apply geometry information to detector data
+# Geometry Calibration tool
 
-This repository aims at applying geometry information to detector image data
+This repository provides a tool to calibrate AGIPD detector geometry information
 
-At the moment there are two modes of geometry information available for
-application
+The tool can be seen as an alternative to the calibration mode of CrysFEL's
+hdfsee. The calibration can either be based on a starting geometry that needs
+to be refined or a completly new geometry. In this case the initial conditions
+for the geometry are defined so that all modules are 29px apart from each other.
 
-- A generic (crude) one that is currently identical to the one from the online
- preview karabo-device
-- Geometry information provided by a geometry file in CrystFel .geom format
 
-## Usage:
-If you have a geometry file (e.g in CrysFel format) you can apply the geometry
-to you're data by:
+
+## Usage (with real data):
+### With existing geometry file
+First lets suppose you already have a geometry file in CFEL format (*.geom*)
+and the file is located in your home directory. You can now refine this
+starting geometry:
 
 ```python
 >>> import karabo_data as kd
->>> from Assembler import Assemble
+>>> from geoAssembler import PanelView as pv
 >>> runDir = '/gpfs/exfel/exp/SPB/201830/p900022/proc/r0025/'
->>> crystFelGeo = path_to_crysfel_geometryFile
->>> A = Assemble(crystFelGeo)
->>> for iId, data in kd.RunDirectory(run_dir).trains():
-        assemled_ary = A.apply_geo(data)
-        break
+>>> crystFelGeo = '~/starter.geom'
+>>> Run = kd.RunDirectory(run_dir)
+>>> tId, train_data = Run.train_from_index(0)
+>>> data = []
+>>> for i in range(16):
+      data.append(train_data[SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf'.format(i)]['image.data'])
+>>> vmin, vmax = 100, 1000
+>>> view = pv(data[0], crystFelGeo, vmin, vmax)
+
 ```
+The qudrants are activated by clicking on them 
+
+You can save the geometry file 
+
 If no geometry information is given a standard (crude) geometry arrangement from
 the Karabo online preview device is applied:
 ```python
