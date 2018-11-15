@@ -578,7 +578,9 @@ class CalibTab(widgets.VBox):
             else:
                 circ.set_edgecolor('r')
         self.set_r = widgets.BoundedFloatText(value=r, min=0, max=10000, step=1,
-                                              disabled=False, description='Radius')
+                                              disabled=False,
+                                              continuous_update=True,
+                                              description='Radius')
         self.cir_drn.observe(self._sel_circle)
         self.set_r.observe(self._set_radius)
         self.row2 = widgets.HBox([self.cir_btn, self.clr_btn,
@@ -616,9 +618,11 @@ class CalibTab(widgets.VBox):
     def _update_navi(self, pos):
         """Add navigation buttons"""
         posx_sel = widgets.BoundedIntText(value=0, min=-1000, max=1000, step=1,
-                                          disabled=False, description='Horizontal')
+                                          disabled=False, continuous_update=True,
+                                          description='Horizontal')
         posy_sel = widgets.BoundedIntText(value=0, min=-1000, max=1000, step=1,
-                                          disabled=False, description='Vertical')
+                                          disabled=False, continuous_update=True,
+                                          description='Vertical')
         posx_sel.observe(self._move_quadrants)
         posy_sel.observe(self._move_quadrants)
 
@@ -806,10 +810,8 @@ class Calibrate_Nb(object):
         if not self.im is None:
             if not val is None:
                 self.im.set_clim(*val)
-                print(self.cbar.ticks())
             else:
                 self.im.set_array(self.data)
-                print(self.cbar.ticks())
             h1, h2 = self.cent_cross
             h1.remove(), h2.remove()
             h1 = self.ax.hlines(cy, cx-20, cx+20, colors='r', linewidths=1)
@@ -830,8 +832,8 @@ class Calibrate_Nb(object):
             self.cbar = self.fig.colorbar(self.im, shrink=0.8, anchor=(0.01, 0),
                                           pad=0.01, aspect=50)
 
-        cbar_ticks = np.linspace(val[0], val[1], 6)
-        self.cbar.set_ticks(cbar_ticks)
+            cbar_ticks = np.linspace(val[0], val[1], 6)
+            self.cbar.set_ticks(cbar_ticks)
 
 
 if __name__ == '__main__':
