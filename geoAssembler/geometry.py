@@ -1,6 +1,6 @@
 from cfelpyutils.crystfel_utils import load_crystfel_geometry
-from copy import copy
 import numpy as np
+
 
 def _crystfel_format_vec(vec):
     """Convert an array of 3 numbers to CrystFEL format like "+1.0x -0.1y"
@@ -13,6 +13,7 @@ def _crystfel_format_vec(vec):
         pass
     return s
 
+
 class AGIPDGeometryFragment:
     ss_pixels = 64
     fs_pixels = 128
@@ -22,7 +23,6 @@ class AGIPDGeometryFragment:
         self.corner_pos = corner_pos
         self.ss_vec = ss_vec
         self.fs_vec = fs_vec
-
 
     @classmethod
     def from_panel_dict(cls, d):
@@ -35,7 +35,8 @@ class AGIPDGeometryFragment:
         return np.stack([
             self.corner_pos,
             self.corner_pos + (self.fs_vec * self.fs_pixels),
-            self.corner_pos + (self.ss_vec * self.ss_pixels) + (self.fs_vec * self.fs_pixels),
+            self.corner_pos + (self.ss_vec * self.ss_pixels) +
+            (self.fs_vec * self.fs_pixels),
             self.corner_pos + (self.ss_vec * self.ss_pixels),
         ])
 
@@ -43,14 +44,15 @@ class AGIPDGeometryFragment:
         return self.corner_pos + (.5 * self.ss_vec * self.ss_pixels) \
                                + (.5 * self.fs_vec * self.fs_pixels)
 
-
     def snap(self):
         corner_pos = np.around(self.corner_pos[:2]).astype(np.int32)
         ss_vec = np.around(self.ss_vec[:2]).astype(np.int32)
         fs_vec = np.around(self.fs_vec[:2]).astype(np.int32)
-        assert {tuple(np.abs(ss_vec)), tuple(np.abs(fs_vec))} == {(0, 1), (1, 0)}
+        assert {tuple(np.abs(ss_vec)), tuple(
+            np.abs(fs_vec))} == {(0, 1), (1, 0)}
         # Convert xy coordinates to yx indexes
         return GridGeometryFragment(corner_pos[::-1], ss_vec[::-1], fs_vec[::-1])
+
 
 class GridGeometryFragment:
     ss_pixels = 64
@@ -74,7 +76,8 @@ class GridGeometryFragment:
             # Transpose and then flip
             fs_order = fs_vec[0]
             ss_order = ss_vec[1]
-            self.transform = lambda arr: arr.swapaxes(-1, -2)[..., ::fs_order, ::ss_order]
+            self.transform = lambda arr: arr.swapaxes(
+                -1, -2)[..., ::fs_order, ::ss_order]
             corner_shift = np.array([
                 min(fs_order, 0) * self.fs_pixels,
                 min(ss_order, 0) * self.ss_pixels
@@ -104,6 +107,7 @@ class AGIPD_1MGeometry:
     of the pixel size.
     """
     pixel_size = 2e-7  # 2e-7 metres == 0.2 mm
+
     def __init__(self, modules, quad_pos):
         self.modules = modules  # List of 16 lists of 8 fragments
         self.quad_pos = quad_pos
@@ -181,7 +185,7 @@ class AGIPD_1MGeometry:
             for a in range(8):
                 d = geom_dict['panels']['p{}a{}'.format(p, a)]
                 tiles.append(AGIPDGeometryFragment.from_panel_dict(d).snap())
-                if p%4 == 0 and a == 0:
+                if p % 4 == 0 and a == 0:
                     quad_pos.append(tuple(tiles[-1].corner_pos[:-1]))
         return cls(modules, quad_pos)
 
@@ -220,7 +224,7 @@ class AGIPD_1MGeometry:
             size_yx, centre = self._plotting_dimensions()
         else:
             size_yx = canvas
-            centre  = (canvas[0]//2, canvas[-1]//2)
+            centre = (canvas[0]//2, canvas[-1]//2)
         out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
         for i, module in enumerate(self.modules):
             mod_data = data[..., i, :, :]
@@ -253,7 +257,6 @@ class AGIPD_1MGeometry:
         size = max_yx - min_yx
         centre = -min_yx
         return tuple(size), centre
-
 
 
 CRYSTFEL_HEADER_TEMPLATE = """\
@@ -296,7 +299,6 @@ rigid_group_collection_quadrants = q0,q1,q2,q3
 rigid_group_collection_asics = p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15
 
 """
-
 
 
 CRYSTFEL_PANEL_TEMPLATE = """

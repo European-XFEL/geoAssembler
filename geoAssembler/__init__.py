@@ -1,6 +1,6 @@
-'''Call the calibration routine for ringbased calibration
+"""Call the calibration routine for ringbased calibration
 
-   Author: bergeman'''
+   Author: bergeman"""
 
 import os
 
@@ -10,7 +10,7 @@ from .PanelView import Calibrate_Qt, Calibrate_Nb
 
 
 def Calibrate(*args, **kwargs):
-    '''Parameters:
+    """Parameters:
             data (2d-array)  : File name of the geometry file, if none is given
                                (default) the image will be assembled with 29 Px
                                gaps between all modules.
@@ -24,7 +24,7 @@ def Calibrate(*args, **kwargs):
                           anything below this value will be clipped
              vmax (int) : maximum value in the data array (default: 5000)
                           anything above this value will be clipped
-        '''
+        """
 
     if 'notebook' in os.environ['_'].lower() or 'jupyter' in os.environ['_'].lower():
         return Calibrate_Nb(*args, **kwargs)
