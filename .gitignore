@@ -2,6 +2,8 @@ __pycache__
 *.pyc
 .ipynb_checkpoints
 *.png
-*.geom
+*cache
 *.csv
+*.geom
+!geoAssembler/tests/test.geom
 sax_run.npz
