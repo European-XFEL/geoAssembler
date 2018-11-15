@@ -43,7 +43,7 @@ class AGIPDGeometryFragment:
         return self.corner_pos + (.5 * self.ss_vec * self.ss_pixels) \
                                + (.5 * self.fs_vec * self.fs_pixels)
 
-    
+
     def snap(self):
         corner_pos = np.around(self.corner_pos[:2]).astype(np.int32)
         ss_vec = np.around(self.ss_vec[:2]).astype(np.int32)
@@ -153,8 +153,6 @@ class AGIPD_1MGeometry:
                                                           tile.ss_vec,
                                                           tile.fs_vec)
 
-
-
     def get_quad_corners(self, quad, centre):
         pos = (quad - 1) * 4
         X = []
@@ -172,7 +170,6 @@ class AGIPD_1MGeometry:
         dx = abs(max(X) - min(X))
         return (min(X)-2, min(Y)-2), dx+w+4, dy+4
 
-    
     @classmethod
     def from_crystfel_geom(cls, filename):
         geom_dict = load_crystfel_geometry(filename)
@@ -199,47 +196,6 @@ class AGIPD_1MGeometry:
             f.write(CRYSTFEL_HEADER_TEMPLATE.format(version=1))
             for chunk in panel_chunks:
                 f.write(chunk)
-
-    def inspect(self):
-        """Plot the 2D layout of this detector geometry.
-
-        Returns a matplotlib Figure object.
-        """
-        from matplotlib.backends.backend_agg import FigureCanvasAgg
-        from matplotlib.collections import PatchCollection
-        from matplotlib.figure import Figure
-        from matplotlib.patches import Polygon
-
-        fig = Figure((10, 10))
-        FigureCanvasAgg(fig)
-        ax = fig.add_subplot(1, 1, 1)
-
-        rects = []
-        for p, module in enumerate(self.modules):
-            for a, fragment in enumerate(module):
-                corners = fragment.corners()[:, :2]  # Drop the Z dimension
-
-                rects.append(Polygon(corners))
-
-                if a in {0, 7}:
-                    cx, cy, _ = fragment.centre()
-                    ax.text(cx, cy, str(a),
-                            verticalalignment='center',
-                            horizontalalignment='center')
-                elif a == 4:
-                    cx, cy, _ = fragment.centre()
-                    ax.text(cx, cy, 'p{}'.format(p),
-                            verticalalignment='center',
-                            horizontalalignment='center')
-
-        pc = PatchCollection(rects, facecolor=(0.75, 1., 0.75), edgecolor=None)
-        ax.add_collection(pc)
-
-        ax.hlines(0, -100, +100, colors='0.75', linewidths=2)
-        ax.vlines(0, -100, +100, colors='0.75', linewidths=2)
-
-        ax.set_title('AGIPD-1M detector geometry')
-        return fig
 
     def position_all_modules(self, data, canvas=None):
         """Assemble data from this detector according to where the pixels are.
@@ -298,70 +254,6 @@ class AGIPD_1MGeometry:
         centre = -min_yx
         return tuple(size), centre
 
-    def get_shfit(self, data, vmax=5000, vmin=-1000, **kwargs):
-        '''Method that creates a new detector geometry according to a given fit
-            method
-            Parameters:
-                data (dict-object): dectector data stored in modules that is 
-                typically returned by karabo-data
-            Keywords:
-                fit_method (str) : the mothod that is used for fitting 
-                                   (default : circle)
-                                   at the moment there are the following options:
-                                     - circle : for fitting circles to the data
-                vmax (int) :  maximum value to be displayed when plotting the data
-                vmin (int) :  minimum value to be displayed when plotting the data
-        '''
-        ## Start with the Gui
-        from Gui import PanelView
-
-        ## 1.0 Let the user define the points for alignment
-        View = PanelView(self.position_all_modules(data)[-1], vmax=vmax, vmin=vmin, **kwargs)
-        self.old_points = View.points
-        self.fit_method = View.fit_method
-        if self.fit_method.lower() == 'circle':
-            shift = self.__shift_circle(View.points)
-            del View
-            from pyqtgraph import QtCore
-            QtCore.QCoreApplication.quit()
-            return shift
-
-        else:
-            raise NotImplementedError('At the moment only circle, fits are available')
-
-
-    def plot_data(self, modules_data, ax=None):
-        """Plot data from the detector using this geometry.
-
-        Returns a matplotlib figure.
-
-        Parameters
-        ----------
-
-        modules_data : ndarray
-          Should have exactly 3 dimensions: channelno, pixel_ss, pixel_fs
-          (lengths 16, 512, 128). ss/fs are slow-scan and fast-scan.
-        """
-        from matplotlib import pyplot as plt
-        from matplotlib.cm import viridis
-        #from matplotlib.backends.backend_agg import FigureCanvasAgg
-        #from matplotlib.figure import Figure
-        if ax == None:
-            fig = plt.Figure((10, 10))
-            #FigureCanvasAgg(fig)
-            ax = fig.add_subplot(1, 1, 1)
-
-        my_viridis = copy(viridis)
-        # Use a dark grey for missing data
-        my_viridis.set_bad('0.25', 1.)
-
-        res, centre = self.position_all_modules(modules_data)
-        im = ax.imshow(res, origin='lower', cmap=my_viridis)
-
-        cy, cx = centre
-        ax.hlines(cy, cx - 20, cx + 20, colors='w', linewidths=1)
-        ax.vlines(cx, cy - 20, cy + 20, colors='w', linewidths=1)
-        return im
 
 
 CRYSTFEL_HEADER_TEMPLATE = """\
