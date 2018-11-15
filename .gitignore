@@ -6,4 +6,4 @@ __pycache__
 *.csv
 *.geom
 !geoAssembler/tests/test.geom
-sax_run.npz
+geoAssembler.egg-info/
