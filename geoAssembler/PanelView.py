@@ -151,22 +151,22 @@ class Calibrate_Qt(object):
 
     def __init__(self, raw_data, geofile=None, vmin=-1000, vmax=5000, **kwargs):
         """Parameters:
-            data (2d-array)  : File name of the geometry file, if none is given
-                               (default) the image will be assembled with 29 Px
-                               gaps between all modules.
+            raw_data (3d-array) : Data stored in panels, fs, ss (3d-array)
 
             Keywords:
-             geom (str/AGIPD_1MGeometry) :  The geometry file can either be
-                                            an AGIPD_1MGeometry object or
-                                            the filename to the geometry file
-                                            in CFEL fromat
+             geofile (str/AGIPD_1MGeometry) :  The geometry file can either be
+                                               an AGIPD_1MGeometry object or
+                                               the filename to the geometry file
+                                                in CFEL fromat. If None is given
+                                                (default) the modules are
+                                                positioned with 29px gaps.
              vmin (int) : minimal value in the data array (default: -1000)
                           anything below this value will be clipped
              vmax (int) : maximum value in the data array (default: 5000)
                           anything above this value will be clipped
         """
-        assert raw_data.shape == (
-            16, 512, 128)  # Only one image should be passed
+        # Only one image should be passed
+        assert raw_data.shape == (16, 512, 128)
         self.raw_data = np.clip(raw_data, vmin, vmax)
         self.geofile = geofile
 
@@ -662,15 +662,15 @@ class Calibrate_Nb(object):
     def __init__(self, raw_data, geom=None, vmin=-1000, vmax=5000,
                  figsize=(8, 8), bg='w', **kwargs):
         """Parameters:
-            data (2d-array)  : File name of the geometry file, if none is given
-                               (default) the image will be assembled with 29 Px
-                               gaps between all modules.
+            raw_data (3d-array) : Data stored in panels, fs, ss (3d-array)
 
             Keywords:
-             geom (str/AGIPD_1MGeometry) :  The geometry file can either be
-                                            an AGIPD_1MGeometry object or
-                                            the filename to the geometry file
-                                            in CFEL fromat
+             geofile (str/AGIPD_1MGeometry) :  The geometry file can either be
+                                               an AGIPD_1MGeometry object or
+                                               the filename to the geometry file
+                                                in CFEL fromat. If None is given
+                                                (default) the modules are
+                                                positioned with 29px gaps.
              vmin (int) : minimal value in the data array (default: -1000)
                           anything below this value will be clipped
              vmax (int) : maximum value in the data array (default: 5000)
