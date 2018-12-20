@@ -1,3 +1,5 @@
+"""Detector geometry calibration  for powder ring based calibration."""
+
 import os
 import logging
 
@@ -7,6 +9,7 @@ from matplotlib import pyplot as plt, cm
 import matplotlib.patches as patches
 import numpy as np
 import pyqtgraph as pg
+from PIL import Image
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 
@@ -17,156 +20,135 @@ log = logging.getLogger(os.path.basename(__file__))
 
 
 class RadiusSetter(QtWidgets.QFrame):
-    """Add nested widgets to set radii"""
+    """Define a Hbox containing a Spinbox with a Label."""
 
-    def __init__(self, labels, button, fit_object):
+    def __init__(self, label, roi):
+        """Add a spin box with a label to set radii.
+
+        Parameters:
+           label (str) : label for the spin box
+
+        Keywords:
+           roi : selected region of interest
+        """
         super(RadiusSetter, self).__init__()
-        self.widgets = RadiusSetterWidget(labels, button, fit_object,
-                                          parent=self)
+        #Create a hbox with a title and a spin-box to select the circ. radius
+        hbox = QtWidgets.QHBoxLayout()
+        self.roi = roi
+        if len(label): #If label is not empty add QSpinBox
+            hbox.addWidget(QtGui.QLabel(label))
+            size = int(self.roi.size()[0])
+            self.spin_box = QtGui.QSpinBox()
+            self.spin_box.setMinimum(0)
+            self.spin_box.setMaximum(10000)
+            self.spin_box.setValue(size)
+            self.spin_box.valueChanged.connect(self._update_circle_prop)
+            hbox.addWidget(self.spin_box)
+            self.setLayout(hbox)
+
+    def add_circle_prop(self):
+        """Add properties for a new circle."""
+        size = int(self.roi.size()[0])
+        self.spin_box = QtGui.QSpinBox()
+        self.spin_box.setMinimum(0)
+        self.spin_box.setMaximum(10000)
+        self.spin_box.setValue(size)
+        self.spin_box.valueChanged.connect(self._update_circle_prop)
+
+    def _update_circle_prop(self):
+        """Update the size and centre of circ. form button-click."""
+        # Circles have only radii and
+        size = self.spin_box.value()
+        pos = self.roi.pos()
+        centre = (pos[0] + self.roi.size()[0]//2,
+                  pos[1] + self.roi.size()[1]//2)
+        new_pos = (centre[0] - size//2,
+                   centre[1] - size//2)
+        self.roi.setPos(new_pos)
+        self.roi.setSize((size, size))
+
+    def set_value(self, roi):
+        """Update spin_box if ROI is changed by hand."""
+        self.spin_box.setValue(int(roi.size()[0]))
 
 
-class RadiusSetterWidget(QtWidgets.QHBoxLayout):
-    """Add widgets to the nested Radius widget"""
+class GeometrySelecter(QtWidgets.QFrame):
+    """Define a Hbox containing a QLineEdit with a Label."""
 
-    def __init__(self, labels, button, fit_object, parent=None):
-        super(RadiusSetterWidget, self).__init__(parent)
-        self.sp = []
-        self.fit_object = fit_object
-        self.button = button
-        for nn, label in enumerate(labels):
-            self.addWidget(QtGui.QLabel(label))
-            if len(label):
-                size = int(self.fit_object.size()[nn])
-                spin_box = QtGui.QSpinBox()
-                spin_box.setMinimum(0)
-                spin_box.setMaximum(10000)
-                spin_box.setValue(size)
-                spin_box.valueChanged.connect(self.valuechange)
-                self.addWidget(spin_box)
-                self.sp.append(spin_box)
+    def __init__(self, width, txt, content=''):
+        """Create nested widgets to select and save geometry files.
 
-    def update(self, fit_object):
-        """Recycle the widget"""
-        self.fit_object = fit_object
-        self.sp = []
-        for nn in range(len(self.sp)):
-            size = int(fit_object.size()[nn])
-            spin_box = QtGui.QSpinBox()
-            spin_box.setMinimum(0)
-            spin_box.setMaximum(10000)
-            spin_box.setValue(size)
-            spin_box.valueChanged.connect(self.valuechange)
-            self.sp.append(spin_box)
+        Parameters:
+             width (int) : width of the QLineEdit element
+             txt (str) : label of the QLineEdit element
 
-    def valuechange(self):
-        """Update the size of the roi form button-click"""
-        size = []
-        # Circles have only radii and Ellipses major and minor axis
-        for nn, sp1 in enumerate(self.sp):
-            size.append(self.sp[nn].value())
-
-        if len(size) == 1:
-            size += size
-        pos = self.fit_object.pos()
-        centre = pos[0] + self.fit_object.size()[0]//2, pos[1] + \
-            self.fit_object.size()[1]//2
-        new_pos = centre[0] - size[0]//2, centre[1] - size[1]//2
-        self.fit_object.setPos(new_pos)
-        self.fit_object.setSize(size)
-
-    def set_val(self, fit_object):
-        """Update the value of the spin_box from roi-drag"""
-        for n, spin_box in enumerate(self.sp):
-            spin_box.setValue(int(fit_object.size()[n]))
-        fit_object.setPen(QtGui.QPen(QtCore.Qt.red, 0.002))
-
-
-class FixedWidthLineEdit(QtWidgets.QFrame):
-    """Create nested Widgets"""
-
-    def __init__(self, width, txt, preset):
-        super(FixedWidthLineEdit, self).__init__()
-        self.widget = FixedWidthLineEditWidget(width, txt, preset, self)
-        self.button = self.widget.button
-        self.line = self.widget.line
+           Keywords:
+               content (str) : pre filled content of the QLineEdit element
+                               (dfault empty)
+        """
+        super(GeometrySelecter, self).__init__()
+        #Creat an hbox with a title, a field to add a filename and a button
+        hbox = QtWidgets.QHBoxLayout()
+        self.label = QtGui.QLabel(txt)
+        self.label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        hbox.addWidget(self.label)
+        self.line = QtGui.QLineEdit(content)
+        self.line.setMaximumHeight(22)
+        hbox.addWidget(self.line)
+        self.button = QtGui.QPushButton('Apply')
+        self.button.setToolTip('Assemble Data')
+        hbox.addWidget(self.button)
+        self.setLayout(hbox)
 
     @property
     def value(self):
+        """Return the text of the QLinEdit element."""
         return self.line.text()
 
     def clear(self, buttontxt='Apply', linetxt=None,
               tooltip='Assemble Data', buttonfunc=lambda: None):
+        """Change the content of buttons and QLineEdit elements."""
         self.line.setText(linetxt)
         self.button.setText(buttontxt)
         self.button.setToolTip(tooltip)
 
 
-class FixedWidthLineEditWidget(QtWidgets.QHBoxLayout):
-    """Add stuff to the nested widget"""
-
-    def __init__(self, width, txt, preset, parent=None):
-        super(FixedWidthLineEditWidget, self).__init__(parent)
-        self.label = QtGui.QLabel(txt)
-        self.label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.addWidget(self.label)
-        self.line = QtGui.QLineEdit(preset)
-        self.line.setMaximumHeight(22)
-        self.addWidget(self.line)
-        self.button = QtGui.QPushButton("Apply")
-        self.button.setToolTip('Assemble Data')
-        self.addWidget(self.button)
-
-
-class MyCircleOverlay(pg.EllipseROI):
-    """An Elliptic Region of interest"""
+class CircleROI(pg.EllipseROI):
+    """Define a Elliptic ROI with a fixed aspect ratio (aka circle)."""
 
     def __init__(self, pos, size, **args):
+        """Create a circular region of interest.
+
+        Parameters:
+           pos (int) : centre of the circle
+           size (int) : diameter of the circle
+           args : other arguments passed to pg.ROI
+        """
         pg.ROI.__init__(self, pos, size, **args)
         self.aspectLocked = True
 
 
-class MyRectOverlay(pg.RectROI):
-    """An Rectangular Region of interest"""
-
-    def __init__(self, pos, size, sideScalers=True, **args):
-        pg.ROI.__init__(self, pos, size, **args)
-        self.aspectLocked = False
-
-        self.addScaleHandle((-size/2, -size/2),
-                            pos, lockAspect=False)
-
-
-class MyCrosshairOverlay(pg.CrosshairROI):
-    """A cross-hair region of interest"""
-
-    def __init__(self, pos, size, **kargs):
-        self._shape = None
-        pg.ROI.__init__(self, pos, size, **kargs)
-        self.sigRegionChanged.connect(self.invalidate)
-        self.aspectLocked = True
-
-
-class Calibrate_Qt(object):
-    """Class that plots detector data to bee roughly arranged (PyQt-Version)"""
+class CalibrateQt:
+    """Qt-Version of the Calibration Class."""
 
     def __init__(self, raw_data, geofile=None, vmin=-1000, vmax=5000, **kwargs):
-        """Parameters:
-            raw_data (3d-array) : Data stored in panels, fs, ss (3d-array)
+        """Display detector data and arrange panels.
 
-            Keywords:
-             geofile (str/AGIPD_1MGeometry) :  The geometry file can either be
+        Parameters:
+            raw_data (3d-array)  : Data array, containing detector image
+                                   (nmodules, y, x)
+        Keywords:
+            geofile (str/AGIPD_1MGeometry)  : The geometry file can either be
                                                an AGIPD_1MGeometry object or
-                                               the filename to the geometry file
-                                                in CFEL fromat. If None is given
-                                                (default) the modules are
-                                                positioned with 29px gaps.
-             vmin (int) : minimal value in the data array (default: -1000)
+                                               the filename to the geometry
+                                               file in CFEL fromat
+            vmin (int) : minimal value in the data array (default: -1000)
                           anything below this value will be clipped
-             vmax (int) : maximum value in the data array (default: 5000)
+            vmax (int) : maximum value in the data array (default: 5000)
                           anything above this value will be clipped
         """
-        # Only one image should be passed
-        assert raw_data.shape == (16, 512, 128)
+        assert raw_data.shape == (
+            16, 512, 128)  # Only one image should be passed
         self.raw_data = np.clip(raw_data, vmin, vmax)
         self.geofile = geofile
 
@@ -179,12 +161,10 @@ class Calibrate_Qt(object):
         # Create new image view
         self.imv = pg.ImageView()
 
-        self.pen = QtGui.QPen(QtCore.Qt.red, 1)
         self.quad = 0  # The selected quadrants
-        self.fit_method = MyCircleOverlay  # The default fit-method to create the rings
+        self.selected_circle = CircleROI  #Default fit-method to create the rings
         # Circle Points by Quadrant
         self.circles = {}
-        self.fit_type = 'Circ.'
         self.bottom_buttons = {}
         self.bottom_select = None
         for action, keys in ((self._move_left, ('left', 'H')),
@@ -197,54 +177,46 @@ class Calibrate_Qt(object):
                 shortcut.activated.connect(action)
 
         # Add widgets to the layout in their proper positions
-        self.w = QtGui.QWidget()
+        self.window = QtGui.QWidget()
         self.layout = QtGui.QGridLayout()
 
         # circle/ellipse selection and input dialogs go to the top
-        self.sel1 = QtGui.QRadioButton('Circle Helper')
-        self.sel1.setChecked(True)
-        self.sel1.clicked.connect(lambda: self._set_method(self.sel1))
-        self.layout.addWidget(self.sel1, 0, 0, 1, 1)
-        self.sel2 = QtGui.QRadioButton('Ellipse Helper')
-        self.sel2.clicked.connect(lambda: self._set_method(self.sel2))
-        self.layout.addWidget(self.sel2, 0, 1, 1, 1)
-        self.sel3 = RadiusSetter(('', ''), self.bottom_select, None)
-        self.layout.addWidget(self.sel3, 0, 2, 1, 1)
-        self.sel4 = FixedWidthLineEdit(254, 'Geometry File:', geofile)
-        self.layout.addWidget(self.sel4, 0, 9, 1, 1)
+        self.radius_setter = RadiusSetter('', None)
+        self.layout.addWidget(self.radius_setter, 0, 2, 1, 1)
+        self.geom_selector = GeometrySelecter(254, 'Geometry File:', geofile)
+        self.layout.addWidget(self.geom_selector, 0, 9, 1, 1)
 
         # plot goes into the centre on right side, spanning 10 rows
         self.layout.addWidget(self.imv,  1, 0, 10, 10)
 
         # buttons go to the bottom
-        self.btn1 = self.sel4.button
-        self.btn1.clicked.connect(self._apply)
-        self.btn2 = QtGui.QPushButton('Clear Helpers')
-        self.btn2.setToolTip('Remove All Buttons')
-        self.btn2.clicked.connect(self._clear)
-        self.layout.addWidget(self.btn2, 11, 0, 1, 1)
-        self.btn3 = QtGui.QPushButton('Draw Helper Objects')
-        self.btn3.setToolTip('Add Circles to the Image')
-        self.btn3.clicked.connect(self._drawCircle)
-        self.layout.addWidget(self.btn3, 11, 1, 1, 1)
-        self.btn4 = QtGui.QPushButton('Cancel')
-        self.btn4.clicked.connect(self._destroy)
-        self.layout.addWidget(self.btn4, 11, 2, 1, 1)
+        self.geom_btn = self.geom_selector.button
+        self.geom_btn.clicked.connect(self._apply)
+        self.clear_btn = QtGui.QPushButton('Clear Helpers')
+        self.clear_btn.setToolTip('Remove All Buttons')
+        self.clear_btn.clicked.connect(self._clear)
+        self.layout.addWidget(self.clear_btn, 11, 0, 1, 1)
+        self.add_circ_btn = QtGui.QPushButton('Draw Helper Objects')
+        self.add_circ_btn.setToolTip('Add Circles to the Image')
+        self.add_circ_btn.clicked.connect(self._drawCircle)
+        self.layout.addWidget(self.add_circ_btn, 11, 1, 1, 1)
+        self.cancle_btn = QtGui.QPushButton('Cancel')
+        self.cancle_btn.clicked.connect(self._destroy)
+        self.layout.addWidget(self.cancle_btn, 11, 2, 1, 1)
         self.info = QtGui.QLabel(
             'Click on Quadrant to select; CTRL+arrow-keys to move')
         self.info.setToolTip('Click into the Image to select a Quadrant')
         self.layout.addWidget(self.info, 11, 3, 1, 8)
-
         pg.LabelItem(justify='right')
-        self.w.setLayout(self.layout)
+        self.window.setLayout(self.layout)
 
     def _apply(self):
-        """Read the geometry file and position all modules"""
+        """Read the geometry file and position all modules."""
         if self.quad == 0:
             log.info(' Starting to assemble ... ')
             try:
                 self.geom = AGIPD_1MGeometry.from_crystfel_geom(
-                    self.sel4.value)
+                    self.geom_slector.value)
             except:
                 # Fallback to evenly align quadrant positions
                 quad_pos = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
@@ -254,8 +226,9 @@ class Calibrate_Qt(object):
             data, self.centre = self.geom.position_all_modules(self.raw_data)
             self.canvas = np.full(np.array(data.shape) + 300, np.nan)
 
-            self.data, self.centre = self.geom.position_all_modules(self.raw_data,
-                                                                    canvas=self.canvas.shape)
+            self.data, self.centre =\
+            self.geom.position_all_modules(self.raw_data,
+                                           canvas=self.canvas.shape)
             # Display the data and assign each frame a time value from 1.0 to 3.0
             self.imv.setImage(self.data,
                               xvals=np.linspace(1., 3., self.canvas.shape[0]))
@@ -263,175 +236,137 @@ class Calibrate_Qt(object):
 
             # Set a custom color map
             # Get the colormap
-            cmap = pg.ColorMap(*zip(*Gradients["grey"]["ticks"]))
+            cmap = pg.ColorMap(*zip(*Gradients['grey']['ticks']))
             self.imv.setColorMap(cmap)
 
-            self.sel4.clear(buttontxt='Save', linetxt='sample.geom',
+            self.geom_selector.clear(buttontxt='Save', linetxt='sample.geom',
                             tooltip='Save Geometry File')
             self.quad = -1
         else:
             log.info(' Saving output to %s' % self.geofile)
-            if not self.sel4.line.text():
+            if not self.geom_selector.line.text():
                 self.geofile = 'sample.geom'
             else:
-                self.geofile = self.sel4.line.text()
+                self.geofile = self.geom_selector.line.text()
 
             try:
                 os.remove(self.geofile)
-            except:
+            except (FileNotFoundError, PermissionError):
                 pass
             self.data, self.centre = self.geom.position_all_modules(
                 self.raw_data)
             if self.geofile.split('.')[-1].lower() == 'geom':
                 self.geom.write_crystfel_geom(self.geofile)
             elif 'tif' in self.geofil.split('.')[-1]:
-                from PIL import Image
-
                 data = np.ma.masked_invalid(self.data)
                 im = Image.fromarray(
                     np.ma.masked_outside(data, self.vmin, self.vmax).filled(0))
-
                 im.save(self.geofile)
             QtCore.QCoreApplication.quit()
 
     def _move(self, d):
-        """Move the quadrant"""
+        """Move the quadrant."""
         quad = self.quad
-        if not quad > 0:
+        if  quad <= 0:
             return
         inc = 1
-        dd = dict(u=(-inc, 0), d=(inc, 0), r=(0, inc), l=(0, -inc))[d]
+        dd = {'u' : (-inc,    0),
+              'd' : ( inc,    0),
+              'r' : (   0,  inc),
+              'l' : (   0, -inc)}[d]
         self.geom.move_quad(quad, np.array(dd))
-        self.data, self.centre = self.geom.position_all_modules(self.raw_data,
-                                                                canvas=self.canvas.shape)
+        self.data, self.centre =\
+        self.geom.position_all_modules(self.raw_data,
+                                       canvas=self.canvas.shape)
         self._click(quad)
         self.imv.getImageItem().updateImage(self.data)
 
     def _drawCircle(self):
-        """add a fit object to the image"""
+        """Add a fit object to the image."""
         if self.quad == 0 or len(self.circles) > 9:
             return
         y, x = int(self.canvas.shape[0]//2), int(self.canvas.shape[1]//2)
-        pen = QtGui.QPen(QtCore.Qt.red, 0.002)
-        fit_helper = self.fit_method(pos=(x-x//2, y-x//2), size=x//1,
-                                     removable=True, movable=False, pen=pen)
-        fit_helper.handleSize = 5
-        # Add top and right Handles
-        fit_helper.addScaleHandle([0.5, 0], [0.5, 1])
-        fit_helper.addScaleHandle([0.5, 1], [0.5, 0])
+        fit_helper = CircleROI(pos=(x-x//2, y-x//2), size=x//1,
+                                     removable=True, movable=False)
+        # Add top and bottom Handles
+        self._remove_handles()
+        self._add_handles(fit_helper)
         self.imv.getView().addItem(fit_helper)
-        sel1 = QtGui.QRadioButton(self.fit_type)
-        sel1.setChecked(True)
+        circle_selection = QtGui.QRadioButton('Circ.')
+        circle_selection.setChecked(True)
+        self.radius_setter = RadiusSetter('Radius', fit_helper)
         num = len(self.circles)
-        [sel.setChecked(False) for sel in self.bottom_buttons.values()]
-        self.bottom_buttons[num] = sel1
-        self.circles[num] = (fit_helper, self.fit_method)
-        self.bottom_select = sel1
-        sel1.clicked.connect(lambda: self._set_bottom(sel1, num, fit_helper))
-        self._update_bottom(fit_helper)
-        self.layout.addWidget(sel1, 12, num, 1, 1)
+        for sel in self.bottom_buttons:
+            sel.setChecked(False)
+        self.bottom_buttons[num] = circle_selection
+        self.circles[num] = fit_helper
+        self.bottom_select = circle_selection
+        self.selected_circle = fit_helper
+        circle_selection.clicked.connect(lambda:
+                self._set_bottom(circle_selection, num))
+        self._update_spinbox()
+        self.layout.addWidget(circle_selection, 12, num, 1, 1)
         fit_helper.sigRegionChangeFinished.connect(
-            lambda: self.sel3.widgets.set_val(fit_helper))
-        # Set all previous circle colors to blue
-        for n, (rio, _) in self.circles.items():
-            if n != num:
-                rio.setPen(QtGui.QPen(QtCore.Qt.blue, 0.002))
+            lambda: self.radius_setter.set_value(fit_helper))
 
-    def _set_bottom(self, b, num, fit_helper):
-        """add a selection button for a fit object to the bottom region"""
-        self.sel3.widgets.fit_method = self.circles[num][0]
-        self.sel3.widgets.update(self.circles[num][0])
-        self.sel3.widgets.button = b
+    def _add_handles(self, roi):
+        """Add handles to a circle roi."""
+        roi.setPen(QtGui.QPen(QtCore.Qt.red, 0.002))
+        roi.handleSize = 5
+        roi.addScaleHandle([0.5, 0], [0.5, 1])
+        roi.addScaleHandle([0.5, 1], [0.5, 0])
+
+    def _remove_handles(self):
+        """Remove handles from all roi's."""
+        for n, roi in self.circles.items():
+            roi.setPen(QtGui.QPen(QtCore.Qt.gray, 0.002))
+            for handle in roi.getHandles():
+                roi.removeHandle(handle)
+
+    def _set_bottom(self, b, num):
+        """Add a selection button for a fit object to the bottom region."""
+        self._remove_handles()
+        self.selected_circle = self.circles[num]
+        self.radius_setter.roi = self.circles[num]
+        self._update_spinbox()
+        self.radius_setter.add_circle_prop()
+        self.radius_setter.button = b
         self.bottom_select.setChecked(False)
         self.bottom_select = b
-        [sel.setChecked(False) for sel in self.bottom_buttons.values()]
+        for sel in self.bottom_buttons.values():
+            sel.setChecked(False)
         b.setChecked(True)
         # Set all unselected circles to blue
-        for n, (rio, _) in self.circles.items():
-            if n != num:
-                rio.setPen(QtGui.QPen(QtCore.Qt.blue, 0.002))
-            else:
-                rio.setPen(QtGui.QPen(QtCore.Qt.red, 0.002))
-        self.fit_method = self.circles[num][-1]
-        self._update_bottom(fit_helper)
+        self._add_handles(self.circles[num])
 
-    def _del_bottom(self):
-        """del. selected fit method from the bottom region"""
-        if not len(self.circles):
-            return
-        btn_nums = list(self.bottom_buttons.keys())
-        for num in btn_nums:
-            if self.bottom_buttons[num].isChecked():
-                self.bottom_buttons[num].close()
-                break
-
-        nn = num - 1
-        self.bottom_buttons[num].close()
-        del self.bottom_buttons[num]
-        self.imv.getView().removeItem(self.circles[num][0])
-        del self.circles[num]
-        for btn in self.bottom_buttons.values():
-            self.layout.removeWidget(btn)
-            btn.close()
-            self.layout.update()
-        circles, bottom_buttons = {}, {}
-        for n, num in enumerate(self.circles.keys()):
-            circles[n] = self.circles[num]
-            sel1 = QtGui.QRadioButton(circles[n][1])
-            sel1.setChecked(False)
-            sel1.clicked.connect(lambda: self._set_bottom(sel1, n,
-                                                          self.circles[n][0]))
-            if n == nn:
-                sel1.setChecked(True)
-            self.layout.addWidget(sel1, 5, n, 1, 1)
-            bottom_buttons[n] = sel1
-        self.circles, self.bottom_buttons = circles, bottom_buttons
-
-    def _update_bottom(self, fit_helper):
-        """update the selection region of the fit objects at the bottom"""
-        self.fit_type = self.bottom_select.text()
-        labels = dict(c=('r:', ''), e=('a:', 'b:'), n=('', ''))[
-            self.fit_type.lower()[0]]
-        self.layout.removeWidget(self.sel3)
-        self.sel3.close()
-        self.sel3 = RadiusSetter(labels, self.bottom_select, fit_helper)
-        self.layout.addWidget(self.sel3, 0, 2, 1, 1)
+    def _update_spinbox(self):
+        """Update the selection region of the fit objects at the bottom."""
+        self.layout.removeWidget(self.radius_setter)
+        self.radius_setter.close()
+        self.radius_setter = RadiusSetter('Radius:', self.selected_circle)
+        self.layout.addWidget(self.radius_setter, 0, 2, 1, 1)
         self.layout.update()
 
-    def _set_method(self, b):
-        """update the helper and the referred widget"""
-        if b.text().lower().startswith("circle"):
-            if b.isChecked() == True:
-                self.fit_method = MyCircleOverlay
-                self.sel2.setChecked(False)
-                self.fit_type = 'Circ.'
-
-        if b.text().lower().startswith('ellipse'):
-            if b.isChecked() == True:
-                self.fit_method = pg.EllipseROI
-                self.sel1.setChecked(False)
-                self.fit_type = 'Ellip.'
-
-        self.sel2.setChecked(False)
-        self.sel1.setChecked(False)
-        b.setChecked(True)
-
     def _clear(self):
-        """delate all helper objects"""
-        for num in list(self.circles.keys()):
-            self.imv.getView().removeItem(self.circles[num][0])
-            del self.circles[num]
+        """Delate all helper objects."""
+        for num in self.circles.keys():
+            self.imv.getView().removeItem(self.circles[num])
             self.layout.removeWidget(self.bottom_buttons[num])
             self.bottom_buttons[num].close()
-            self.layout.update()
-            del self.bottom_buttons[num]
+        self.bottom_buttons = {}
+        self.circles = {}
+        self.layout.removeWidget(self.radius_setter)
+        self.radius_setter.close()
+        self.radius_setter = RadiusSetter('', None)
+        self.layout.addWidget(self.radius_setter, 0, 2, 1, 1)
+        self.layout.update()
 
     def _destroy(self):
-        """destroy the window and exit"""
+        """Destroy the window and exit."""
         QtCore.QCoreApplication.quit()
 
     def _get_quadrant(self, y, x):
-        """ Return the quadrant for a given set of coordinates"""
+        """Return the quadrant for a given set of coordinates."""
         y1, y2, y3 = 0, self.data.shape[-1]/2, self.data.shape[-1]
         x1, x2, x3 = 0, self.data.shape[-2]/2, self.data.shape[-2]
         self.bounding_boxes = {1: (x2, x3, y1, y2),
@@ -443,10 +378,9 @@ class Calibrate_Qt(object):
                 return quadrant
 
     def _click(self, event):
-        """Event for mouse-click into ImageRegion"""
+        """Event for mouse-click into ImageRegion."""
         if self.quad == 0:
             return
-
         try:
             event.accept()
             # Get postion of mouse-click and display it
@@ -463,19 +397,22 @@ class Calibrate_Qt(object):
             self.rect = None
             self.quad = -1
             return
-
         if quad != self.quad or delete:
             try:
                 self.imv.getView().removeItem(self.rect)
             except:
                 pass
             self.quad = quad
-            P, dx, dy = self.geom.get_quad_corners(quad,
-                                                   np.array(self.data.shape,
-                                                            dtype='i')//2)
+            P, dx, dy =\
+            self.geom.get_quad_corners(quad,
+                                       np.array(self.data.shape, dtype='i')//2)
             pen = QtGui.QPen(QtCore.Qt.red, 0.002)
-            self.rect = pg.RectROI(pos=P, size=(dx, dy), movable=False,
-                                   removable=False, pen=pen, invertible=False)
+            self.rect = pg.RectROI(pos=P,
+                                   size=(dx, dy),
+                                   movable=False,
+                                   removable=False,
+                                   pen=pen,
+                                   invertible=False)
             self.rect.handleSize = 0
             self.imv.getView().addItem(self.rect)
             [self.rect.removeHandle(handle)
@@ -495,70 +432,87 @@ class Calibrate_Qt(object):
 
 
 class CalibTab(widgets.VBox):
-    """Calibration-tab"""
+    """Calibration-tab of type ipython widget vbox."""
 
     def __init__(self, parent):
+        """Add tab to calibrate geometry to the main widget.
+
+        Parameters:
+           parent : CalibrateNb object
+        """
         self.parent = parent
         self.title = 'Calibration'
         self.counts = 0
 
-        self.sel = widgets.Dropdown(options=['None', '1', '2', '3', '4'],
-                                    value='None',
-                                    description='Quadrant',
-                                    disabled=False)
-        self.cir_btn = widgets.Button(description='Add circle',
-                                      disabled=False, button_style='', icon='',
+        self.selection = widgets.Dropdown(options=['None', '1', '2', '3', '4'],
+                                          value='None',
+                                          description='Quadrant',
+                                          disabled=False)
+        self.circ_btn = widgets.Button(description='Add circle',
+                                      disabled=False,
+                                      button_style='',
+                                      icon='',
                                       tooltip='Add Helper Circle',
-                                      layout=Layout(width='100px', height='30px'))
+                                      layout=Layout(width='100px',
+                                                    height='30px'))
         self.clr_btn = widgets.Button(description='Clear Circle',
                                       tooltip='Remove All Circles',
-                                      disabled=False, button_style='', icon='',
-                                      layout=Layout(width='100px', height='30px'))
+                                      disabled=False,
+                                      button_style='',
+                                      icon='',
+                                      layout=Layout(width='100px',
+                                                    height='30px'))
 
-        self.cir_btn.on_click(self._add_circle)
+        self.circ_btn.on_click(self._add_circle)
         self.clr_btn.on_click(self._clear_circles)
-        self.buttons = [self.sel]
+        self.buttons = [self.selection]
         self.circle = None
-        self.row1 = widgets.HBox([self.sel])
-        self.row2 = widgets.HBox([self.cir_btn, self.clr_btn])
-        super(widgets.VBox, self).__init__([self.row1, self.row2])
+        self.row1 = widgets.HBox([self.selection])
+        self.row2 = widgets.HBox([self.circ_btn, self.clr_btn])
+        super(CalibTab, self).__init__([self.row1, self.row2])
 
     def _clear_circles(self, *args):
-        """delete all circles from the image"""
+        """Delete all circles from the image."""
         for n, circle in self.parent.circles.items():
             circle.remove()
         self.parent.circles = {}
-        self.row2 = widgets.HBox([self.cir_btn, self.clr_btn])
+        self.row2 = widgets.HBox([self.circ_btn, self.clr_btn])
         self.children = [self.row1, self.row2]
 
     def _add_circle(self, *args):
-        """add a circel to the image"""
-        num = len(self.parent.circles.keys())
-        if num >= 10:
+        """Add a circel to the image."""
+        num = len(self.parent.circles)
+        if num >= 10: #Draw only 10 circles at max
             return
         r = 350
         for circ in self.parent.circles.values():
             circ.set_edgecolor('gray')
         self.parent._draw_circle(r, num)
         self.circle = num
-        self.cir_drn = widgets.Dropdown(options=list(self.parent.circles.keys()),
-                                        value=num, disabled=False,
+        self.circ_drn = widgets.Dropdown(options=list(self.parent.circles.keys()),
+                                        value=num,
+                                        disabled=False,
                                         description='Sel.:',
-                                        layout=Layout(width='150px', height='30px'))
+                                        layout=Layout(width='150px',
+                                                      height='30px'))
 
-        self.set_r = widgets.BoundedFloatText(value=350, min=0, max=10000,
-                                              step=1, disabled=False, description='Radius')
-        self.cir_drn.observe(self._sel_circle)
+        self.set_r = widgets.BoundedFloatText(value=350,
+                                              min=0,
+                                              max=10000,
+                                              step=1,
+                                              disabled=False,
+                                              description='Radius')
+        self.circ_drn.observe(self._sel_circle)
         self.set_r.observe(self._set_radius)
-        self.row2 = widgets.HBox([self.cir_btn, self.clr_btn,
-                                  self.cir_drn, self.set_r])
+        self.row2 = widgets.HBox([self.circ_btn, self.clr_btn,
+                                  self.circ_drn, self.set_r])
         self.children = [self.row1, self.row2]
 
-    def _set_radius(self, sel):
-        """Set the circle radius"""
-        if sel['new'] and sel['old']:
+    def _set_radius(self, selection):
+        """Set the circle radius."""
+        if selection['new'] and selection['old']:
             try:
-                r = int(sel['new'])
+                r = int(selection['new'])
             except TypeError:
                 return
         else:
@@ -566,29 +520,31 @@ class CalibTab(widgets.VBox):
         circle = self.parent.circles[self.circle]
         circle.set_radius(r)
 
-    def _sel_circle(self, sel):
-        """Select-helper circles"""
-        if not isinstance(sel['new'], int):
+    def _sel_circle(self, selection):
+        """Select-helper circles."""
+        if not isinstance(selection['new'], int):
             return
-        self.circle = int(sel['new'])
+        self.circle = int(selection['new'])
         r = int(self.parent.circles[self.circle].get_radius())
         for num, circ in self.parent.circles.items():
             if num != self.circle:
                 circ.set_edgecolor('gray')
             else:
                 circ.set_edgecolor('r')
-        self.set_r = widgets.BoundedFloatText(value=r, min=0, max=10000, step=1,
+        self.set_r = widgets.BoundedFloatText(value=r,
+                                              min=0,
+                                              max=10000,
+                                              step=1,
                                               disabled=False,
                                               continuous_update=True,
                                               description='Radius')
-        self.cir_drn.observe(self._sel_circle)
         self.set_r.observe(self._set_radius)
-        self.row2 = widgets.HBox([self.cir_btn, self.clr_btn,
-                                  self.cir_drn, self.set_r])
+        self.row2 = widgets.HBox([self.circ_btn, self.clr_btn,
+                                  self.circ_drn, self.set_r])
         self.children = [self.row1, self.row2]
 
     def _move_quadrants(self, pos):
-        """Shift a quadrant"""
+        """Shift a quadrant."""
         if pos['new'] and pos['old']:
             d = pos['owner'].description.lower()[0]
             if isinstance(pos['new'], dict):
@@ -616,18 +572,25 @@ class CalibTab(widgets.VBox):
         self.parent.update_plot(None)
 
     def _update_navi(self, pos):
-        """Add navigation buttons"""
-        posx_sel = widgets.BoundedIntText(value=0, min=-1000, max=1000, step=1,
-                                          disabled=False, continuous_update=True,
+        """Add navigation buttons."""
+        posx_sel = widgets.BoundedIntText(value=0,
+                                          min=-1000,
+                                          max=1000,
+                                          step=1,
+                                          disabled=False,
+                                          continuous_update=True,
                                           description='Horizontal')
-        posy_sel = widgets.BoundedIntText(value=0, min=-1000, max=1000, step=1,
-                                          disabled=False, continuous_update=True,
+        posy_sel = widgets.BoundedIntText(value=0,
+                                          min=-1000,
+                                          max=1000,
+                                          step=1,
+                                          disabled=False,
+                                          continuous_update=True,
                                           description='Vertical')
         posx_sel.observe(self._move_quadrants)
         posy_sel.observe(self._move_quadrants)
 
         if pos is None:
-            #self.children = (self.buttons[0],)
             self.buttons = [self.buttons[0]]
 
         elif len(self.buttons) == 1:
@@ -639,7 +602,7 @@ class CalibTab(widgets.VBox):
         self.children = [self.row1, self.row2]
 
     def _set_quad(self, prop):
-        """Select a quadrant"""
+        """Select a quadrant."""
         self.counts += 1
         if (self.counts % 5 != 1):
             return
@@ -658,33 +621,41 @@ class CalibTab(widgets.VBox):
         self.parent.quad = pos
 
 
-class Calibrate_Nb(object):
-    def __init__(self, raw_data, geom=None, vmin=-1000, vmax=5000,
-                 figsize=(8, 8), bg='w', **kwargs):
-        """Parameters:
-            raw_data (3d-array) : Data stored in panels, fs, ss (3d-array)
+class CalibrateNb:
+    """Ipython Widget version of the Calibration Class."""
 
-            Keywords:
-             geofile (str/AGIPD_1MGeometry) :  The geometry file can either be
+    def __init__(self, raw_data, geometry=None, vmin=-1000, vmax=5000, **kwargs):
+        """Display detector data and arrange panels.
+
+        Parameters:
+            raw_data (3d-array)  : Data array, containing detector image
+                                   (nmodules, y, x)
+        Keywords:
+            geometry (str/AGIPD_1MGeometry)  : The geometry file can either be
                                                an AGIPD_1MGeometry object or
-                                               the filename to the geometry file
-                                                in CFEL fromat. If None is given
-                                                (default) the modules are
-                                                positioned with 29px gaps.
-             vmin (int) : minimal value in the data array (default: -1000)
+                                               the filename to the geometry
+                                               file in CFEL fromat
+            vmin (int) : minimal value in the data array (default: -1000)
                           anything below this value will be clipped
-             vmax (int) : maximum value in the data array (default: 5000)
+            vmax (int) : maximum value in the data array (default: 5000)
                           anything above this value will be clipped
+            kwargs : additional keyword arguments that are parsed to matplotlib
         """
         self.raw_data = np.clip(raw_data, vmin, vmax)
         self.data = raw_data
         self.im = None
         self.vmin = vmin
         self.vmax = vmax
-        self.figsize = figsize
+        try:
+            self.figsize = kwargs['figsize']
+        except KeyError:
+            self.figsize = (8, 8)
         self.circles = {}
         self.quad = None
-        self.bg = bg
+        try:
+            self.bg = kwargs['bg']
+        except KeyError:
+            self.bg = 'w'
         self.cmap = cm.get_cmap('gist_earth')
         try:
             self.cmap.set_bad(bg)
@@ -692,17 +663,17 @@ class Calibrate_Nb(object):
             pass
         try:
             # Try to assemble the data (if geom is a AGIPD_Geometry class)
-            data, _ = geom.position_all_modules(self.raw_data)
-            self.geom = geom
+            data, _ = geometry.position_all_modules(self.raw_data)
+            self.geom = geometry
         except AttributeError:
             # That did not work, lets try reading geometry file
             try:
-                self.geom = AGIPD_1MGeometry.from_crystfel_geom(geom)
+                self.geom = AGIPD_1MGeometry.from_crystfel_geom(geometry)
             except:
                 # Fallback to evenly align quadrant positions
                 quad_pos = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
                 self.geom = AGIPD_1MGeometry.from_quad_positions(
-                    quad_pos=quad_pos)
+                        quad_pos=quad_pos)
 
         data, _ = self.geom.position_all_modules(self.raw_data)
         # Create a canvas
@@ -716,10 +687,11 @@ class Calibrate_Nb(object):
 
     @property
     def centre(self):
+        """Return the centre of the image (beam)."""
         return self.geom.position_all_modules(self.raw_data)[1]
 
     def _draw_circle(self, r, num):
-        """Draw circel of radius r and add it to the circle collection"""
+        """Draw circel of radius r and add it to the circle collection."""
         centre = self.geom.position_all_modules(self.raw_data,
                                                 canvas=self.canvas.shape)[1]
         self.circles[num] = plt.Circle(centre[::-1], r,
@@ -727,7 +699,7 @@ class Calibrate_Nb(object):
         self.ax.add_artist(self.circles[num])
 
     def _draw_rect(self, pos):
-        """Draw a rectangle around around a given quadrant"""
+        """Draw a rectangle around around a given quadrant."""
         pp = {0: None, 1: 2, 2: 1, 3: 4, 4: 3}[pos]
         try:
             # Remove the old one first if there is any
@@ -737,24 +709,29 @@ class Calibrate_Nb(object):
         if pp is None:
             # If none then no new rectangle should be drawn
             return
-        P, dx, dy = self.geom.get_quad_corners(pp,
-                                               np.array(self.data.shape, dtype='i')//2)
-        self.rect = patches.Rectangle(P, dx, dy, linewidth=1.5,
-                                      edgecolor='r', facecolor='none')
+        P, dx, dy =\
+        self.geom.get_quad_corners(pp, np.array(self.data.shape, dtype='i')//2)
+
+        self.rect = patches.Rectangle(P,
+                                      dx,
+                                      dy,
+                                      linewidth=1.5,
+                                      edgecolor='r',
+                                      facecolor='none')
         self.ax.add_patch(self.rect)
         self.update_plot(val=None)
 
     def _add_tabs(self):
-        """Add panel tabs"""
+        """Add panel tabs."""
         self.tabs = widgets.Tab()
         self.tabs.children = (CalibTab(self),)
         for i, tab in enumerate(self.tabs.children):
             self.tabs.set_title(i, tab.title)
 
-        self.tabs.children[0].sel.observe(self.tabs.children[0]._set_quad)
+        self.tabs.children[0].selection.observe(self.tabs.children[0]._set_quad)
 
     def _add_widgets(self):
-        """Add widgets to the layour"""
+        """Add widgets to the layour."""
         # Slider for the max, vmin view
         self.val_slider = widgets.FloatRangeSlider(
             value=[self.vmin, self.vmax],
@@ -783,7 +760,7 @@ class Calibrate_Nb(object):
         self._add_tabs()
 
     def _set_clim(self, val):
-        """Update the color limits"""
+        """Update the color limits."""
         try:
             self.im.set_clim(*val['new'])
             self.cbar.update_bruteforce(self.im)
@@ -793,7 +770,7 @@ class Calibrate_Nb(object):
             return
 
     def _set_cmap(self, val):
-        """Update the colormap"""
+        """Update the colormap."""
         try:
             cmap = cm.get_cmap(str(val['new']))
             cmap.set_bad(self.bg)
@@ -802,13 +779,13 @@ class Calibrate_Nb(object):
             return
 
     def update_plot(self, val=(100, 1500), cmap='gist_earth'):
-        """Update the plotted image"""
+        """Update the plotted image."""
         # Update the image first
-        self.data, centre = self.geom.position_all_modules(self.raw_data,
-                                                           canvas=self.canvas.shape)
+        self.data, centre =\
+        self.geom.position_all_modules(self.raw_data, canvas=self.canvas.shape)
         cy, cx = centre
-        if not self.im is None:
-            if not val is None:
+        if self.im is not None:
+            if val is not None:
                 self.im.set_clim(*val)
             else:
                 self.im.set_array(self.data)
@@ -818,7 +795,7 @@ class Calibrate_Nb(object):
             h2 = self.ax.vlines(cx, cy-20, cy+20, colors='r', linewidths=1)
             self.cent_cross = (h1, h2)
         else:
-            self.fig = plt.figure(figsize=self.figsize, num='HDFSee',
+            self.fig = plt.figure(figsize=self.figsize,
                                   clear=True, facecolor=self.bg)
             self.ax = self.fig.add_subplot(111)
             self.im = self.ax.imshow(
@@ -827,10 +804,18 @@ class Calibrate_Nb(object):
             h1 = self.ax.hlines(cy, cx-20, cx+20, colors='r', linewidths=1)
             h2 = self.ax.vlines(cx, cy-20, cy+20, colors='r', linewidths=1)
             self.cent_cross = (h1, h2)
-            self.fig.subplots_adjust(bottom=0, top=1, hspace=0, wspace=0,
-                                     right=1, left=0)
-            self.cbar = self.fig.colorbar(self.im, shrink=0.8, anchor=(0.01, 0),
-                                          pad=0.01, aspect=50)
+            self.fig.subplots_adjust(bottom=0,
+                                     top=1,
+                                     hspace=0,
+                                     wspace=0,
+                                     right=1,
+                                     left=0)
+
+            self.cbar = self.fig.colorbar(self.im,
+                                          shrink=0.8,
+                                          anchor=(0.01, 0),
+                                          pad=0.01,
+                                          aspect=50)
 
             cbar_ticks = np.linspace(val[0], val[1], 6)
             self.cbar.set_ticks(cbar_ticks)
@@ -839,6 +824,6 @@ class Calibrate_Nb(object):
 if __name__ == '__main__':
     import sys
     app = QtGui.QApplication(sys.argv)
-    Calib = Calibrate_Qt(np.load('data.npz')['data'])
+    Calib = CalibrateQt(np.load('data.npz')['data'])
     Calib.w.show()
     app.exec_()
