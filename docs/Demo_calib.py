@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+"""Script that demonstrates the usage of geoAssembler."""
 import os
 import sys
 
@@ -11,7 +11,7 @@ from geoAssembler import Calibrate
 
 
 def get_testdata():
-    """Method to get some test-data"""
+    """Method to get some test-data."""
     array = np.load(os.path.join(os.path.dirname(__file__),
                                  '../geoAssembler/tests/data.npz'))
     # Create some mock test data as it would be comming from karabo-data
@@ -21,6 +21,7 @@ def get_testdata():
 
 
 def help(argv=None):
+    """Define the help string."""
     ap = ArgumentParser(description="""
     This prgram demonstrates how to call the ring based geometry calibration.
 
