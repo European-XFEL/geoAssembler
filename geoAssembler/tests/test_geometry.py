@@ -3,6 +3,7 @@ import numpy as np
 from ..geometry import AGIPD_1MGeometry
 
 def test_snap_assemble_data():
+    """Tes the crude assembly with quadrant positions."""
     geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[
         (-525, 625),
         (-550, -10),
@@ -18,6 +19,7 @@ def test_snap_assemble_data():
     assert img[50, 50] == 0
 
 def test_write_read_crystfel_file(tmpdir):
+    """Try writing geometry to crysFEL files."""
     geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[
         (-525, 625),
         (-550, -10),
@@ -43,6 +45,7 @@ def test_write_read_crystfel_file(tmpdir):
                                geom.modules[0][0].fs_vec)
 
 def test_move_quad():
+    """Move the quadrant by left/right/up/down."""
     geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[
         (-525, 625),
         (-550, -10),
@@ -65,6 +68,7 @@ def test_move_quad():
     assert np.all(corners_before - corners_after == np.zeros(2, dtype='i'))
 
 def get_quad_corners():
+    """The the mothod returning the quadrant corners."""
     geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[
         (-525, 625),
         (-550, -10),
@@ -77,4 +81,3 @@ def get_quad_corners():
     assert corner == (23, 655)
     assert width == 530
     assert height == 603
-
