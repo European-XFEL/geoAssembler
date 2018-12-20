@@ -42,32 +42,30 @@ import os
 
 from PyQt5 import QtGui
 
-from .PanelView import Calibrate_Qt, Calibrate_Nb
+from .PanelView import CalibrateQt, CalibrateNb
 
 
 def Calibrate(*args, **kwargs):
     """Parameters:
-            raw_data (3d-array) : Data stored in panels, fs, ss (3d-array)
+            data (2d-array)  : File name of the geometry file, if none is given
+                               (default) the image will be assembled with 29 Px
+                               gaps between all modules.
 
             Keywords:
-             geofile (str/AGIPD_1MGeometry) :  The geometry file can either be
-                                               an AGIPD_1MGeometry object or
-                                               the filename to the geometry file
-                                                in CFEL fromat. If None is given
-                                                (default) the modules are
-                                                positioned with 29px gaps.
+             geom (str/AGIPD_1MGeometry) :  The geometry file can either be
+                                            an AGIPD_1MGeometry object or
+                                            the filename to the geometry file
+                                            in CFEL fromat
              vmin (int) : minimal value in the data array (default: -1000)
                           anything below this value will be clipped
              vmax (int) : maximum value in the data array (default: 5000)
                           anything above this value will be clipped
         """
-    if 'notebook' in os.environ['_'].lower() or 'jupyter' in os.environ['_'].lower():
-        return Calibrate_Nb(*args, **kwargs)
-    else:
-        app = QtGui.QApplication([])
-        Calib = Calibrate_Qt(*args, **kwargs)
-        Calib.w.show()
-        app.exec_()
-        app.closeAllWindows()
-        return Calib
+
+    app = QtGui.QApplication([])
+    Calib = CalibrateQt(*args, **kwargs)
+    Calib.window.show()
+    app.exec_()
+    app.closeAllWindows()
+    return Calib
 
