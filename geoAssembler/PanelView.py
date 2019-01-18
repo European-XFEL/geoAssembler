@@ -216,8 +216,8 @@ class CalibrateQt:
             log.info(' Starting to assemble ... ')
             try:
                 self.geom = AGIPD_1MGeometry.from_crystfel_geom(
-                    self.geom_slector.value)
-            except:
+                    self.geom_selector.value)
+            except TypeError:
                 # Fallback to evenly align quadrant positions
                 quad_pos = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
                 self.geom = AGIPD_1MGeometry.from_quad_positions(
@@ -227,8 +227,8 @@ class CalibrateQt:
             self.canvas = np.full(np.array(data.shape) + 300, np.nan)
 
             self.data, self.centre =\
-            self.geom.position_all_modules(self.raw_data,
-                                           canvas=self.canvas.shape)
+                self.geom.position_all_modules(self.raw_data,
+                                               canvas=self.canvas.shape)
             # Display the data and assign each frame a time value from 1.0 to 3.0
             self.imv.setImage(self.data,
                               xvals=np.linspace(1., 3., self.canvas.shape[0]))
@@ -276,8 +276,8 @@ class CalibrateQt:
               'l' : (   0, -inc)}[d]
         self.geom.move_quad(quad, np.array(dd))
         self.data, self.centre =\
-        self.geom.position_all_modules(self.raw_data,
-                                       canvas=self.canvas.shape)
+            self.geom.position_all_modules(self.raw_data,
+                                           canvas=self.canvas.shape)
         self._click(quad)
         self.imv.getImageItem().updateImage(self.data)
 
@@ -296,7 +296,7 @@ class CalibrateQt:
         circle_selection.setChecked(True)
         self.radius_setter = RadiusSetter('Radius', fit_helper)
         num = len(self.circles)
-        for sel in self.bottom_buttons:
+        for sel in self.bottom_buttons.values():
             sel.setChecked(False)
         self.bottom_buttons[num] = circle_selection
         self.circles[num] = fit_helper
@@ -389,9 +389,9 @@ class CalibrateQt:
             y = int(pos.y())
             delete = False
             quad = self._get_quadrant(x, y)
-        except:
+        except AttributeError:
             quad = event
-            delete = True
+            delete= True
         if quad is None:
             self.imv.getView().removeItem(self.rect)
             self.rect = None
@@ -400,7 +400,7 @@ class CalibrateQt:
         if quad != self.quad or delete:
             try:
                 self.imv.getView().removeItem(self.rect)
-            except:
+            except AttributeError:
                 pass
             self.quad = quad
             P, dx, dy =\
@@ -556,7 +556,7 @@ class CalibTab(widgets.VBox):
             else:
                 try:
                     po = int(pos['old'])
-                except:
+                except TypeError:
                     po = 0
         else:
             return
@@ -609,7 +609,7 @@ class CalibTab(widgets.VBox):
         pos = {0: None, 1: 2, 2: 1, 3: 4, 4: 3}[prop['new']['index']]
         try:
             self.parent.rect.remove()
-        except:
+        except (AttributeError, ValueError):
             pass
         if pos is None:
             self._update_navi(pos)
@@ -658,9 +658,9 @@ class CalibrateNb:
             self.bg = 'w'
         self.cmap = cm.get_cmap('gist_earth')
         try:
-            self.cmap.set_bad(bg)
-        except:
-            pass
+            self.cmap.set_bad(self.bg)
+        except (ValueError, KeyError):
+            self.bg = 'w'
         try:
             # Try to assemble the data (if geom is a AGIPD_Geometry class)
             data, _ = geometry.position_all_modules(self.raw_data)
@@ -669,7 +669,7 @@ class CalibrateNb:
             # That did not work, lets try reading geometry file
             try:
                 self.geom = AGIPD_1MGeometry.from_crystfel_geom(geometry)
-            except:
+            except TypeError:
                 # Fallback to evenly align quadrant positions
                 quad_pos = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
                 self.geom = AGIPD_1MGeometry.from_quad_positions(
@@ -704,7 +704,7 @@ class CalibrateNb:
         try:
             # Remove the old one first if there is any
             self.rect.remove()
-        except:
+        except (AttributeError, ValueError):
             pass
         if pp is None:
             # If none then no new rectangle should be drawn
@@ -766,7 +766,7 @@ class CalibrateNb:
             self.cbar.update_bruteforce(self.im)
             cbar_ticks = np.linspace(val['new'][0], val['new'][1], 6)
             self.cbar.set_ticks(cbar_ticks)
-        except:
+        except (AttributeError, ValueError, KeyError):
             return
 
     def _set_cmap(self, val):
@@ -775,7 +775,7 @@ class CalibrateNb:
             cmap = cm.get_cmap(str(val['new']))
             cmap.set_bad(self.bg)
             self.im.set_cmap(cmap)
-        except:
+        except (AttributeError, ValueError, KeyError):
             return
 
     def update_plot(self, val=(100, 1500), cmap='gist_earth'):
@@ -790,7 +790,8 @@ class CalibrateNb:
             else:
                 self.im.set_array(self.data)
             h1, h2 = self.cent_cross
-            h1.remove(), h2.remove()
+            h1.remove()
+            h2.remove()
             h1 = self.ax.hlines(cy, cx-20, cx+20, colors='r', linewidths=1)
             h2 = self.ax.vlines(cx, cy-20, cy+20, colors='r', linewidths=1)
             self.cent_cross = (h1, h2)
@@ -824,6 +825,6 @@ class CalibrateNb:
 if __name__ == '__main__':
     import sys
     app = QtGui.QApplication(sys.argv)
-    Calib = CalibrateQt(np.load('data.npz')['data'])
-    Calib.w.show()
+    calib = CalibrateQt(np.load('data.npz')['data'])
+    calib.w.show()
     app.exec_()
