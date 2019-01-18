@@ -36,11 +36,10 @@ Author: bergeman
 """
 
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
-import os
 
-from PyQt5 import QtGui
+from pyqtgraph import QtGui
 
 from .PanelView import CalibrateQt, CalibrateNb
 
@@ -63,9 +62,9 @@ def Calibrate(*args, **kwargs):
         """
 
     app = QtGui.QApplication([])
-    Calib = CalibrateQt(*args, **kwargs)
-    Calib.window.show()
+    calib = CalibrateQt(*args, **kwargs)
+    calib.window.show()
     app.exec_()
     app.closeAllWindows()
-    return Calib
+    return calib
 
