@@ -53,7 +53,7 @@ setup(name="geoAssembler",
               'testpath',
           ]
       },
-      python_requires='>=3',
+      python_requires='>=3.4',
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Environment :: Console',
