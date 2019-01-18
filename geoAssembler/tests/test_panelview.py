@@ -19,7 +19,8 @@ class TestQt_Gui(unittest.TestCase):
         quad_pos = [ (-540, 610), (-540, -15), (540, -143), (540, 482)]
         self.test_geo =  AGIPD_1MGeometry.from_quad_positions(quad_pos=quad_pos)
         data = np.zeros([16, 512, 128])
-        self.calib = CalibrateQt(data, geofile=None)
+        dirname = os.path.dirname(__file__)
+        self.calib = CalibrateQt(data, geofile=os.path.join(dirname, 'test.geom'))
 
     def test_defaults(self):
         """Test the Gui in its default state."""
@@ -45,7 +46,7 @@ class TestQt_Gui(unittest.TestCase):
         """Test changeing properties of the circles."""
         QTest.mouseClick(self.calib.geom_btn, QtCore.Qt.LeftButton)
         QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
-        self.assertEqual(self.calib.radius_setter.spin_box.value(), 690)
+        self.assertEqual(self.calib.radius_setter.spin_box.value(), 695)
         self.calib.radius_setter.spin_box.setValue(800)
         self.assertEqual(self.calib.selected_circle.size()[0], 800)
 
