@@ -106,17 +106,16 @@ class CalibrateNb:
 
     def _draw_rect(self, pos):
         """Draw a rectangle around around a given quadrant."""
-        pp = {0: None, 1: 2, 2: 1, 3: 4, 4: 3}[pos]
         try:
             # Remove the old one first if there is any
             self.rect.remove()
         except (AttributeError, ValueError):
             pass
-        if pp is None:
+        if pos is None:
             # If none then no new rectangle should be drawn
             return
         P, dx, dy =\
-        self.geom.get_quad_corners(pp, np.array(self.data.shape, dtype='i')//2)
+        self.geom.get_quad_corners(pos, np.array(self.data.shape, dtype='i')//2)
 
         self.rect = patches.Rectangle(P,
                                       dx,

@@ -158,7 +158,7 @@ class AGIPD_1MGeometry:
                                                           tile.fs_vec)
 
     def get_quad_corners(self, quad, centre):
-        pos = (quad - 1) * 4
+        pos = {1:0, 2:4, 3:12, 4:8}[quad] #Translate quad into mod pos
         X = []
         Y = []
         for i, module in enumerate(self.modules[pos:pos + 4]):
