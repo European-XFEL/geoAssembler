@@ -41,7 +41,8 @@ __version__ = "0.1.0"
 
 from pyqtgraph import QtGui
 
-from .PanelView import CalibrateQt, CalibrateNb
+from .nb_viewer import CalibrateNb
+from .qt_viewer import CalibrateQt
 
 
 def Calibrate(*args, **kwargs):
