@@ -8,7 +8,7 @@ to be refined or a completly new geometry. In this case the initial conditions
 for the geometry are defined so that all modules are 29px apart from each other.
 
 ## Dependencies
-The following python packages should be availabel:
+The following python packages should be available:
  - numpy
  - cfelpyutils
  - pyqtgraph
