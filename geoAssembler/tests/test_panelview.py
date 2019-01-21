@@ -7,7 +7,7 @@ from PyQt5.QtTest import QTest
 
 import unittest
 
-from ..PanelView import CalibrateQt
+from ..qt_viewer import CalibrateQt
 from ..geometry import AGIPD_1MGeometry
 
 app = QtGui.QApplication(sys.argv)
@@ -30,13 +30,13 @@ class TestQt_Gui(unittest.TestCase):
     def test_load_geo(self):
         """Test the correct loading fo geometry."""
         #Push the geometry load button
-        QTest.mouseClick(self.calib.geom_btn, QtCore.Qt.LeftButton)
+        QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
         self.assertEqual(type(self.test_geo), type(self.calib.geom))
 
     def test_circles(self):
         """Test adding circles."""
         #Draw image
-        QTest.mouseClick(self.calib.geom_btn, QtCore.Qt.LeftButton)
+        QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
         QTest.mouseClick(self.calib.clear_btn, QtCore.Qt.LeftButton)
         #Draw circle
         QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
@@ -44,7 +44,7 @@ class TestQt_Gui(unittest.TestCase):
 
     def test_circle_properties(self):
         """Test changeing properties of the circles."""
-        QTest.mouseClick(self.calib.geom_btn, QtCore.Qt.LeftButton)
+        QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
         QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
         self.assertEqual(self.calib.radius_setter.spin_box.value(), 695)
         self.calib.radius_setter.spin_box.setValue(800)
@@ -52,16 +52,16 @@ class TestQt_Gui(unittest.TestCase):
 
     def test_bottom_buttons(self):
         """Test the circle selection buttons on the bottom."""
-        QTest.mouseClick(self.calib.geom_btn, QtCore.Qt.LeftButton)
+        QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
         QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
         self.assertEqual(len(self.calib.bottom_buttons), 1)
         self.assertEqual(self.calib.bottom_buttons[0].text(), 'Circ.')
 
     def test_save_geo(self):
         """Test saving the geom file."""
-        QTest.mouseClick(self.calib.geom_btn, QtCore.Qt.LeftButton)
+        QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
         self.assertEqual(self.calib.geom_selector.line.text(), 'sample.geom')
         self.calib.geom_selector.clear(linetxt='sample_unit.geom')
-        QTest.mouseClick(self.calib.geom_btn, QtCore.Qt.LeftButton)
+        QTest.mouseClick(self.calib.save_geom_btn, QtCore.Qt.LeftButton)
         self.assertEqual(os.path.isfile('sample_unit.geom'), True)
         os.remove('sample_unit.geom')
