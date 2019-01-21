@@ -85,7 +85,7 @@ class CalibrateNb:
         # Create a canvas
         self.canvas = np.full(np.array(data.shape) + 300, np.nan)
         self._add_widgets()
-        self.update_plot(val=(vmin, vmax))
+        self.update_plot(plot_range=(vmin, vmax))
         self.rect = None
         self.sl = widgets.HBox([self.val_slider, self.cmap_sel])
         for wdg in (self.sl, self.tabs):
@@ -125,7 +125,7 @@ class CalibrateNb:
                                       edgecolor='r',
                                       facecolor='none')
         self.ax.add_patch(self.rect)
-        self.update_plot(val=None)
+        self.update_plot(plot_range=None)
 
     def _add_tabs(self):
         """Add panel tabs."""
@@ -173,20 +173,26 @@ class CalibrateNb:
     def _set_clim(self, plot_range):
         """Update the color limits."""
         try:
-            self.im.set_clim(*plot_range['new'])
-            self.cbar.update_bruteforce(self.im)
-            cbar_ticks = np.linspace(plot_range['new'][0], plot_range['new'][1], 6)
-            self.cbar.set_ticks(cbar_ticks)
-        except (AttributeError, ValueError, KeyError):
+            vmin, vmax= plot_range['new'][0], plot_range['new'][-1]
+        except KeyError:
             return
+        self.im.set_clim(vmin, vmax)
+        self.cbar.update_bruteforce(self.im)
+        cbar_ticks = np.linspace(vmin, vmax, 6)
+        self.cbar.set_ticks(cbar_ticks)
 
-    def _set_cmap(self, cmap_val):
+    def _set_cmap(self, sel):
         """Update the colormap."""
         try:
-            cmap = cm.get_cmap(str(cmap_val['new']))
+            cmap_val = str(sel['new'])
+        except KeyError:
+            return
+
+        try:
+            cmap = cm.get_cmap(cmap_val)
             cmap.set_bad(self.bg)
             self.im.set_cmap(cmap)
-        except (AttributeError, ValueError, KeyError):
+        except ValueError:
             return
 
     def update_plot(self, plot_range=(100, 1500), cmap='gist_earth'):
@@ -196,7 +202,7 @@ class CalibrateNb:
         self.geom.position_all_modules(self.raw_data, canvas=self.canvas.shape)
         cy, cx = centre
         if self.im is not None:
-            if val is not None:
+            if plot_range is not None:
                 self.im.set_clim(*plot_range)
             else:
                 self.im.set_array(self.data)
