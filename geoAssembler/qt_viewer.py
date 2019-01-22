@@ -283,7 +283,7 @@ class CalibrateQt:
         self.data, self.centre =\
             self.geom.position_all_modules(self.raw_data,
                                            canvas=self.canvas.shape)
-        self._click(quad)
+        self._draw_rect(quad)
         self.imv.getImageItem().updateImage(self.data)
 
     def _drawCircle(self):
@@ -376,11 +376,35 @@ class CalibrateQt:
         x1, x2, x3 = 0, self.data.shape[-2]/2, self.data.shape[-2]
         self.bounding_boxes = {1: (x2, x3, y1, y2),
                                2: (x1, x2, y1, y2),
-                               3: (x1, x2, y2, y3),
-                               4: (x2, x3, y2, y3)}
+                               3: (x2, x3, y2, y3),
+                               4: (x1, x2, y2, y3)}
         for quadrant, bbox in self.bounding_boxes.items():
             if bbox[0] <= x < bbox[1] and bbox[2] <= y < bbox[3]:
                 return quadrant
+
+    def _draw_rect(self, quad):
+        """Draw rectangle around quadrant"""
+        try:
+            self.imv.getView().removeItem(self.rect)
+        except AttributeError:
+            pass
+        self.quad = quad
+        P, dx, dy =\
+        self.geom.get_quad_corners(quad,
+                                   np.array(self.data.shape, dtype='i')//2)
+        pen = QtGui.QPen(QtCore.Qt.red, 0.002)
+        self.rect = pg.RectROI(pos=P,
+                               size=(dx, dy),
+                               movable=False,
+                               removable=False,
+                               pen=pen,
+                               invertible=False)
+        self.rect.handleSize = 0
+        self.imv.getView().addItem(self.rect)
+        [self.rect.removeHandle(handle)
+         for handle in self.rect.getHandles()]
+
+
 
     def _click(self, event):
         """Event for mouse-click into ImageRegion."""
@@ -391,33 +415,14 @@ class CalibrateQt:
         pos = event.pos()
         x = int(pos.x())
         y = int(pos.y())
-        delete = False
         quad = self._get_quadrant(x, y)
         if quad is None:
             self.imv.getView().removeItem(self.rect)
             self.rect = None
             self.quad = -1
             return
-        if quad != self.quad or delete:
-            try:
-                self.imv.getView().removeItem(self.rect)
-            except AttributeError:
-                pass
-            self.quad = quad
-            P, dx, dy =\
-            self.geom.get_quad_corners(quad,
-                                       np.array(self.data.shape, dtype='i')//2)
-            pen = QtGui.QPen(QtCore.Qt.red, 0.002)
-            self.rect = pg.RectROI(pos=P,
-                                   size=(dx, dy),
-                                   movable=False,
-                                   removable=False,
-                                   pen=pen,
-                                   invertible=False)
-            self.rect.handleSize = 0
-            self.imv.getView().addItem(self.rect)
-            [self.rect.removeHandle(handle)
-             for handle in self.rect.getHandles()]
+        if quad != self.quad:
+            self._draw_rect(quad)
 
     def _move_up(self):
         self._move('u')
