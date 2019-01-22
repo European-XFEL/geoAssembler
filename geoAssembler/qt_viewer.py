@@ -26,6 +26,7 @@ DIRECTION = {'u' : (-INC,    0),
              'r' : (   0,  INC),
              'l' : (   0, -INC)}
 
+CANVAS_MARGIN = 300 #pixel, used as margin on each side of detector quadrants
 
 class RadiusSetter(QtWidgets.QFrame):
     """Define a Hbox containing a Spinbox with a Label."""
@@ -187,7 +188,7 @@ class CalibrateQt:
         self.imv = pg.ImageView()
 
         self.quad = 0  # The selected quadrants
-        self.selected_circle = CircleROI  #Default fit-method to create the rings
+        self.selected_circle = None  #Default fit-method to create the rings
         # Circle Points by Quadrant
         self.circles = {}
         self.bottom_buttons = {}
@@ -256,7 +257,7 @@ class CalibrateQt:
                     quad_pos=FALLBACK_QUAD_POS)
 
         data, self.centre = self.geom.position_all_modules(self.raw_data)
-        self.canvas = np.full(np.array(data.shape) + 300, np.nan)
+        self.canvas = np.full(np.array(data.shape) + CANVAS_MARGIN, np.nan)
 
         self.data, self.centre =\
             self.geom.position_all_modules(self.raw_data,
