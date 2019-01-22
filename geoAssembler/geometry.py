@@ -147,7 +147,7 @@ class AGIPD_1MGeometry:
         return cls(modules, quad_pos)
 
     def move_quad(self, quad, inc):
-        pos = (quad - 1) * 4
+        pos = {1:0, 2:4, 3:12, 4:8}[quad] #Translate quad into mod pos
 
         for i, module in enumerate(self.modules[pos:pos + 4]):
             n = pos + i

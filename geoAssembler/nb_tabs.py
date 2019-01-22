@@ -165,7 +165,7 @@ class CalibTab(widgets.VBox):
             pos = np.array((sign, 0))
         self.parent.geom.move_quad(self.parent.quad, pos)
         self.parent._draw_rect(
-            {0: None, 1: 2, 2: 1, 3: 4, 4: 3}[self.parent.quad])
+                {0: None, 1: 2, 2: 1, 3: 4, 4: 3}[self.parent.quad])
         self.parent.update_plot(None)
 
     def _update_navi(self, pos):

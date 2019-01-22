@@ -115,7 +115,9 @@ class CalibrateNb:
             # If none then no new rectangle should be drawn
             return
         P, dx, dy =\
-        self.geom.get_quad_corners(pos, np.array(self.data.shape, dtype='i')//2)
+        self.geom.get_quad_corners(
+                {1: 2, 2: 1, 3: 4, 4: 3}[pos],
+                np.array(self.data.shape,dtype='i')//2)
 
         self.rect = patches.Rectangle(P,
                                       dx,
