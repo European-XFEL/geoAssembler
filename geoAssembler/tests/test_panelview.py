@@ -57,11 +57,11 @@ class TestQt_Gui(unittest.TestCase):
         self.assertEqual(len(self.calib.bottom_buttons), 1)
         self.assertEqual(self.calib.bottom_buttons[0].text(), 'Circ.')
 
-    def test_save_geo(self):
-        """Test saving the geom file."""
-        QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
-        self.assertEqual(self.calib.geom_selector.line.text(), 'sample.geom')
-        self.calib.geom_selector.clear(linetxt='sample_unit.geom')
-        QTest.mouseClick(self.calib.save_geom_btn, QtCore.Qt.LeftButton)
-        self.assertEqual(os.path.isfile('sample_unit.geom'), True)
-        os.remove('sample_unit.geom')
+   # def test_save_geo(self):
+   #     """Test saving the geom file."""
+   #     QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
+   #     self.assertEqual(self.calib.geom_selector.line.text(), 'sample.geom')
+   #     self.calib.geom_selector.clear(linetxt='sample_unit.geom')
+   #     QTest.mouseClick(self.calib.save_geom_btn, QtCore.Qt.LeftButton)
+   #     self.assertEqual(os.path.isfile('sample_unit.geom'), True)
+   #     os.remove('sample_unit.geom')
