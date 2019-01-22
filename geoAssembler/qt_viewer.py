@@ -103,7 +103,11 @@ class GeometryFileSelecter(QtWidgets.QFrame):
         self.line = QtGui.QLineEdit(content)
         self.line.setMaximumHeight(22)
         hbox.addWidget(self.line)
-        self.apply_btn = QtGui.QPushButton('Apply')
+
+        self.file_sel = QtGui.QPushButton("Load")
+        self.file_sel.clicked.connect(self._get_files)
+        hbox.addWidget(self.file_sel)
+        self.apply_btn = QtGui.QPushButton('Assemble')
         self.apply_btn.setToolTip('Assemble Data')
         self.save_btn = QtGui.QPushButton('Save')
         self.save_btn.setToolTip('Save geometry')
@@ -112,15 +116,25 @@ class GeometryFileSelecter(QtWidgets.QFrame):
         hbox.addWidget(self.save_btn)
         self.setLayout(hbox)
 
+    def _get_files(self):
+        """Open a dialog box to select a file"""
+        fname, _ = QtGui.QFileDialog.getOpenFileName(self,
+                                                     'Load geometry file',
+                                                     '.',
+                                                     'CFEL file format (*.geom)')
+        if fname:
+            self.line.setText(fname)
+        else:
+            self.line.setText(None)
+
+
     @property
     def value(self):
         """Return the text of the QLinEdit element."""
         return self.line.text()
 
-    def clear(self, linetxt=None):
+    def activate(self):
         """Change the content of buttons and QLineEdit elements."""
-        self.line.setText(linetxt)
-        self.apply_btn.setEnabled(False)
         self.save_btn.setEnabled(True)
 
 
@@ -255,24 +269,25 @@ class CalibrateQt:
         # Set a custom color map
         self.imv.setColorMap(pg.ColorMap(*zip(*Gradients['grey']['ticks'])))
 
-        self.geom_selector.clear(linetxt='sample.geom')
+        self.geom_selector.activate()
         self.quad = -1
     def _save_geom(self):
         """ Save the adapted geometry to a file in cfel output format"""
-        log.info(' Saving output to {}'.format(self.geofile))
-        if not self.geom_selector.line.text():
-            self.geofile = 'sample.geom'
-        else:
-            self.geofile = self.geom_selector.line.text()
-
-        try:
-            os.remove(self.geofile)
-        except (FileNotFoundError, PermissionError):
-            pass
-        self.data, self.centre = self.geom.position_all_modules(
-            self.raw_data)
-        self.geom.write_crystfel_geom(self.geofile)
-        QtCore.QCoreApplication.quit()
+        
+        fname, _ = QtGui.QFileDialog.getSaveFileName(self.geom_selector,
+                                                     'Save geometry file',
+                                                     'geo_assembled.geom',
+                                                     'CFEL file format (*.geom)')
+        if fname:
+            log.info(' Saving output to {}'.format(self.geofile))
+            try:
+                os.remove(fname)
+            except (FileNotFoundError, PermissionError):
+                pass
+            self.data, self.centre = self.geom.position_all_modules(
+                self.raw_data)
+            self.geom.write_crystfel_geom(fname)
+            QtCore.QCoreApplication.quit()
 
     def _move(self, d):
         """Move the quadrant."""
