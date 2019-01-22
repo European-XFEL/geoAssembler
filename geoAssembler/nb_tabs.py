@@ -66,6 +66,7 @@ class CalibTab(widgets.VBox):
         self.circle = None
         self.row1 = widgets.HBox([self.selection])
         self.row2 = widgets.HBox([self.circ_btn, self.clr_btn])
+        self.selection.observe(self._set_quad)
         super(CalibTab, self).__init__([self.row1, self.row2])
 
     def _clear_circles(self, *args):

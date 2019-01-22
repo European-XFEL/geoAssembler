@@ -133,8 +133,6 @@ class CalibrateNb:
         for i, tab in enumerate(self.tabs.children):
             self.tabs.set_title(i, tab.title)
 
-        self.tabs.children[0].selection.observe(self.tabs.children[0]._set_quad)
-
     def _add_widgets(self):
         """Add widgets to the layour."""
         # Slider for the max, vmin view
