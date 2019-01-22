@@ -32,12 +32,14 @@ DIRECTION = {'u' : (-INC,    0),
              'r' : (   0,  INC),
              'l' : (   0, -INC)}
 
+CANVAS_MARGIN = 300 #pixel, used as margin on each side of detector quadrants
 
 
 class CalibrateNb:
     """Ipython Widget version of the Calibration Class."""
 
-    def __init__(self, raw_data, geometry=None, vmin=-1000, vmax=5000, **kwargs):
+    def __init__(self, raw_data, geometry=None, vmin=None, vmax=None,
+                 figsize=None, bg=None, **kwargs):
         """Display detector data and arrange panels.
 
         Parameters:
@@ -54,13 +56,13 @@ class CalibrateNb:
                           anything above this value will be clipped
             kwargs : additional keyword arguments that are parsed to matplotlib
         """
-        self.raw_data = np.clip(raw_data, vmin, vmax)
         self.data = raw_data
         self.im = None
-        self.vmin = vmin
-        self.vmax = vmax
-        self.figsize = kwargs.get('figsize', (8, 8))
-        self.bg = kwargs.get('bg', 'w')
+        self.vmin = vmin or -1000
+        self.vmax = vmax or 5000
+        self.raw_data = np.clip(raw_data, self.vmin, self.vmax)
+        self.figsize = figsize or (8, 8)
+        self.bg = bg or 'w'
         self.circles = {}
         self.quad = None
         self.cmap = cm.get_cmap('gist_earth')
@@ -68,24 +70,20 @@ class CalibrateNb:
             self.cmap.set_bad(self.bg)
         except (ValueError, KeyError):
             self.bg = 'w'
-        try:
-            # Try to assemble the data (if geom is a AGIPD_Geometry class)
-            data, _ = geometry.position_all_modules(self.raw_data)
+        
+        # Try to assemble the data (if geom is a AGIPD_Geometry class)
+        if geometry is None:
+            self.geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=FALLBACK_QUAD_POS)
+        elif isinstance(geometry, str):
+            self.geom = AGIPD_1MGeometry.from_crystfel_geom(geometry)
+        else:
             self.geom = geometry
-        except AttributeError:
-            # That did not work, lets try reading geometry file
-            try:
-                self.geom = AGIPD_1MGeometry.from_crystfel_geom(geometry)
-            except TypeError:
-                # Fallback to evenly align quadrant positions
-                self.geom = AGIPD_1MGeometry.from_quad_positions(
-                        quad_pos=FALLBACK_QUAD_POS)
 
         data, _ = self.geom.position_all_modules(self.raw_data)
         # Create a canvas
-        self.canvas = np.full(np.array(data.shape) + 300, np.nan)
+        self.canvas = np.full(np.array(data.shape) + CANVAS_MARGIN, np.nan)
         self._add_widgets()
-        self.update_plot(plot_range=(vmin, vmax))
+        self.update_plot(plot_range=(self.vmin, self.vmax), **kwargs)
         self.rect = None
         self.sl = widgets.HBox([self.val_slider, self.cmap_sel])
         for wdg in (self.sl, self.tabs):
@@ -196,7 +194,7 @@ class CalibrateNb:
         except ValueError:
             return
 
-    def update_plot(self, plot_range=(100, 1500), cmap='gist_earth'):
+    def update_plot(self, plot_range=(100, 1500), cmap='gist_earth', **kwargs):
         """Update the plotted image."""
         # Update the image first
         self.data, centre =\
@@ -218,7 +216,8 @@ class CalibrateNb:
                                   clear=True, facecolor=self.bg)
             self.ax = self.fig.add_subplot(111)
             self.im = self.ax.imshow(
-                self.data, vmin=plot_range[0], vmax=plot_range[-1], cmap=self.cmap)
+                self.data, vmin=plot_range[0], vmax=plot_range[-1],
+                cmap=self.cmap, **kwargs)
             self.ax.set_xticks([]), self.ax.set_yticks([])
             h1 = self.ax.hlines(cy, cx-20, cx+20, colors='r', linewidths=1)
             h2 = self.ax.vlines(cx, cy-20, cy+20, colors='r', linewidths=1)
