@@ -60,7 +60,7 @@ photon_energy = 10235"""
     # Read a starting geometry, if no geometry is present the starting
     # starting geometry can be set to None
 
-    start_geom = 'testing.geom'
+    start_geom = None # , 'testing.geom'
     C = Calibrate(data, start_geom, vmin=-1000, vmax=5000, header=header)
 
     # The centre coordinates might be of interest (i.e azimuthal integration)
