@@ -2,9 +2,11 @@
     for powder ring based calibration."""
 
 
-import os
 import logging
+import os
+import re
 
+import karabo_data as kd
 import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
@@ -59,7 +61,7 @@ class RadiusSetter(QtWidgets.QFrame):
         """Add properties for a new circle."""
         size = int(self.roi.size()[0])
         self.spin_box = QtGui.QSpinBox()
-        self.spin_box.setMinimum(0)
+        self.spin_box.setMinimum(0.001)
         self.spin_box.setMaximum(10000)
         self.spin_box.setValue(size)
         self.spin_box.valueChanged.connect(self._update_circle_prop)
@@ -67,7 +69,7 @@ class RadiusSetter(QtWidgets.QFrame):
     def _update_circle_prop(self):
         """Update the size and centre of circ. form button-click."""
         # Circles have only radii and
-        size = self.spin_box.value()
+        size = max(self.spin_box.value(), 0.0001)
         pos = self.roi.pos()
         centre = (pos[0] + self.roi.size()[0]//2,
                   pos[1] + self.roi.size()[1]//2)
@@ -79,6 +81,148 @@ class RadiusSetter(QtWidgets.QFrame):
     def set_value(self, roi):
         """Update spin_box if ROI is changed by hand."""
         self.spin_box.setValue(int(roi.size()[0]))
+
+
+class RunDirSelecter(QtWidgets.QFrame):
+    """A widget that defines run-directory, trainId and pulse selection"""
+
+    def __init__(self, run_dir):
+        """Create a btn for run-dir select and 2 spin boxes for train, puls
+
+        Parameters:
+            run_dir (str) : The default run directory
+        """
+
+        super(RunDirSelecter, self).__init__()
+        self._rundir = run_dir
+        self.rundir = None
+        self.tid = None
+        self._img = None
+
+        #Creat an hbox with a title, a field to add a filename and a button
+        hbox = QtWidgets.QHBoxLayout()
+
+        self.run_sel = QtGui.QPushButton("Run-dir")
+        self.run_sel.setToolTip('Select a Run directory')
+        self.run_sel.clicked.connect(self._get_run)
+        hbox.addWidget(self.run_sel)
+
+        self.line = QtGui.QLineEdit(run_dir)
+        self.line.setMaximumHeight(22)
+        hbox.addWidget(self.line)
+
+        hbox.addWidget(QtGui.QLabel('TrainId:'))
+        self.tid_sel = QtGui.QSpinBox()
+        self.tid_sel.setToolTip('Select TrainId')
+        self.tid_sel.setValue(0)
+        self.tid_sel.valueChanged.connect(self._update)
+        self.tid_sel.setEnabled(False)
+        hbox.addWidget(self.tid_sel)
+
+        hbox.addWidget(QtGui.QLabel('Pulse#:'))
+        self.pulse_sel = QtGui.QSpinBox()
+        self.pulse_sel.setToolTip('Select TrainId')
+        self.pulse_sel.setValue(0)
+        self.pulse_sel.setMinimum(0)
+        self.pulse_sel.setEnabled(False)
+        hbox.addWidget(self.pulse_sel)
+
+        pulse = QtGui.QRadioButton('Sel. #')
+        pulse.setChecked(False)
+        pulse.setEnabled(False)
+        pulse.clicked.connect(lambda:self._set_sel_method(0))
+        hbox.addWidget(pulse)
+
+        max_fun = QtGui.QRadioButton('Max.')
+        max_fun.setChecked(False)
+        max_fun.setEnabled(False)
+        max_fun.clicked.connect(lambda:self._set_sel_method(1))
+        hbox.addWidget(max_fun)
+
+        mean_fun = QtGui.QRadioButton('Mean.')
+        mean_fun.setChecked(False)
+        mean_fun.setEnabled(False)
+        mean_fun.clicked.connect(lambda:self._set_sel_method(2))
+        hbox.addWidget(mean_fun)
+
+        self.setLayout(hbox)
+        self._sel = (pulse, max_fun, mean_fun)
+        #If a run directory was already given read it
+        if run_dir:
+            self._get_run(rundir=run_dir)
+        #Apply no selection method (max, mean) to select pulses by default
+        self._sel_method = None
+        self._read_train = True
+
+
+    def activate_spin_boxes(self, tid_range):
+        """Set min/max sizes of the spinbox according to trainId's and img's"""
+
+        self.tid_sel.setMinimum(tid_range[0])
+        self.tid_sel.setMaximum(tid_range[-1])
+        self.tid_sel.setValue(tid_range[0])
+        self.tid_sel.setEnabled(True)
+        self.pulse_sel.setEnabled(True)
+        for sel in self._sel:
+            sel.setEnabled(True)
+        self._sel[0].setChecked(True)
+        self._update()
+
+    def _set_sel_method(self, btn_num):
+        """Set the pulse selection method (pulse #, mean, max)"""
+
+        for sel in self._sel:
+            sel.setChecked(False)
+        self._sel[btn_num].setChecked(True)
+        if btn_num == 0:
+            self.pulse_sel.setEnabled(True)
+        else:
+            self.pulse_sel.setEnabled(False)
+        #Get the pulse selection method
+        self._sel_method = {0:None, 1:np.nanmax, 2:np.nanmean}[btn_num]
+
+    def _update(self):
+        """Update train_id and img"""
+
+        self.tid = self.tid_sel.value()
+        det_info = self.rundir.detector_info(tuple(self.rundir.detector_sources)[0])
+        self.pulse_sel.setMaximum(det_info['frames_per_train'])
+        self._read_train = True
+
+    def _get_run(self, rundir=None):
+        """Get a run directory"""
+        if not rundir:
+            rundir = QtGui.QFileDialog.getExistingDirectory(self,
+                                                        'Select run directory')
+
+        if not rundir:
+            return
+        #This is for testing and should become /gpfs/exfel/exp/bla
+        m = re.match('/home/bergeman/gpfs/exfel/exp/(?P<expt>[^/]+)/(?P<cycle>[^/]+)/(?P<prop>[^/]+)/proc/(?P<run>[^/]+)/?$',
+                 rundir)
+        if not m:
+            raise ValueError("Expected a path like /gpfs/exfel/exp/(exp)/(cycle)/(proposal)/proc/(run)")
+        self.line.setText(rundir)
+        log.info('Opening run directory {}'.format(self._rundir))
+        self.rundir = kd.RunDirectory(rundir)
+        self.activate_spin_boxes((self.rundir.train_ids[0],
+                                self.rundir.train_ids[-1]))
+
+
+    def get(self):
+        """Get the image of selected train"""
+        if self._read_train:
+            log.info('Reading train #: {}'.format(self.tid))
+            _, data = self.rundir.train_from_id(self.tid)
+            self._img = kd.stack_detector_data(data, 'image.data', only='DET')
+            self._read_train = False
+
+        if self._sel_method is None:
+            #Read the selected train number
+            pulse_num = self.pulse_sel.value()
+            return self._img[pulse_num]
+        else:
+            return self._sel_method(self._img, axis=0)
 
 
 class GeometryFileSelecter(QtWidgets.QFrame):
@@ -157,26 +301,22 @@ class CircleROI(pg.EllipseROI):
 class CalibrateQt:
     """Qt-Version of the Calibration Class."""
 
-    def __init__(self, raw_data, geofile=None, vmin=-1000, vmax=5000, **kwargs):
+    def __init__(self, run_dir=None, geofile=None, levels=None, header=None):
         """Display detector data and arrange panels.
 
-        Parameters:
-            raw_data (3d-array)  : Data array, containing detector image
-                                   (nmodules, y, x)
         Keywords:
+            run_dir (str-object)  : Directory that contains the run data
             geofile (str/AGIPD_1MGeometry)  : The geometry file can either be
                                                an AGIPD_1MGeometry object or
                                                the filename to the geometry
                                                file in CFEL fromat
-            vmin (int) : minimal value in the data array (default: -1000)
-                          anything below this value will be clipped
-            vmax (int) : maximum value in the data array (default: 5000)
-                          anything above this value will be clipped
+            levels (tuple) : min/max values to be displayed (default: -1000)
+            header (str)  : header for the geometry file
         """
-        assert raw_data.shape == (16, 512, 128)  # Only one image should be
-                                                 #  passed
-        self.raw_data = np.clip(raw_data, vmin, vmax)
         self.geofile = geofile
+        self.levels = levels
+        self.raw_data = None
+        self.header = header or ''
 
         # Interpret image data as row-major instead of col-major
         pg.setConfigOptions(imageAxisOrder='row-major')
@@ -209,7 +349,7 @@ class CalibrateQt:
         # circle/ellipse selection and input dialogs go to the top
         self.radius_setter = RadiusSetter('', None)
         self.layout.addWidget(self.radius_setter, 0, 2, 1, 1)
-        self.geom_selector = GeometryFileSelecter(254, 'Geometry File:', geofile)
+        self.geom_selector = GeometryFileSelecter(154, 'Geometry File:', geofile)
         self.layout.addWidget(self.geom_selector, 0, 9, 1, 1)
 
         # plot goes into the centre on right side, spanning 10 rows
@@ -217,7 +357,7 @@ class CalibrateQt:
 
         #These buttons are on the top
         self.load_geom_btn = self.geom_selector.apply_btn
-        self.load_geom_btn.clicked.connect(self._load_geom)
+        self.load_geom_btn.clicked.connect(self._apply)
         self.save_geom_btn = self.geom_selector.save_btn
         self.save_geom_btn.clicked.connect(self._save_geom)
         # buttons go to the bottom
@@ -232,16 +372,24 @@ class CalibrateQt:
         self.cancel_btn = QtGui.QPushButton('Cancel')
         self.cancel_btn.clicked.connect(self._destroy)
         self.layout.addWidget(self.cancel_btn, 11, 2, 1, 1)
+        self.run_selector = RunDirSelecter(run_dir)
+        self.layout.addWidget(self.run_selector, 11, 3, 1, 8)
         self.info = QtGui.QLabel(
             'Click on Quadrant to select; CTRL+arrow-keys to move')
         self.info.setToolTip('Click into the Image to select a Quadrant')
-        self.layout.addWidget(self.info, 11, 3, 1, 8)
+        #self.layout.addWidget(self.info, 1, 4, 1, 8)
         pg.LabelItem(justify='right')
         self.window.setLayout(self.layout)
 
-    def _load_geom(self):
+        self.isDisplayed = False
+
+
+    def _apply(self):
         """Read the geometry file and position all modules."""
+        if self.run_selector.rundir is None:
+            return
         log.info(' Starting to assemble ... ')
+
         if len(self.geom_selector.value):
             try:
                 self.geom = AGIPD_1MGeometry.from_crystfel_geom(
@@ -256,6 +404,7 @@ class CalibrateQt:
             self.geom = AGIPD_1MGeometry.from_quad_positions(
                     quad_pos=FALLBACK_QUAD_POS)
 
+        self.raw_data = self.run_selector.get()
         data, self.centre = self.geom.position_all_modules(self.raw_data)
         self.canvas = np.full(np.array(data.shape) + CANVAS_MARGIN, np.nan)
 
@@ -263,18 +412,34 @@ class CalibrateQt:
             self.geom.position_all_modules(self.raw_data,
                                            canvas=self.canvas.shape)
         # Display the data and assign each frame a time value from 1.0 to 3.0
-        self.imv.setImage(self.data,
-                          xvals=np.linspace(1., 3., self.canvas.shape[0]))
-        self.imv.getImageItem().mouseClickEvent = self._click
+        if not self.isDisplayed:
+            if self.levels:
+                self.imv.setImage(np.clip(self.data, *self.levels),
+                        levels=self.levels,
+                        xvals=np.linspace(1., 3., self.canvas.shape[0]))
+            else:
+                self.imv.setImage(self.data,
+                        levels=self.levels,
+                        xvals=np.linspace(1., 3., self.canvas.shape[0]))
+            self.isDisplayed = True
 
+        else:
+            imageItem = self.imv.getImageItem()
+            self.levels = tuple(imageItem.levels)
+            self.imv.setImage(np.clip(self.data, *self.levels),
+                    levels=self.levels,
+                    xvals=np.linspace(1., 3., self.canvas.shape[0]))
+
+        self.imv.getImageItem().mouseClickEvent = self._click
         # Set a custom color map
         self.imv.setColorMap(pg.ColorMap(*zip(*Gradients['grey']['ticks'])))
-
         self.geom_selector.activate()
+        imageItem = self.imv.getImageItem()
+        self.levels = tuple(imageItem.levels)
         self.quad = -1
     def _save_geom(self):
         """ Save the adapted geometry to a file in cfel output format"""
-        
+
         fname, _ = QtGui.QFileDialog.getSaveFileName(self.geom_selector,
                                                      'Save geometry file',
                                                      'geo_assembled.geom',
@@ -286,8 +451,8 @@ class CalibrateQt:
             except (FileNotFoundError, PermissionError):
                 pass
             self.data, self.centre = self.geom.position_all_modules(
-                self.raw_data)
-            self.geom.write_crystfel_geom(fname)
+                    self.raw_data)
+            self.geom.write_crystfel_geom(fname, header=self.header)
             QtCore.QCoreApplication.quit()
 
     def _move(self, d):
