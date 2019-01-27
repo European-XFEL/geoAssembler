@@ -2,6 +2,7 @@ __pycache__
 *.pyc
 .ipynb_checkpoints
 *.png
+!docs/.screenshot.png
 *cache
 *.csv
 *.geom
