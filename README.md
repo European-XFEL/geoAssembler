@@ -16,7 +16,7 @@ It is recommended that to use the Gui through the its installed path on the
 on/ and offline cluster. 
 
 ```bash
- /gpfs/exfel/sw/software/geoAssembler/AssemblerGui
+ /gpfs/exfel/sw/software/geoAssembler/geoAssemblerGui
 ```
 The following optional arguments can be set via the command line:
 
