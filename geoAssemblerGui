@@ -1,4 +1,4 @@
-#!/home/unimelb.edu.au/mbergemann/.anaconda3/bin/python
+#!/software/anaconda3/5.2/bin/python
 # EASY-INSTALL-ENTRY-SCRIPT: 'geoAssembler==0.1.0','gui_scripts','geoAssemblerGui'
 __requires__ = 'geoAssembler==0.1.0'
 import re
