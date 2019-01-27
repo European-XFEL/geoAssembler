@@ -6,5 +6,7 @@ __pycache__
 *cache
 *.csv
 *.geom
+build/
+dist/
 !geoAssembler/tests/test.geom
 geoAssembler.egg-info/
