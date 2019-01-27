@@ -37,7 +37,7 @@ setup(name="geoAssembler",
       packages=find_packages(),
       entry_points={
           'gui_scripts':[
-              'geoAssembler = geoAssembler.__main__:main'
+              'geoAssemblerGui = geoAssembler.__main__:main'
               ]},
       install_requires=[
           'cfelpyutils',
