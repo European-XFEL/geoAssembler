@@ -40,6 +40,7 @@ setup(name="geoAssembler",
           'matplotlib',
           'numpy',
           'pyqtgraph',
+          'ipywidgets',
           'PyQt5'
       ],
       extras_require={
