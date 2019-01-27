@@ -259,7 +259,18 @@ class GeometryFileSelecter(QtWidgets.QFrame):
         self.save_btn.setEnabled(False)
         hbox.addWidget(self.apply_btn)
         hbox.addWidget(self.save_btn)
+        #self.setLayout(hbox)
+
+        vlayout = QtWidgets.QVBoxLayout(self)
         self.setLayout(hbox)
+        vlayout.addLayout(hbox)
+        info = QtGui.QLabel(
+                'Click on Quadrant to select; '
+                'CTRL+arrow-keys to move them; '
+                'Click "Assemble" to apply set changes')
+        info.setToolTip('Click into the Image to select a Quadrant')
+        vlayout.addWidget(info)
+
 
     def _get_files(self):
         """Open a dialog box to select a file"""
