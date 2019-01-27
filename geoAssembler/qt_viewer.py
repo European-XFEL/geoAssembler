@@ -197,8 +197,7 @@ class RunDirSelecter(QtWidgets.QFrame):
 
         if not rundir:
             return
-        #This is for testing and should become /gpfs/exfel/exp/bla
-        m = re.match('/home/bergeman/gpfs/exfel/exp/(?P<expt>[^/]+)/(?P<cycle>[^/]+)/(?P<prop>[^/]+)/proc/(?P<run>[^/]+)/?$',
+        m = re.match('/gpfs/exfel/exp/(?P<expt>[^/]+)/(?P<cycle>[^/]+)/(?P<prop>[^/]+)/proc/(?P<run>[^/]+)/?$',
                  rundir)
         if not m:
             raise ValueError("Expected a path like /gpfs/exfel/exp/(exp)/(cycle)/(proposal)/proc/(run)")
