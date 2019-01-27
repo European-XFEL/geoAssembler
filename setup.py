@@ -35,6 +35,10 @@ setup(name="geoAssembler",
       long_description=read("README.md"),
       license="BSD-3-Clause",
       packages=find_packages(),
+      entry_points={
+          'gui_scripts':[
+              'geoAssembler = geoAssembler.__main__:main'
+              ]},
       install_requires=[
           'cfelpyutils',
           'matplotlib',

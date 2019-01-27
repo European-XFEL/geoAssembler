@@ -1,15 +1,40 @@
 #!/usr/bin/env python3
 """Script that run geoAssembler GUI."""
+from argparse import ArgumentParser
 import os
 import sys
 
-from argparse import ArgumentParser
+from pyqtgraph import QtGui
 import numpy as np
 
-from geoAssembler import Calibrate
+from .qt_viewer import CalibrateQt
 
 
-def set_args(argv=None):
+# Define a header that should be added to the geometry file, this is useful
+# to use the geometry file with tools like hdfsee
+HEADER = """data = /entry_1/data_1/data
+;mask = /entry_1/data_1/mask
+
+mask_good = 0x0
+mask_bad = 0xffff
+
+adu_per_eV = 0.0075  ; no idea
+clen = {clen}  ; Camera length, aka detector distance
+photon_energy = {energy} ;"""
+
+
+def Calibrate(*args, **kwargs):
+    """Create a QtGui Application and return an instance of CalibrateQt"""
+
+    app = QtGui.QApplication([])
+    calib = CalibrateQt(*args, **kwargs)
+    calib.window.show()
+    app.exec_()
+    app.closeAllWindows()
+    return calib
+
+
+def main(argv=None):
     """Define the help string."""
     ap = ArgumentParser(description="""
     This prgram allows for a ring based geometry calibration.
@@ -30,39 +55,17 @@ def set_args(argv=None):
                     help='Photon energy [ev]')
     ap.add_argument('-l','--level', nargs='+', default=None, type=int,
                     help='Pre defined display range for plotting')
-    return ap.parse_args(argv)
 
-
-if __name__ == '__main__':
-
-    # First lets load the data, this can either be done by karabo-data's
-    # RunDirectory, a virtual dataset or by reading the data from hdf files.
-    # The only constraint is that the data should be of shape (16x512x128)
-    # which means only one image
-
-    # Get some mock data for testing
-    #
-    args = set_args()
-
-    # Define a header that should be added to the geometry file, this is useful
-    # to use the geometry file with tools like hdfsee
-    header = """data = /entry_1/data_1/data
-;mask = /entry_1/data_1/mask
-
-mask_good = 0x0
-mask_bad = 0xffff
-
-adu_per_eV = 0.0075  ; no idea
-clen = {}  ; Camera length, aka detector distance
-photon_energy = {} ;""".format(args.clen, args.energy)
-
+    args = ap.parse_args()
     try:
         levels = args.level[:2]
     except IndexError:
         raise IndexError('Levels should be one min and one max value')
     except TypeError:
         levels = args.level
-    C = Calibrate(args.run, args.geometry, levels=levels, header=header)
+    C = Calibrate(args.run, args.geometry, levels=levels,
+            header=HEADER.format(clen=args.clen, energy=args.energy))
 
-    # The centre coordinates might be of interest (i.e azimuthal integration)
-    #print('Geometry-centre is P(y: {}/x: {})'.format(*C.centre))
+if __name__ == '__main__':
+    main()
+
