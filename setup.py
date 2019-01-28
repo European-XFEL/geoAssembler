@@ -41,11 +41,13 @@ setup(name="geoAssembler",
               ]},
       install_requires=[
           'cfelpyutils',
+          'karabo-data',
           'matplotlib',
           'numpy',
           'pyqtgraph',
           'ipywidgets',
-          'PyQt5'
+          'PyQt5',
+          'PyQt5-sip'
       ],
       extras_require={
           'docs': [
