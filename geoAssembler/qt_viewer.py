@@ -197,8 +197,8 @@ class RunDirSelecter(QtWidgets.QFrame):
         """Update train_id and img"""
 
         self.tid = self.tid_sel.value()
-        det_info = self.rundir.detector_info(tuple(self.rundir.detector_sources)[0])
-        self.pulse_sel.setMaximum(det_info['frames_per_train'])
+        self.det_info = self.rundir.detector_info(tuple(self.rundir.detector_sources)[0])
+        self.pulse_sel.setMaximum(self.det_info['frames_per_train'])
         self._read_train = True
 
     def _get_run(self, rundir=None):
@@ -226,12 +226,18 @@ class RunDirSelecter(QtWidgets.QFrame):
     def get(self):
         """Get the image of selected train"""
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        num_mod = len(self.rundir.detector_sources)
         if self._read_train:
             log.info('Reading train #: {}'.format(self.tid))
             _, data = self.rundir.train_from_id(self.tid)
-            self._img = kd.stack_detector_data(data, 'image.data', only='DET')
+            self._img = np.empty((self.det_info['frames_per_train'],
+                                  num_mod,) + self.det_info['dims'])
+            for nn, det_source in enumerate(self.rundir.detector_sources):
+                try:
+                    self._img[:,nn,:] = data[det_source]['image.data'][:]
+                except KeyError:
+                    pass
             self._read_train = False
-
         if self._sel_method is None:
             #Read the selected train number
             pulse_num = self.pulse_sel.value()
