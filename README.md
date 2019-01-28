@@ -12,8 +12,8 @@ The geometry calibration is supported by two modes of graphical user interfaces.
 A Qt-based and a jupyter notebook based interface.
 
 ## Using the Qt-Gui
-It is recommended to use this Gui application through the its
-installed path on the on- and offline cluster.
+It is recommended to use this Gui application through the pre-installed path
+on the on- and offline cluster.
 
 ```bash
  /gpfs/exfel/sw/software/geoAssembler/geoAssemblerGui
