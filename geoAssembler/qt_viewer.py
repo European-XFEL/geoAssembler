@@ -29,6 +29,16 @@ DIRECTION = {'u' : (-INC,    0),
              'l' : (   0, -INC)}
 
 CANVAS_MARGIN = 300 #pixel, used as margin on each side of detector quadrants
+GEOM_SEL_WIDTH = 154
+
+
+def change_cursor_until_finished(func):
+    def wrapper(*args, **kwargs):
+        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        func(*args, **kwargs)
+        QtGui.QApplication.restoreOverrideCursor()
+    return wrapper
+
 
 class RadiusSetter(QtWidgets.QFrame):
     """Define a Hbox containing a Spinbox with a Label."""
@@ -98,6 +108,8 @@ class RunDirSelecter(QtWidgets.QFrame):
         self.rundir = None
         self.tid = None
         self._img = None
+        self.min_tid = None
+        self.max_tid = None
 
         #Creat an hbox with a title, a field to add a filename and a button
         hbox = QtWidgets.QHBoxLayout()
@@ -155,12 +167,12 @@ class RunDirSelecter(QtWidgets.QFrame):
         self._read_train = True
 
 
-    def activate_spin_boxes(self, tid_range):
+    def activate_spin_boxes(self):
         """Set min/max sizes of the spinbox according to trainId's and img's"""
 
-        self.tid_sel.setMinimum(tid_range[0])
-        self.tid_sel.setMaximum(tid_range[-1])
-        self.tid_sel.setValue(tid_range[0])
+        self.tid_sel.setMinimum(self.min_tid)
+        self.tid_sel.setMaximum(self.max_tid)
+        self.tid_sel.setValue(self.min_tid)
         self.tid_sel.setEnabled(True)
         self.pulse_sel.setEnabled(True)
         for sel in self._sel:
@@ -197,19 +209,23 @@ class RunDirSelecter(QtWidgets.QFrame):
 
         if not rundir:
             return
+        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         m = re.match('/gpfs/exfel/exp/(?P<expt>[^/]+)/(?P<cycle>[^/]+)/(?P<prop>[^/]+)/proc/(?P<run>[^/]+)/?$',
                  rundir)
         if not m:
             raise ValueError("Expected a path like /gpfs/exfel/exp/(exp)/(cycle)/(proposal)/proc/(run)")
+            QtGui.QApplication.restoreOverrideCursor()
         self.line.setText(rundir)
         log.info('Opening run directory {}'.format(self._rundir))
         self.rundir = kd.RunDirectory(rundir)
-        self.activate_spin_boxes((self.rundir.train_ids[0],
-                                self.rundir.train_ids[-1]))
+        self.min_tid = self.rundir.train_ids[0]
+        self.max_tid = self.rundir.train_ids[-1]
+        self.activate_spin_boxes()
 
-
+        QtGui.QApplication.restoreOverrideCursor()
     def get(self):
         """Get the image of selected train"""
+        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self._read_train:
             log.info('Reading train #: {}'.format(self.tid))
             _, data = self.rundir.train_from_id(self.tid)
@@ -219,8 +235,10 @@ class RunDirSelecter(QtWidgets.QFrame):
         if self._sel_method is None:
             #Read the selected train number
             pulse_num = self.pulse_sel.value()
+            QtGui.QApplication.restoreOverrideCursor()
             return self._img[pulse_num]
         else:
+            QtGui.QApplication.restoreOverrideCursor()
             return self._sel_method(self._img, axis=0)
 
 
@@ -359,7 +377,8 @@ class CalibrateQt:
         # circle/ellipse selection and input dialogs go to the top
         self.radius_setter = RadiusSetter('', None)
         self.layout.addWidget(self.radius_setter, 0, 2, 1, 1)
-        self.geom_selector = GeometryFileSelecter(154, 'Geometry File:', geofile)
+        self.geom_selector = GeometryFileSelecter(GEOM_SEL_WIDTH,
+                                                  'Geometry File:', geofile)
         self.layout.addWidget(self.geom_selector, 0, 9, 1, 1)
 
         # plot goes into the centre on right side, spanning 10 rows
@@ -387,11 +406,10 @@ class CalibrateQt:
         self.info = QtGui.QLabel(
             'Click on Quadrant to select; CTRL+arrow-keys to move')
         self.info.setToolTip('Click into the Image to select a Quadrant')
-        #self.layout.addWidget(self.info, 1, 4, 1, 8)
         pg.LabelItem(justify='right')
         self.window.setLayout(self.layout)
 
-        self.isDisplayed = False
+        self.is_displayed = False
 
 
     def _apply(self):
@@ -422,16 +440,15 @@ class CalibrateQt:
             self.geom.position_all_modules(self.raw_data,
                                            canvas=self.canvas.shape)
         # Display the data and assign each frame a time value from 1.0 to 3.0
-        if not self.isDisplayed:
+        if not self.is_displayed:
+            xvals = np.linspace(1., 3., self.canvas.shape[0])
             if self.levels:
                 self.imv.setImage(np.clip(self.data, *self.levels),
-                        levels=self.levels,
-                        xvals=np.linspace(1., 3., self.canvas.shape[0]))
+                        levels=self.levels, xvals=xvals)
             else:
                 self.imv.setImage(self.data,
-                        levels=self.levels,
-                        xvals=np.linspace(1., 3., self.canvas.shape[0]))
-            self.isDisplayed = True
+                        levels=self.levels, xvals=xvals)
+            self.is_displayed = True
 
         else:
             imageItem = self.imv.getImageItem()
