@@ -189,9 +189,9 @@ class AGIPD_1MGeometry:
                     quad_pos.append(tuple(tiles[-1].corner_pos[:-1]))
         return cls(modules, quad_pos)
 
-    def write_crystfel_geom(self, filename, header):
+    def write_crystfel_geom(self, filename, header=''):
 
-        version=__version__
+        version = __version__
         panel_chunks = []
         for p, module in enumerate(self.modules):
             for a, fragment in enumerate(module):
