@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 """Script that run geoAssembler GUI."""
 from argparse import ArgumentParser
-import os
-import sys
 
 from pyqtgraph import QtGui
-import numpy as np
 
 from .qt_viewer import CalibrateQt
 
@@ -23,7 +20,7 @@ clen = {clen}  ; Camera length, aka detector distance
 photon_energy = {energy} ;"""
 
 
-def Calibrate(*args, **kwargs):
+def CreateCalibrateGui(*args, **kwargs):
     """Create a QtGui Application and return an instance of CalibrateQt"""
 
     app = QtGui.QApplication([])
@@ -53,17 +50,18 @@ def main(argv=None):
                     help='Detector distance [m]')
     ap.add_argument('-e','--energy', default=10235,
                     help='Photon energy [ev]')
-    ap.add_argument('-l','--level', nargs='+', default=None, type=int,
+    ap.add_argument('-l','--level', nargs='+', default=[], type=int,
                     help='Pre defined display range for plotting')
 
     args = ap.parse_args()
-    try:
-        levels = args.level[:2]
-    except IndexError:
-        raise IndexError('Levels should be one min and one max value')
-    except TypeError:
+    if len(args.level) == 0:
+        levels = None
+    elif len(args.level) == 2:
         levels = args.level
-    C = Calibrate(args.run, args.geometry, levels=levels,
+    else:
+        raise IndexError('Levels should be one min and one max value')
+
+    CreateCalibrateGui(args.run, args.geometry, levels=levels,
             header=HEADER.format(clen=args.clen, energy=args.energy))
 
 if __name__ == '__main__':
