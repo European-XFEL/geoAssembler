@@ -57,7 +57,7 @@ def main(argv=None):
     if len(args.level) == 0:
         levels = None
     elif len(args.level) == 2:
-        levels = args.level
+        levels = sorted(args.level)
     else:
         raise IndexError('Levels should be one min and one max value')
 
