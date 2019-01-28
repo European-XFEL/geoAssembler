@@ -8,12 +8,12 @@ to be refined or a completely new geometry. In the latter case the initial
 conditions for the geometry are defined so that all modules are
 29px apart from each other.
 
-The geometry calibration is supported by to modes of graphical user interfaces.
+The geometry calibration is supported by two modes of graphical user interfaces.
 A Qt-based and a jupyter notebook based interface.
 
 ## Using the Qt-Gui
-It is recommended that to use the Gui through the its installed path on the
-on/ and offline cluster. 
+It is recommended to use this Gui application through the its
+installed path on the on- and offline cluster.
 
 ```bash
  /gpfs/exfel/sw/software/geoAssembler/geoAssemblerGui
@@ -31,14 +31,28 @@ The following optional arguments can be set via the command line:
 
 ![Screenshot](docs/.screenshot.png)
 
-If no run directory with the ```-r/--run``` option has been preselect a directory as to be set by clicking the Run-dir button. Train id's can be selected after a run has been selected. The user can either choose to display images by pulses or if the signal is to week/noisy by applying a Maximum or Mean across the entire train to all images. To do so the user can just select the *Max* or *Mean* button instead of the default  *Sel #*. After a image number / function has been selected the image can be assembled using the assemble button. Optionally a pre-defined geometry file can be selected loaded by the *Load* button.
+If no run directory, using ```-r/--run```, option has been preselect a
+directory can to be set by clicking the Run-dir button. Train id's can be
+selected after a run has been selected. The user can either choose to display
+images by pulses or if the signal is to week/noisy by applying a Maximum or
+Mean across the entire train to all images.
+To do so the user can just select the *Max* or *Mean* button
+instead of the default  *Sel #*. After an image number / function has been
+selected the image can be assembled using the *Assemble* button.
+Optionally a pre-defined geometry file can be loaded using the *Load* button.
 
-After the image is displayed quadrants can be selected by clicking on them. They can be moved by using the ```Ctrl+arrow-up/down/left/right``` key combination. Circles that can help to align quadrants can be added by the *Draw Helper Objects* button. The radii of the circles an be adjusted using the radius *spin box* in the top left.
+After the image is displayed quadrants can be selected by clicking on them.
+They can be moved by using the ```Ctrl+arrow-up/down/left/right```
+key combination. Circles that can help to align quadrants are added
+by the *Draw Helper Objects* button. The radii of the circles an be adjusted
+using the radius *spin box* in the top left.
 
-Once the quadrants have been positioned a geometry file can be saved by using the save button.
+Once the quadrants have been positioned a geometry file can be saved by
+using the *Save* button.
 
 ## Calibration Using Jupyter
-```docs/Demo_calib.ipynb``` contains a notebook explaining the usage of the calibration tool of the Jupyter notebook.
+```docs/Demo_calib.ipynb``` contains a notebook explaining the usage
+of the calibration tool of the Jupyter notebook.
 
 
 ### Setup
@@ -56,7 +70,7 @@ All packages should be available via the desy's anaconda3 module
 
 
 ## Testing:
-Testing the implementation is done py pytest. To apply the test suite run 
+Testing the implementation is done py pytest. To apply the test suite run
 
 ```bash
 $: pytest -v geoAssembler/tests
