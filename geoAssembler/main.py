@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 
 from pyqtgraph import QtGui
 
-from .qt_viewer import CalibrateQt
+from . import CalibrateQt
 
 
 # Define a header that should be added to the geometry file, this is useful
