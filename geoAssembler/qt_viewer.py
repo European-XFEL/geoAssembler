@@ -31,11 +31,12 @@ DIRECTION = {'u' : (-INC,    0),
 CANVAS_MARGIN = 300 #pixel, used as margin on each side of detector quadrants
 GEOM_SEL_WIDTH = 154
 
+Slot = QtCore.pyqtSlot
 
 class RadiusSetter(QtWidgets.QFrame):
     """Define a Hbox containing a Spinbox with a Label."""
 
-    def __init__(self, label, roi):
+    def __init__(self, label, roi, parent):
         """Add a spin box with a label to set radii.
 
         Parameters:
@@ -47,6 +48,7 @@ class RadiusSetter(QtWidgets.QFrame):
         super(RadiusSetter, self).__init__()
         #Create a hbox with a title and a spin-box to select the circ. radius
         self.roi = roi
+        self.parent = parent
         if len(label): #If label is not empty add QSpinBox
             hbox = QtWidgets.QHBoxLayout()
             hbox.addWidget(QtGui.QLabel(label))
@@ -87,6 +89,8 @@ class RadiusSetter(QtWidgets.QFrame):
 
 class RunDirSelecter(QtWidgets.QFrame):
     """A widget that defines run-directory, trainId and pulse selection"""
+    #A Pattern to validate the entry for the run direcotry
+    RUN_DIR_PATTERN='/gpfs/exfel/exp/(?P<expt>[^/]+)/(?P<cycle>[^/]+)/(?P<prop>[^/]+)/proc/(?P<run>[^/]+)/?$'
     PULSE_SEL=namedtuple('sel_method', 'num method button')
     PULSE_MEAN=namedtuple('sel_method', 'num method button')
     PULSE_MAX=namedtuple('sel_method', 'num method button')
@@ -97,7 +101,7 @@ class RunDirSelecter(QtWidgets.QFrame):
     PULSE_MEAN.num = 2
     PULSE_MAX.num = 3
 
-    def __init__(self, run_dir):
+    def __init__(self, run_dir, parent):
         """Create a btn for run-dir select and 2 spin boxes for train, puls
 
         Parameters:
@@ -105,7 +109,7 @@ class RunDirSelecter(QtWidgets.QFrame):
         """
 
         super(RunDirSelecter, self).__init__()
-        self._rundir = run_dir
+        self.parent = parent
         self.rundir = None
         self.tid = None
         self._img = None
@@ -117,7 +121,7 @@ class RunDirSelecter(QtWidgets.QFrame):
 
         self.run_sel = QtGui.QPushButton("Run-dir")
         self.run_sel.setToolTip('Select a Run directory')
-        self.run_sel.clicked.connect(self._get_run)
+        self.run_sel.clicked.connect(self._sel_run)
         hbox.addWidget(self.run_sel)
 
         self.line = QtGui.QLineEdit(run_dir)
@@ -165,7 +169,7 @@ class RunDirSelecter(QtWidgets.QFrame):
         self._sel = (pulse, max_fun, mean_fun)
         #If a run directory was already given read it
         if run_dir:
-            self._get_run(rundir=run_dir)
+            self._read_run(run_dir)
         #Apply no selection method (max, mean) to select pulses by default
         self._sel_method = None
         self._read_train = True
@@ -205,28 +209,32 @@ class RunDirSelecter(QtWidgets.QFrame):
         self.pulse_sel.setMaximum(self.det_info['frames_per_train'])
         self._read_train = True
 
-    def _get_run(self, rundir=None):
-        """Get a run directory"""
-        if not rundir:
-            rundir = QtGui.QFileDialog.getExistingDirectory(self,
-                                                        'Select run directory')
+    @Slot(bool)
+    def _sel_run(self):
+        """Select a run directory"""
 
-        if not rundir:
-            return
-        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        m = re.match('/gpfs/exfel/exp/(?P<expt>[^/]+)/(?P<cycle>[^/]+)/(?P<prop>[^/]+)/proc/(?P<run>[^/]+)/?$',
-                 rundir)
+        rfolder = QtGui.QFileDialog.getExistingDirectory(self,
+                                                        'Select run directory')
+        if rfolder:
+            self._read_rundir(rfolder)
+
+    def _read_rundir(self, rfolder):
+        """Read a selected run directory"""
+
+        m = re.match(self.RUN_DIR_PATTERN, rfolder)
         if not m:
             QtGui.QApplication.restoreOverrideCursor()
             raise ValueError("Expected a path like /gpfs/exfel/exp/(exp)/(cycle)/(proposal)/proc/(run)")
-        self.line.setText(rundir)
-        log.info('Opening run directory {}'.format(self._rundir))
-        self.rundir = kd.RunDirectory(rundir)
+
+        self.line.setText(rfolder)
+        log.info('Opening run directory {}'.format(rfolder))
+        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        self.rundir = kd.RunDirectory(rfolder)
         self.min_tid = self.rundir.train_ids[0]
         self.max_tid = self.rundir.train_ids[-1]
         self.activate_spin_boxes()
-
         QtGui.QApplication.restoreOverrideCursor()
+
     def get(self):
         """Get the image of selected train"""
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -256,7 +264,7 @@ class RunDirSelecter(QtWidgets.QFrame):
 class GeometryFileSelecter(QtWidgets.QFrame):
     """Define a Hbox containing a QLineEdit with a Label."""
 
-    def __init__(self, width, txt, content=''):
+    def __init__(self, width, txt, parent, content=''):
         """Create nested widgets to select and save geometry files.
 
         Parameters:
@@ -271,6 +279,7 @@ class GeometryFileSelecter(QtWidgets.QFrame):
         #Creat an hbox with a title, a field to add a filename and a button
         hbox = QtWidgets.QHBoxLayout()
         self.label = QtGui.QLabel(txt)
+        self.parent = parent
         self.label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         hbox.addWidget(self.label)
         self.line = QtGui.QLineEdit(content)
@@ -280,17 +289,14 @@ class GeometryFileSelecter(QtWidgets.QFrame):
         self.file_sel = QtGui.QPushButton("Load")
         self.file_sel.clicked.connect(self._get_files)
         hbox.addWidget(self.file_sel)
-        self.apply_btn = QtGui.QPushButton('Assemble')
+        self.apply_btn = QtGui.QPushButton('Apply')
         self.apply_btn.setToolTip('Assemble Data')
         self.save_btn = QtGui.QPushButton('Save')
         self.save_btn.setToolTip('Save geometry')
         self.save_btn.setEnabled(False)
         hbox.addWidget(self.apply_btn)
         hbox.addWidget(self.save_btn)
-        #self.setLayout(hbox)
-
         vlayout = QtWidgets.QVBoxLayout(self)
-        self.setLayout(hbox)
         vlayout.addLayout(hbox)
         info = QtGui.QLabel(
                 'Click on Quadrant to select; '
@@ -360,9 +366,6 @@ class CalibrateQt:
         # Interpret image data as row-major instead of col-major
         pg.setConfigOptions(imageAxisOrder='row-major')
 
-        # Create window with ImageView widget
-        self.win = QtGui.QWindow()
-        self.win.resize(800, 800)
         # Create new image view
         self.imv = pg.ImageView()
 
@@ -386,10 +389,12 @@ class CalibrateQt:
         self.layout = QtGui.QGridLayout()
 
         # circle/ellipse selection and input dialogs go to the top
-        self.radius_setter = RadiusSetter('', None)
+        self.radius_setter = RadiusSetter('', None, self)
         self.layout.addWidget(self.radius_setter, 0, 2, 1, 1)
         self.geom_selector = GeometryFileSelecter(GEOM_SEL_WIDTH,
-                                                  'Geometry File:', geofile)
+                                                  'Geometry File:',
+                                                  self,
+                                                  geofile)
         self.layout.addWidget(self.geom_selector, 0, 9, 1, 1)
 
         # plot goes into the centre on right side, spanning 10 rows
@@ -409,19 +414,17 @@ class CalibrateQt:
         self.add_circ_btn.setToolTip('Add Circles to the Image')
         self.add_circ_btn.clicked.connect(self._drawCircle)
         self.layout.addWidget(self.add_circ_btn, 11, 1, 1, 1)
-        self.cancel_btn = QtGui.QPushButton('Cancel')
+        self.cancel_btn = QtGui.QPushButton('Quit')
         self.cancel_btn.clicked.connect(self._destroy)
         self.layout.addWidget(self.cancel_btn, 11, 2, 1, 1)
-        self.run_selector = RunDirSelecter(run_dir)
+        self.run_selector = RunDirSelecter(run_dir, self)
         self.layout.addWidget(self.run_selector, 11, 3, 1, 8)
         self.info = QtGui.QLabel(
             'Click on Quadrant to select; CTRL+arrow-keys to move')
         self.info.setToolTip('Click into the Image to select a Quadrant')
         pg.LabelItem(justify='right')
         self.window.setLayout(self.layout)
-
         self.is_displayed = False
-
 
     def _apply(self):
         """Read the geometry file and position all modules."""
@@ -475,6 +478,7 @@ class CalibrateQt:
         imageItem = self.imv.getImageItem()
         self.levels = tuple(imageItem.levels)
         self.quad = -1
+
     def _save_geom(self):
         """ Save the adapted geometry to a file in cfel output format"""
 
@@ -483,7 +487,7 @@ class CalibrateQt:
                                                      'geo_assembled.geom',
                                                      'CFEL file format (*.geom)')
         if fname:
-            log.info(' Saving output to {}'.format(self.geofile))
+            log.info(' Saving output to {}'.format(fname))
             try:
                 os.remove(fname)
             except (FileNotFoundError, PermissionError):
@@ -491,7 +495,6 @@ class CalibrateQt:
             self.data, self.centre = self.geom.position_all_modules(
                     self.raw_data)
             self.geom.write_crystfel_geom(fname, header=self.header)
-            QtCore.QCoreApplication.quit()
 
     def _move(self, d):
         """Move the quadrant."""
@@ -518,7 +521,7 @@ class CalibrateQt:
         self.imv.getView().addItem(fit_helper)
         circle_selection = QtGui.QRadioButton('Circ.')
         circle_selection.setChecked(True)
-        self.radius_setter = RadiusSetter('Radius', fit_helper)
+        self.radius_setter = RadiusSetter('Radius', fit_helper, self)
         num = len(self.circles)
         for sel in self.bottom_buttons.values():
             sel.setChecked(False)
@@ -567,7 +570,7 @@ class CalibrateQt:
         """Update the selection region of the fit objects at the bottom."""
         self.layout.removeWidget(self.radius_setter)
         self.radius_setter.close()
-        self.radius_setter = RadiusSetter('Radius:', self.selected_circle)
+        self.radius_setter = RadiusSetter('Radius:', self.selected_circle, self)
         self.layout.addWidget(self.radius_setter, 0, 2, 1, 1)
         self.layout.update()
 
@@ -581,7 +584,7 @@ class CalibrateQt:
         self.circles = {}
         self.layout.removeWidget(self.radius_setter)
         self.radius_setter.close()
-        self.radius_setter = RadiusSetter('', None)
+        self.radius_setter = RadiusSetter('', None, self)
         self.layout.addWidget(self.radius_setter, 0, 2, 1, 1)
         self.layout.update()
 
