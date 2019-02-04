@@ -34,7 +34,7 @@ def CreateCalibrateGui(*args, **kwargs):
 def main(argv=None):
     """Define the help string."""
     ap = ArgumentParser(description="""
-    This prgram allows for a ring based geometry calibration.
+    This program allows for a ring based geometry calibration.
 
     The program will open a GUI to assemble data according to a geometry that
     can either be loaded or that can be based on fixed quadrant positions.
@@ -50,7 +50,7 @@ def main(argv=None):
                     help='Detector distance [m]')
     ap.add_argument('-e','--energy', default=10235,
                     help='Photon energy [ev]')
-    ap.add_argument('-l','--level', nargs=2, default=[], type=int,
+    ap.add_argument('-l','--level', nargs=2, default=None,
                     help='Pre defined display range for plotting')
 
     args = ap.parse_args()
