@@ -50,18 +50,12 @@ def main(argv=None):
                     help='Detector distance [m]')
     ap.add_argument('-e','--energy', default=10235,
                     help='Photon energy [ev]')
-    ap.add_argument('-l','--level', nargs='+', default=[], type=int,
+    ap.add_argument('-l','--level', nargs=2, default=[], type=int,
                     help='Pre defined display range for plotting')
 
     args = ap.parse_args()
-    if len(args.level) == 0:
-        levels = None
-    elif len(args.level) == 2:
-        levels = sorted(args.level)
-    else:
-        raise IndexError('Levels should be one min and one max value')
 
-    CreateCalibrateGui(args.run, args.geometry, levels=levels,
+    CreateCalibrateGui(args.run, args.geometry, levels=args.level,
             header=HEADER.format(clen=args.clen, energy=args.energy))
 
 if __name__ == '__main__':
