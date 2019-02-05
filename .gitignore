@@ -2,8 +2,11 @@ __pycache__
 *.pyc
 .ipynb_checkpoints
 *.png
+!docs/.screenshot.png
 *cache
 *.csv
 *.geom
+build/
+dist/
 !geoAssembler/tests/test.geom
 geoAssembler.egg-info/

@@ -65,7 +65,7 @@ class CalibrateNb:
         self.bg = bg or 'w'
         self.circles = {}
         self.quad = None
-        self.cmap = cm.get_cmap('gist_earth')
+        self.cmap = cm.get_cmap('binary_r')
         try:
             self.cmap.set_bad(self.bg)
         except (ValueError, KeyError):
@@ -148,7 +148,8 @@ class CalibrateNb:
             readout=True,
             readout_format='d',
             layout=Layout(width='70%'))
-        self.cmap_sel = widgets.Dropdown(options=['gist_earth',
+        self.cmap_sel = widgets.Dropdown(options=['binary_r',
+                                                  'gist_earth',
                                                   'gist_ncar',
                                                   'bone',
                                                   'winter',
@@ -158,8 +159,8 @@ class CalibrateNb:
                                                   'OrRd',
                                                   'coolwarm',
                                                   'CMRmap',
-                                                  'jet'],
-                                         value='gist_earth',
+                                                  'Dark2_r'],
+                                         value='binary_r',
                                          description='Color Map:',
                                          disabled=False,
                                          layout=Layout(width='200px'))

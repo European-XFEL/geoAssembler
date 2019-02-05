@@ -35,12 +35,19 @@ setup(name="geoAssembler",
       long_description=read("README.md"),
       license="BSD-3-Clause",
       packages=find_packages(),
+      entry_points={
+          'gui_scripts':[
+              'geoAssemblerGui = geoAssembler.main:main'
+              ]},
       install_requires=[
           'cfelpyutils',
+          'karabo-data',
           'matplotlib',
           'numpy',
           'pyqtgraph',
-          'PyQt5'
+          'ipywidgets',
+          'PyQt5',
+          'PyQt5-sip'
       ],
       extras_require={
           'docs': [
