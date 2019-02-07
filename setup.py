@@ -37,7 +37,7 @@ setup(name="geoAssembler",
       data_files=[('templates', ['templates/geoAssembler.tmpl'])],
       entry_points={
           'gui_scripts':[
-              'geoAssemblerGui = geoAssembler.main:main'
+              'geoAssembler = geoAssembler.main:main'
               ]},
       install_requires=[
           'cfelpyutils',
