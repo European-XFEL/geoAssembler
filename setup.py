@@ -24,7 +24,6 @@ def find_version(*parts):
         return match.group(1)
     raise RuntimeError("Unable to find version string.")
 
-
 setup(name="geoAssembler",
       version=find_version("geoAssembler", "__init__.py"),
       author="European XFEL GmbH",
@@ -35,6 +34,7 @@ setup(name="geoAssembler",
       long_description=read("README.md"),
       license="BSD-3-Clause",
       packages=find_packages(),
+      data_files=[('templates', ['templates/geoAssembler.tmpl'])],
       entry_points={
           'gui_scripts':[
               'geoAssemblerGui = geoAssembler.main:main'
