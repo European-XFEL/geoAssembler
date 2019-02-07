@@ -16,13 +16,15 @@ It is recommended to use this Gui application through the pre-installed path
 on the on- and offline cluster.
 
 ```bash
- /gpfs/exfel/sw/software/geoAssembler/geoAssemblerGui
+source /gpfs/exfel/sw/software/modules
+modules load xfel_anacona3
 ```
 The following optional arguments can be set via the command line:
 
 | Argument  |   | Description  |
 |---|---|---|
 |  -h, --help |   |   |
+|  -nb, --notebook |   | Do not start gui, create a notebook  |
 |  -r, --run |  run_dir |  The path name to a exp folder |
 |  -g, --geometry| geomfile  | Path to geometry file |
 |  -c, --clen    |  clen |  Detector distance [m] |
@@ -51,13 +53,13 @@ Once the quadrants have been positioned a geometry file can be saved by
 using the *Save* button.
 
 ## Calibration Using Jupyter
-```docs/Demo_calib.ipynb``` contains a notebook explaining the usage
-of the calibration tool of the Jupyter notebook.
+The -nb, --notebook flag provides the user the option to create a notebook
+explaining in the home direcory of the user.
 
-
-### Setup
-It is recommended to use the already setup application available on ```/gpfs/exfel/sw/software/geoAssembler```
-## Dependencies
+## Setup
+It is recommended to use the already setup application available in xfel's
+anaconda3 distirbution.
+### Dependencies
 The following python packages should be available:
  - numpy
  - cfelpyutils
@@ -65,8 +67,14 @@ The following python packages should be available:
  - matplotlib
  - ipywidgets
  - pyqt5
+ - pyFAI
 
-All packages should be available via the desy's anaconda3 module
+All packages should be available via the xfel's anaconda3 module. At the moment
+the module has to be activated by
+```bash
+source /gpfs/exfel/sw/software/modules
+modules load xfel_anacona3
+```
 
 
 ## Testing:
