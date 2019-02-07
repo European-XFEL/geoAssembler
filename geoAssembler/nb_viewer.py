@@ -24,6 +24,14 @@ log = logging.getLogger(os.path.basename(__file__))
 #Fallback quad positions if no geometry file is given as a starting point:
 FALLBACK_QUAD_POS = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
 
+#Default colormaps
+DEFAULT_CMAPS=['binary_r',
+              'viridis',
+              'coolwarm',
+              'winter',
+              'summer',
+              'hot',
+              'OrRd']
 #Definition of increments (INC) the quadrants should move to once a direction
 #(u = up, d = down, r = right, l = left is given:
 INC = 1
@@ -54,23 +62,25 @@ class CalibrateNb:
                           anything below this value will be clipped
             vmax (int) : maximum value in the data array (default: 5000)
                           anything above this value will be clipped
+            figsize (tuple): size of the figure
+            bg (str) : background color of the image
             kwargs : additional keyword arguments that are parsed to matplotlib
         """
         self.data = raw_data
         self.im = None
-        self.vmin = vmin or -1000
-        self.vmax = vmax or 5000
+        self.vmin = vmin or np.nanmin(self.data)
+        self.vmax = vmax or np.nanmax(self.data)
         self.raw_data = np.clip(raw_data, self.vmin, self.vmax)
         self.figsize = figsize or (8, 8)
         self.bg = bg or 'w'
         self.circles = {}
         self.quad = None
-        self.cmap = cm.get_cmap('binary_r')
+        self.cmap = cm.get_cmap(DEFAULT_CMAPS[0])
         try:
             self.cmap.set_bad(self.bg)
         except (ValueError, KeyError):
             self.bg = 'w'
-        
+
         # Try to assemble the data (if geom is a AGIPD_Geometry class)
         if geometry is None:
             self.geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=FALLBACK_QUAD_POS)
@@ -148,19 +158,8 @@ class CalibrateNb:
             readout=True,
             readout_format='d',
             layout=Layout(width='70%'))
-        self.cmap_sel = widgets.Dropdown(options=['binary_r',
-                                                  'gist_earth',
-                                                  'gist_ncar',
-                                                  'bone',
-                                                  'winter',
-                                                  'summer',
-                                                  'hot',
-                                                  'copper',
-                                                  'OrRd',
-                                                  'coolwarm',
-                                                  'CMRmap',
-                                                  'Dark2_r'],
-                                         value='binary_r',
+        self.cmap_sel = widgets.Dropdown(options=DEFAULT_CMAPS,
+                                         value=DEFAULT_CMAPS[0],
                                          description='Color Map:',
                                          disabled=False,
                                          layout=Layout(width='200px'))
@@ -193,7 +192,7 @@ class CalibrateNb:
         except ValueError:
             return
 
-    def update_plot(self, plot_range=(100, 1500), cmap='gist_earth', **kwargs):
+    def update_plot(self, plot_range=(None, None), cmap=DEFAULT_CMAPS[0], **kwargs):
         """Update the plotted image."""
         # Update the image first
         self.data, centre =\
@@ -215,7 +214,7 @@ class CalibrateNb:
                                   clear=True, facecolor=self.bg)
             self.ax = self.fig.add_subplot(111)
             self.im = self.ax.imshow(
-                self.data, vmin=plot_range[0], vmax=plot_range[-1],
+                self.data, vmin=plot_range[0], vmax=plot_range[1],
                 cmap=self.cmap, **kwargs)
             self.ax.set_xticks([]), self.ax.set_yticks([])
             h1 = self.ax.hlines(cy, cx-20, cx+20, colors='r', linewidths=1)
