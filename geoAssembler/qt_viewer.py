@@ -90,16 +90,15 @@ class RadiusSetter(QtWidgets.QFrame):
 class RunDirSelecter(QtWidgets.QFrame):
     """A widget that defines run-directory, trainId and pulse selection"""
     #A Pattern to validate the entry for the run direcotry
-    RUN_DIR_PATTERN='/gpfs/exfel/exp/(?P<expt>[^/]+)/(?P<cycle>[^/]+)/(?P<prop>[^/]+)/proc/(?P<run>[^/]+)/?$'
     PULSE_SEL=namedtuple('sel_method', 'num method button')
     PULSE_MEAN=namedtuple('sel_method', 'num method button')
-    PULSE_MAX=namedtuple('sel_method', 'num method button')
+    PULSE_SUM=namedtuple('sel_method', 'num method button')
     PULSE_SEL.method = None
     PULSE_MEAN.method = np.nanmean
-    PULSE_MAX.method = np.nanmax
+    PULSE_SUM.method = np.nansum
     PULSE_SEL.num = 1
     PULSE_MEAN.num = 2
-    PULSE_MAX.num = 3
+    PULSE_SUM.num = 3
 
     def __init__(self, run_dir, parent):
         """Create a btn for run-dir select and 2 spin boxes for train, puls
@@ -151,12 +150,12 @@ class RunDirSelecter(QtWidgets.QFrame):
         pulse.clicked.connect(lambda:self._set_sel_method(self.PULSE_SEL))
         hbox.addWidget(pulse)
 
-        max_fun = QtGui.QRadioButton('Max.')
-        max_fun.setChecked(False)
-        max_fun.setEnabled(False)
-        self.PULSE_MAX.button = max_fun
-        max_fun.clicked.connect(lambda:self._set_sel_method(self.PULSE_MAX))
-        hbox.addWidget(max_fun)
+        sum_fun = QtGui.QRadioButton('Sum')
+        sum_fun.setChecked(False)
+        sum_fun.setEnabled(False)
+        self.PULSE_SUM.button = sum_fun
+        sum_fun.clicked.connect(lambda:self._set_sel_method(self.PULSE_SUM))
+        hbox.addWidget(sum_fun)
 
         mean_fun = QtGui.QRadioButton('Mean.')
         mean_fun.setChecked(False)
@@ -166,11 +165,11 @@ class RunDirSelecter(QtWidgets.QFrame):
         hbox.addWidget(mean_fun)
 
         self.setLayout(hbox)
-        self._sel = (pulse, max_fun, mean_fun)
+        self._sel = (pulse, sum_fun, mean_fun)
         #If a run directory was already given read it
         if run_dir:
             self._read_run(run_dir)
-        #Apply no selection method (max, mean) to select pulses by default
+        #Apply no selection method (sum, mean) to select pulses by default
         self._sel_method = None
         self._read_train = True
 
@@ -183,15 +182,15 @@ class RunDirSelecter(QtWidgets.QFrame):
         self.tid_sel.setValue(self.min_tid)
         self.tid_sel.setEnabled(True)
         self.pulse_sel.setEnabled(True)
-        for sel in (self.PULSE_SEL, self.PULSE_MEAN, self.PULSE_MAX):
+        for sel in (self.PULSE_SEL, self.PULSE_MEAN, self.PULSE_SUM):
             sel.button.setEnabled(True)
         self.PULSE_SEL.button.setChecked(True)
         self._update()
 
     def _set_sel_method(self, btn_prop):
-        """Set the pulse selection method (pulse #, mean, max)"""
+        """Set the pulse selection method (pulse #, mean, sum)"""
 
-        for sel in (self.PULSE_SEL, self.PULSE_MEAN, self.PULSE_MAX):
+        for sel in (self.PULSE_SEL, self.PULSE_MEAN, self.PULSE_SUM):
             sel.button.setChecked(False)
         btn_prop.button.setChecked(True)
         if btn_prop.num == 1:
@@ -221,11 +220,6 @@ class RunDirSelecter(QtWidgets.QFrame):
     def _read_rundir(self, rfolder):
         """Read a selected run directory"""
 
-        m = re.match(self.RUN_DIR_PATTERN, rfolder)
-        if not m:
-            QtGui.QApplication.restoreOverrideCursor()
-            raise ValueError("Expected a path like /gpfs/exfel/exp/(exp)/(cycle)/(proposal)/proc/(run)")
-
         self.line.setText(rfolder)
         log.info('Opening run directory {}'.format(rfolder))
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -242,14 +236,15 @@ class RunDirSelecter(QtWidgets.QFrame):
         if self._read_train:
             log.info('Reading train #: {}'.format(self.tid))
             _, data = self.rundir.train_from_id(self.tid)
-            self._img = np.empty((self.det_info['frames_per_train'],
+            img = np.empty((self.det_info['frames_per_train'],
                                   num_mod,) + self.det_info['dims'])
             for det_source in self.rundir.detector_sources:
                 modno = int(re.search(r'/DET/(\d+)CH', det_source).group(1))
                 try:
-                    self._img[:,modno,:] = data[det_source]['image.data'][:]
+                    img[:,modno,:] = data[det_source]['image.data'][:]
                 except KeyError:
-                    self._img[:,modno,:] = np.nan
+                    img[:,modno,:] = np.nan
+            self._img = np.clip(img, 0, None)
             self._read_train = False
         if self._sel_method is None:
             #Read the selected train number
@@ -258,7 +253,7 @@ class RunDirSelecter(QtWidgets.QFrame):
         else:
             raw_data = self._sel_method(self._img, axis=0)
         QtGui.QApplication.restoreOverrideCursor()
-        return raw_data
+        return np.nan_to_num(raw_data)
 
 
 class GeometryFileSelecter(QtWidgets.QFrame):
