@@ -46,8 +46,11 @@ setup(name="geoAssembler",
           'numpy',
           'pyqtgraph',
           'ipywidgets',
+          'pyFai',
           'PyQt5',
-          'PyQt5-sip'
+          'PyQt5-sip',
+          'scipy'
+
       ],
       extras_require={
           'docs': [
