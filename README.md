@@ -17,7 +17,7 @@ on the on- and offline cluster.
 
 ```bash
 source /gpfs/exfel/sw/software/modules
-modules load xfel_anacona3
+module load xfel_anaconda3
 ```
 The following optional arguments can be set via the command line:
 
@@ -73,7 +73,7 @@ All packages should be available via the xfel's anaconda3 module. At the moment
 the module has to be activated by
 ```bash
 source /gpfs/exfel/sw/software/modules
-modules load xfel_anacona3
+module load xfel_anaconda3
 ```
 
 
