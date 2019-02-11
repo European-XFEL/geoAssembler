@@ -92,7 +92,7 @@ def check_tmpl(var, default='None', tab_complete=False):
 
 def create_nbkernel():
     """Create a new karabo_data jupyter kernel if non exists"""
-    kernelspec.install(kernel_name='xfel_anaconda3', user=True)
+    kernelspec.install(kernel_name='xfel', user=True)
 
 def copy_notebook(defaults):
     """Create a new notebook and copy it into the user-space"""
