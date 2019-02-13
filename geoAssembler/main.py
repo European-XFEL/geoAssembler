@@ -42,9 +42,10 @@ and follow the displayed instructions. For more information see https://bit.ly/2
 Note 1: the PORT_NUMBER should be a number of >= 1024 like 8432
 """
 
+
 class Completer:
-    def __init__(self):
-        return
+    """Provide tab completion directories and files for call of input."""
+
     def _listdir(self, root):
         """List directory 'root' appending the path separator to subdirs."""
         res = []
@@ -55,14 +56,16 @@ class Completer:
             res.append(name)
         return res
 
-    def complete(self, txt: str, state: int):
-        buffer = readline.get_line_buffer()
-        line = readline.get_line_buffer().split()
-        if RE_SPACE.match(buffer):
-            line.append('')
+    def complete(self, text: str, state: int):
+        """Define the complet method for readline."""
+        try:
+            path = self.complete_path(text)
+        except Exception:
+            return None
+        if state >= len(path):
+            return None
+        return path[state]
 
-        path = self.complete_path(line[0].strip())[state]
-        return os.path.abspath(path)
     def complete_path(self, path):
         """Perform completion of filesystem path."""
         if not path:
@@ -70,15 +73,16 @@ class Completer:
         dirname, rest = os.path.split(os.path.expanduser(path))
         tmp = dirname if dirname else '.'
         res = [os.path.join(dirname, p)
-                for p in self._listdir(tmp) if p.startswith(rest)]
+               for p in self._listdir(tmp) if p.startswith(rest)]
         # more than one match, or single match which does not exist (typo)
-        if len(res) > 1 or not os.path.exists(path):
+        if len(res) > 1 or os.path.exists(res[0]):
             return res
         # resolved to a single directory, so return list of files below it
         if os.path.isdir(path):
-            return [os.path.join(path, p) for p in self._listdir(path)]
+            return [self._listdir(path)]
         # exact file match terminates this completion
-        return [path + ' ']
+        return os.path.abspath(path)
+
 
 def check_tmpl(var, default='None', tab_complete=False):
     """Get entries for template"""
