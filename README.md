@@ -21,15 +21,18 @@ module load xfel
 ```
 The following optional arguments can be set via the command line:
 
-| Argument  |   | Description  |
-|---|---|---|
-|  -h, --help |   |   |
-|  -nb, --notebook |   | Do not start gui, create a notebook  |
-|  -r, --run |  run_dir |  The path name to a exp folder |
-|  -g, --geometry| geomfile  | Path to geometry file |
-|  -c, --clen    |  clen |  Detector distance [m] |
-|  -e, --energy  |  energy | Photon energy [ev]  |
-|  -l, --level   |  min max | Display range for plotting  |
+| Argument         |            | Description                                          |
+|------------------|------------|------------------------------------------------------|
+|  -h, --help |    |            |                                                      |
+|  -nb, --notebook |            | Do not start gui, create a notebook                  |
+| -no_kernel       |            | Do not try to attempt creating a xfel notebook kernel|
+| -nb_folder       |  nb_folder | Set default directory to save notebooks              |
+| -nb_file         |  nb_file   | Set file name of the notbook                         |
+|  -r, --run       |  run_dir   | The path name to a exp folder                        |
+|  -g, --geometry  |  geomfile  | Path to geometry file                                |
+|  -c, --clen      |  clen      |  Detector distance [m]                               |
+|  -e, --energy    |  energy    | Photon energy [ev]                                   |
+|  -l, --level     |  min max   | Display range for plotting                           |
 
 ![Screenshot](docs/.screenshot.png)
 
