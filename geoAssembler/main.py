@@ -2,6 +2,7 @@
 """Script that run geoAssembler GUI."""
 
 from argparse import ArgumentParser
+import logging
 import os
 import re
 import readline
@@ -11,6 +12,8 @@ from pyqtgraph import QtGui
 
 from . import CalibrateQt
 
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(os.path.basename(__file__))
 
 # Define a header that should be added to the geometry file, this is useful
 # to use the geometry file with tools like hdfsee
@@ -91,8 +94,17 @@ def check_tmpl(var, default='None', tab_complete=False):
         return inpt
 
 def create_nbkernel():
-    """Create a new karabo_data jupyter kernel if non exists"""
+    """Create a new karabo_data jupyter kernel if non exists."""
+    log.warn("A new kernel called 'xfel' will be created in your home directory")
+    inpt = input('Do you whish to continue [YES|no]:')
+    if 'no' in inpt.lower():
+        log.info('Aborting')
+        return
+    log.info('Creating xfel notebook kernel in userspace')
     kernelspec.install(kernel_name='xfel', user=True)
+    log.info(
+        'The kernel can be loaded from the jupyter notbook menu: kernels -> change kernel -> xfel')
+
 
 def copy_notebook(defaults):
     """Create a new notebook and copy it into the user-space"""
