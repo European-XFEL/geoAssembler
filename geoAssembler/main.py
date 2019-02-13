@@ -84,18 +84,23 @@ class Completer:
         return os.path.abspath(path)
 
 
-def check_tmpl(var, default='None', tab_complete=False):
-    """Get entries for template"""
+def check_tmpl(var, default=None, tab_complete=False):
+    """Get entries for template."""
     if tab_complete:
         comp = Completer()
+        readline.set_completer(comp.complete)
         readline.set_completer_delims('')
         readline.parse_and_bind("tab: complete")
-        readline.set_completer(comp.complete)
-    inpt = input('Enter {} [default {}]: '.format(var, default))
+    if default is None:
+        inpt = input('Enter {}:'.format(var))
+    else:
+        inpt = input('Enter {} [default {}]: '.format(var, default))
+    readline.set_completer(None)
     if not inpt:
         return default
     else:
         return inpt
+
 
 def create_nbkernel():
     """Create a new karabo_data jupyter kernel if non exists."""
