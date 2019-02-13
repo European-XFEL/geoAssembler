@@ -116,7 +116,7 @@ def create_nbkernel():
 
 
 def copy_notebook(defaults):
-    """Create a new notebook and copy it into the user-space"""
+    """Create a new notebook and copy it into the user-space."""
     parent = os.path.dirname(os.path.dirname(__file__))
     tmpl = os.path.join(parent, 'templates', 'geoAssembler.tmpl')
     try:
@@ -127,57 +127,62 @@ def copy_notebook(defaults):
         jb_tmpl = f.read()
 
     for key in ('rundir', 'geofile', 'levels', 'clen', 'energy'):
-        jb_tmpl = jb_tmpl.replace('{%s}'%key, str(defaults[key]))
+        jb_tmpl = jb_tmpl.replace('{%s}' % key, str(defaults[key]))
 
     with open(os.path.join(defaults['folder'], defaults['name']), 'w') as f:
-            f.write(jb_tmpl)
+        f.write(jb_tmpl)
 
     print(NB_MESSAGE.format(nb_path=os.path.join(defaults['folder'],
                                                  defaults['name'])))
 
 
-def create_nb(rundir=None, geofile=None, clen=None, energy=None, levels=None):
-    """Creat a notebook and copy it into the user space"""
-    #Get the default varaibles for the notebook, if user has already given them
+def create_nb(rundir=None, geofile=None, clen=None, energy=None, levels=None,
+              nb_dir=None, nb_file=None, no_kernel=False):
+    """Creat a notebook and copy it into the user space."""
+    # Get the default varaibles for the notebook, if user has already given them
     # take them if not ask for them and provide default options
     nb_defaults = {}
-    nb_defaults['rundir'] = "'{}'".format(rundir or \
-                                          check_tmpl('Run Directory',
-                                                     default='/gpfs/exfel/exp/XMPL/201750/p700000/proc/r0273',
-                                                     tab_complete=True))
-    geofile = geofile or check_tmpl('Input Geometyr File',
+    nb_defaults['rundir'] = repr(rundir or check_tmpl(
+        'Run Directory',
+        default='/gpfs/exfel/exp/XMPL/201750/p700000/proc/r0273',
+        tab_complete=True))
+    geofile = geofile or check_tmpl('Input Geometry File in CFEL format',
                                     default=None,
                                     tab_complete=True)
     if geofile is not None:
-        nb_defaults['geofile'] = "'{}'".format(geofile)
+        nb_defaults['geofile'] = repr(geofile)
     else:
-        nb_defaults['geofile'] = "{}".format(geofile)
-    levels = levels or check_tmpl('Min/Max Display Limits', default=None)
-    if levels is 'None':
-        for repl in ('/', ',', '|'):
+        nb_defaults['geofile'] = None
+    levels = levels or check_tmpl(
+        'Min/Max Display Limits', default=[None, None])
+    if isinstance(levels, str):
+        for repl in ('/', ',', '|', ';', ':'):
             levels = levels.replace(repl, ' ')
         levels = [float(lev) for lev in levels.strip().split()]
     else:
-        levels = [levels, levels]
+        levels = levels
     nb_defaults['levels'] = levels
-    nb_defaults['clen'] = check_tmpl('Detector Distance [m]', default=str(clen))
-    nb_defaults['energy'] = check_tmpl('Beam Wavelength [eV]', default=str(energy))
-    nb_defaults['folder'] = check_tmpl('Location of your notebook',
-                           tab_complete=True,
-                           default=os.path.join(os.environ['HOME'],'notebooks'))
-    name = check_tmpl('Name of the geoAssembler notebook', tab_complete=True,
-                          default='GeoAssembler.ipynb')
-    if not 'ipynb' in name:
-        name+='.ipynb'
+    nb_defaults['clen'] = clen or check_tmpl('Detector Distance [m]',
+                                             default=str(clen))
+    nb_defaults['energy'] = energy or check_tmpl('Beam Wavelength [eV]',
+                                                 default=str(energy))
+    nb_defaults['folder'] = nb_dir or check_tmpl('Directory where your notebooks should be located',
+                                                 tab_complete=True,
+                                                 default=os.path.join(os.environ['HOME'],
+                                                                      'notebooks'))
+    name = nb_file or check_tmpl('Name of the geoAssembler notebook',
+                                 tab_complete=True,
+                                 default='GeoAssembler.ipynb')
+    if not name.endswith('.ipynb'):
+        name += '.ipynb'
     nb_defaults['name'] = os.path.basename(name)
-
-    create_nbkernel()
+    if not no_kernel:
+        create_nbkernel()
     copy_notebook(nb_defaults)
 
 
 def create_calibrate_gui(*args, **kwargs):
-    """Create a QtGui Application and return an instance of CalibrateQt"""
-
+    """Create a QtGui Application and return an instance of CalibrateQt."""
     app = QtGui.QApplication([])
     calib = CalibrateQt(*args, **kwargs)
     calib.window.show()
