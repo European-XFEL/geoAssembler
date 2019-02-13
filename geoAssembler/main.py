@@ -202,27 +202,34 @@ def main(argv=None):
     To select quadrants click on the quadrant and to move the selected quadrant
     use CTRL+arrow-keys.""")
     ap.add_argument('-nb', '--notebook', default=False, action='store_true',
-                    help='Create a notebook from a template that is saved in '\
+                    help='Create a notebook from a template that is saved in '
                          'your userspace')
-    ap.add_argument('-r','--run', default=None,
+    ap.add_argument('-no_kernel', default=False, action='store_true',
+                    help='Do not try to attempt creating a xfel notebook kernel')
+    ap.add_argument('-nb_folder', default=None,
+                    help='Set default directory to save notebooks')
+    ap.add_argument('-nb_file', default=None,
+                    help='Set file name of the notbook')
+    ap.add_argument('-r', '--run', default=None,
                     help='Select a run')
-    ap.add_argument('-g','--geometry', default=None,
+    ap.add_argument('-g', '--geometry', default=None,
                     help='Select a cfel geometry file')
-    ap.add_argument('-c','--clen', default=0.119,
+    ap.add_argument('-c', '--clen', default=0.119,
                     help='Detector distance [m]')
-    ap.add_argument('-e','--energy', default=10235,
+    ap.add_argument('-e', '--energy', default=10235,
                     help='Photon energy [ev]')
-    ap.add_argument('-l','--level', nargs=2, default=None,
+    ap.add_argument('-l', '--level', nargs=2, default=None,
                     help='Pre defined display range for plotting')
 
     args = ap.parse_args()
 
-    if args.notebook :
-        create_nb(args.run, args.geometry, args.clen, args.energy, args.level)
+    if args.notebook:
+        create_nb(args.run, args.geometry, args.clen, args.energy, args.level,
+                  args.nb_folder, args.nb_file, args.no_kernel)
     else:
         create_calibrate_gui(args.run, args.geometry, levels=args.level,
-            header=HEADER.format(clen=args.clen, energy=args.energy))
+                             header=HEADER.format(clen=args.clen, energy=args.energy))
+
 
 if __name__ == '__main__':
     main()
-
