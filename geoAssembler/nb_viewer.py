@@ -1,46 +1,42 @@
-"""Jupyter Version of the detector geometry calibration
-   for powder ring based calibration."""
 
+"""Jupyter Version of the detector geometry calibration."""
 
 import os
 import logging
 
 import numpy as np
 
-
 from ipywidgets import widgets, Layout
 from IPython.display import display
 from matplotlib import pyplot as plt, cm
 import matplotlib.patches as patches
 
-
 from .geometry import AGIPD_1MGeometry
 from .nb_tabs import CalibTab, MatTab
-
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
 
-#Fallback quad positions if no geometry file is given as a starting point:
+# Fallback quad positions if no geometry file is given as a starting point:
 FALLBACK_QUAD_POS = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
 
-#Default colormaps
-DEFAULT_CMAPS=['binary_r',
-              'viridis',
-              'coolwarm',
-              'winter',
-              'summer',
-              'hot',
-              'OrRd']
-#Definition of increments (INC) the quadrants should move to once a direction
-#(u = up, d = down, r = right, l = left is given:
+# Default colormaps
+DEFAULT_CMAPS = ['binary_r',
+                 'viridis',
+                 'coolwarm',
+                 'winter',
+                 'summer',
+                 'hot',
+                 'OrRd']
+# Definition of increments (INC) the quadrants should move to once a direction
+# (u = up, d = down, r = right, l = left is given:
 INC = 1
-DIRECTION = {'u' : (-INC,    0),
-             'd' : ( INC,    0),
-             'r' : (   0,  INC),
-             'l' : (   0, -INC)}
+DIRECTION = {'u': (-INC,    0),
+             'd': (INC,    0),
+             'r': (0,  INC),
+             'l': (0, -INC)}
 
-CANVAS_MARGIN = 300 #pixel, used as margin on each side of detector quadrants
+CANVAS_MARGIN = 300  # pixel, used as margin on each side of detector quadrants
 
 
 class CalibrateNb:
@@ -83,7 +79,8 @@ class CalibrateNb:
 
         # Try to assemble the data (if geom is a AGIPD_Geometry class)
         if geometry is None:
-            self.geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=FALLBACK_QUAD_POS)
+            self.geom = AGIPD_1MGeometry.from_quad_positions(
+                quad_pos=FALLBACK_QUAD_POS)
         elif isinstance(geometry, str):
             self.geom = AGIPD_1MGeometry.from_crystfel_geom(geometry)
         else:
@@ -123,9 +120,9 @@ class CalibrateNb:
             # If none then no new rectangle should be drawn
             return
         P, dx, dy =\
-        self.geom.get_quad_corners(
+            self.geom.get_quad_corners(
                 {1: 2, 2: 1, 3: 4, 4: 3}[pos],
-                np.array(self.data.shape,dtype='i')//2)
+                np.array(self.data.shape, dtype='i')//2)
 
         self.rect = patches.Rectangle(P,
                                       dx,
@@ -170,7 +167,7 @@ class CalibrateNb:
     def _set_clim(self, plot_range):
         """Update the color limits."""
         try:
-            vmin, vmax= plot_range['new'][0], plot_range['new'][-1]
+            vmin, vmax = plot_range['new'][0], plot_range['new'][-1]
         except KeyError:
             return
         self.im.set_clim(vmin, vmax)
@@ -196,7 +193,8 @@ class CalibrateNb:
         """Update the plotted image."""
         # Update the image first
         self.data, centre =\
-        self.geom.position_all_modules(self.raw_data, canvas=self.canvas.shape)
+            self.geom.position_all_modules(
+                self.raw_data, canvas=self.canvas.shape)
         cy, cx = centre
         if self.im is not None:
             if plot_range is not None:
