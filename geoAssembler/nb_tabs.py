@@ -1,4 +1,4 @@
-"""Define the Widget tabs that are using in CalibrateNb"""
+"""Define the Widget tabs that are using in CalibrateNb."""
 
 
 import os
@@ -19,17 +19,16 @@ from scipy import constants
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
 
-#Fallback quad positions if no geometry file is given as a starting point:
+# Fallback quad positions if no geometry file is given as a starting point:
 FALLBACK_QUAD_POS = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
 
-#Definition of increments (INC) the quadrants should move to once a direction
-#(u = up, d = down, r = right, l = left is given:
+# Definition of increments (INC) the quadrants should move to once a direction
+# (u = up, d = down, r = right, l = left is given:
 INC = 1
-DIRECTION = {'u' : (-INC,    0),
-             'd' : ( INC,    0),
-             'r' : (   0,  INC),
-             'l' : (   0, -INC)}
-
+DIRECTION = {'u': (-INC,    0),
+             'd': (INC,    0),
+             'r': (0,  INC),
+             'l': (0, -INC)}
 
 
 class CalibTab(widgets.VBox):
@@ -50,12 +49,12 @@ class CalibTab(widgets.VBox):
                                           description='Quadrant',
                                           disabled=False)
         self.circ_btn = widgets.Button(description='Add circle',
-                                      disabled=False,
-                                      button_style='',
-                                      icon='',
-                                      tooltip='Add Helper Circle',
-                                      layout=Layout(width='100px',
-                                                    height='30px'))
+                                       disabled=False,
+                                       button_style='',
+                                       icon='',
+                                       tooltip='Add Helper Circle',
+                                       layout=Layout(width='100px',
+                                                     height='30px'))
         self.clr_btn = widgets.Button(description='Clear Circle',
                                       tooltip='Remove All Circles',
                                       disabled=False,
@@ -84,7 +83,7 @@ class CalibTab(widgets.VBox):
     def _add_circle(self, *args):
         """Add a circel to the image."""
         num = len(self.parent.circles)
-        if num >= 10: #Draw only 10 circles at max
+        if num >= 10:  # Draw only 10 circles at max
             return
         r = 350
         for circ in self.parent.circles.values():
@@ -92,11 +91,11 @@ class CalibTab(widgets.VBox):
         self.parent._draw_circle(r, num)
         self.circle = num
         self.circ_drn = widgets.Dropdown(options=list(self.parent.circles.keys()),
-                                        value=num,
-                                        disabled=False,
-                                        description='Sel.:',
-                                        layout=Layout(width='150px',
-                                                      height='30px'))
+                                         value=num,
+                                         disabled=False,
+                                         description='Sel.:',
+                                         layout=Layout(width='150px',
+                                                       height='30px'))
 
         self.set_r = widgets.BoundedFloatText(value=350,
                                               min=0,
@@ -170,7 +169,7 @@ class CalibTab(widgets.VBox):
             pos = np.array((sign, 0))
         self.parent.geom.move_quad(self.parent.quad, pos)
         self.parent._draw_rect(
-                {0: None, 1: 2, 2: 1, 3: 4, 4: 3}[self.parent.quad])
+            {0: None, 1: 2, 2: 1, 3: 4, 4: 3}[self.parent.quad])
         self.parent.update_plot(None)
 
     def _update_navi(self, pos):
@@ -224,9 +223,14 @@ class CalibTab(widgets.VBox):
 
 
 class MatTab(widgets.VBox):
-    '''Calibrant-tab'''
+    """Calibrant-tab."""
 
     def __init__(self, parent):
+        """Set all widgets for the tab.
+
+        Arguments:
+            parent (ipywidget) : The parent widget object embeding this tab
+        """
         self.parent = parent
         self.title = 'Set Calibrant'
         self.alpha = 0.5  # The transparency value of the overlay
@@ -311,21 +315,21 @@ class MatTab(widgets.VBox):
         super(widgets.VBox, self).__init__([self.row1, self.row2])
 
     def _set_cdist(self, prop):
-        '''Set the detector probe distance'''
+        """Set the detector probe distance."""
         try:
             self.cdist = float(prop['new'])
-        except:
+        except TypeError:
             return
 
     def _set_pxsize(self, prop):
-        '''Set the detector pixel size'''
+        """Set the detector pixel size."""
         try:
             self.pxsize = float(prop['new'])/1000.
         except:
             return
 
     def _set_wavelength(self, prop):
-        '''Set the wavelength (photon energy)'''
+        """Set the wavelength (photon energy)."""
         try:
             energy = float(prop['new'])
         except TypeError:
@@ -334,13 +338,13 @@ class MatTab(widgets.VBox):
         self.wave_length = constants.h * constants.c / (energy*constants.eV)
 
     def _set_calibrant(self, prop):
-        '''Set the calibrant material'''
+        """Set the calibrant material."""
         calib = prop['new']
         if isinstance(calib, str):
             self.calibrant = calib
 
     def _draw_overlay(self, *args):
-        '''Draw the ring structure with pyFAI'''
+        """Draw the ring structure with pyFAI."""
         try:
             cal = pyFAI.calibrant.get_calibrant(self.calibrant)
         except KeyError:
@@ -371,7 +375,7 @@ class MatTab(widgets.VBox):
             self.img.set_visible(True)
 
     def _clear_overlay(self, *args):
-        '''Do not display the ring structure'''
+        """Do not display the ring structure."""
         if self.img is None:
             return
         cmp = cm.Reds
@@ -380,7 +384,7 @@ class MatTab(widgets.VBox):
         self.img.set_visible(False)
 
     def _set_alpha(self, prop):
-        '''Set the transparency value of the ring overlay'''
+        """Set the transparency value of the ring overlay."""
         try:
             self.alpha = float(prop['new'])
         except TypeError:
@@ -392,7 +396,7 @@ class MatTab(widgets.VBox):
             pass
 
     def _set_clim(self, prop):
-        '''The the clims of the ring overlay'''
+        """The the clims of the ring overlay."""
         try:
             if isinstance(prop['new'], tuple):
                 self.clim = prop['new']
