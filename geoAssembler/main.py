@@ -29,17 +29,17 @@ photon_energy = {energy} ;"""
 
 RE_SPACE = re.compile('.*\s+$', re.M)
 
-NB_MESSAGE= """
+NB_MESSAGE = """
 
 Notebook has been created. You can use it by loading the file
-{nb_path} either by using jupyter-hub on desy:
+{nb_path} either by using JupyterHub on desy:
  https://max-jhub.desy.de
 or by starting a jupyter server:
  jupyter-notebook --port PORT_NUBER* --no-browser &
-and follow the displayed instructions.
+and follow the displayed instructions. For more information see https://bit.ly/2Gm97c0
 
 
-Note 1: the PORT_NUMBER should be a number of > 1000 like 8432
+Note 1: the PORT_NUMBER should be a number of >= 1024 like 8432
 """
 
 class Completer:
