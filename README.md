@@ -17,7 +17,7 @@ on the on- and offline cluster.
 
 ```bash
 source /gpfs/exfel/sw/software/modules
-module load xfel_anaconda3
+module load xfel
 ```
 The following optional arguments can be set via the command line:
 
@@ -53,14 +53,22 @@ Once the quadrants have been positioned a geometry file can be saved by
 using the *Save* button.
 
 ## Calibration Using Jupyter
-The -nb, --notebook flag provides the user the option to create a notebook
-explaining in the home direcory of the user.
+The -nb, --notebook flag creates a jupyter notebook uses the home direcory.
 
 ## Setup
 It is recommended to use the already setup application available in xfel's
 anaconda3 distirbution.
+All packages should be available via the xfel module. At the moment
+the module has to be activated by
+```bash
+source /gpfs/exfel/sw/software/modules
+module load xfel
+```
+
+
 ### Dependencies
-The following python packages should be available:
+If the user doesn't want or cannot use the xfel module and wants to install the
+tool the following python packages should be available:
  - numpy
  - cfelpyutils
  - pyqtgraph
@@ -68,13 +76,6 @@ The following python packages should be available:
  - ipywidgets
  - pyqt5
  - pyFAI
-
-All packages should be available via the xfel's anaconda3 module. At the moment
-the module has to be activated by
-```bash
-source /gpfs/exfel/sw/software/modules
-module load xfel_anaconda3
-```
 
 
 ## Testing:
