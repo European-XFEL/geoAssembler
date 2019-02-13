@@ -24,6 +24,7 @@ def find_version(*parts):
         return match.group(1)
     raise RuntimeError("Unable to find version string.")
 
+
 setup(name="geoAssembler",
       version=find_version("geoAssembler", "__init__.py"),
       author="European XFEL GmbH",
@@ -36,9 +37,9 @@ setup(name="geoAssembler",
       packages=find_packages(),
       data_files=[('templates', ['templates/geoAssembler.tmpl'])],
       entry_points={
-          'gui_scripts':[
+          'gui_scripts': [
               'geoAssembler = geoAssembler.main:main'
-              ]},
+          ]},
       install_requires=[
           'cfelpyutils',
           'karabo-data',
@@ -49,8 +50,12 @@ setup(name="geoAssembler",
           'pyFai',
           'PyQt5',
           'PyQt5-sip',
+          'nbparameterise',
           'scipy'
 
+      ],
+      dependency_links=[
+          'https://github.com/takluyver/nbparameterise.git'
       ],
       extras_require={
           'docs': [
@@ -75,4 +80,4 @@ setup(name="geoAssembler",
           'Topic :: Scientific/Engineering :: Information Analysis',
           'Topic :: Scientific/Engineering :: Physics',
       ]
-)
+      )
