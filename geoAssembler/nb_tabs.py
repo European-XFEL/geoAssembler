@@ -409,5 +409,3 @@ class MatTab(widgets.VBox):
             self.img.set_clim(*self.clim)
         except AttributeError:
             pass
-
-
