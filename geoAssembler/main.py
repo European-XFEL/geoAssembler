@@ -144,7 +144,7 @@ def create_nb(rundir=None, geofile=None, clen=None, energy=None, levels=None,
     nb_defaults = {}
     nb_defaults['rundir'] = repr(rundir or check_tmpl(
         'Run Directory',
-        default='/gpfs/exfel/exp/XMPL/201750/p700000/proc/r0273',
+        default='/gpfs/exfel/exp/XMPL/201750/p700000/proc/r0005',
         tab_complete=True))
     geofile = geofile or check_tmpl('Input Geometry File in CFEL format',
                                     default=None,
@@ -154,11 +154,13 @@ def create_nb(rundir=None, geofile=None, clen=None, energy=None, levels=None,
     else:
         nb_defaults['geofile'] = None
     levels = levels or check_tmpl(
-        'Min/Max Display Limits', default=[None, None])
+        'Min/Max Display Limits', default=None)
     if isinstance(levels, str):
         for repl in ('/', ',', '|', ';', ':'):
             levels = levels.replace(repl, ' ')
         levels = [float(lev) for lev in levels.strip().split()]
+    elif levels is None:
+        levels = [None, None]
     else:
         levels = levels
     nb_defaults['levels'] = levels

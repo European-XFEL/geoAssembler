@@ -41,3 +41,5 @@ __version__ = "0.2.0"
 
 from .nb_viewer import CalibrateNb
 from .qt_viewer import CalibrateQt
+from .calibrants import calibrants
+

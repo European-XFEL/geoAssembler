@@ -16,6 +16,8 @@ import pyFAI.calibrant
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from scipy import constants
 
+from . import calibrants
+
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
 
@@ -243,10 +245,10 @@ class MatTab(widgets.VBox):
         self.pxsize = 0.2 / 1000  # [mm] Standard detector pixel size
         self.cdist = 0.2  # [m] Standard probe distance
         # Get all calibrants defined in pyFAI
-        self.pyfai_calibrants = [self.calibrant] + \
-            list(pyFAI.calibrant.ALL_CALIBRANTS.keys())
+        self.calibrants = [self.calibrant] + calibrants.calibrants
         # Calibrant selection
-        self.calib_btn = widgets.Dropdown(options=self.pyfai_calibrants, value=self.calibrant,
+        self.calib_btn = widgets.Dropdown(options=self.calibrants,
+                                          value='None',
                                           description='Calibrant', disabled=False,
                                           layout=Layout(width='250px', height='30px'))
         # Probe distance selection
@@ -350,11 +352,15 @@ class MatTab(widgets.VBox):
 
     def _draw_overlay(self, *args):
         """Draw the ring structure with pyFAI."""
+        if self.calibrant is 'None':
+            return
         try:
             cal = pyFAI.calibrant.get_calibrant(self.calibrant)
+            cal.set_wavelength(self.wave_length)
         except KeyError:
-            return
-        cal.set_wavelength(self.wave_length)
+            cal_file = os.path.join(calibrants.celldir, self.calibrant+'.D')
+            cal = pyFAI.calibrant.Calibrant(cal_file,
+                                            wavelength=self.wave_length)
         data, centre = self.parent.geom.position_all_modules(self.parent.raw_data,
                                                              canvas=self.parent.canvas.shape)
         det = pyFAI.detectors.Detector(self.pxsize, self.pxsize)
