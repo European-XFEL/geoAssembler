@@ -236,12 +236,12 @@ class MatTab(widgets.VBox):
         self.alpha = 0.5  # The transparency value of the overlay
         self.clim = (0.5, 0.9)  # Standard clim (max alwys 1)
         self.img = None  # Image to be overlayed
-        energy = 10e3  # Photon energy in eV
+        energy = 10e3  # [eV] Photon energy, default value can be overwirtten
         # Convert the energy to wave-length
-        self.wave_length = constants.h * constants.c / (energy*constants.eV)
+        self.wave_length = self._energy2lambda(energy)
         self.calibrant = 'None'  # Calibrant material
-        self.pxsize = 0.2 / 1000  # Standard detector pixel size
-        self.cdist = 0.2  # Standard probe distance
+        self.pxsize = 0.2 / 1000  # [mm] Standard detector pixel size
+        self.cdist = 0.2  # [m] Standard probe distance
         # Get all calibrants defined in pyFAI
         self.pyfai_calibrants = [self.calibrant] + \
             list(pyFAI.calibrant.ALL_CALIBRANTS.keys())
@@ -314,6 +314,11 @@ class MatTab(widgets.VBox):
         self.dist_btn.observe(self._set_cdist)
         super(widgets.VBox, self).__init__([self.row1, self.row2])
 
+    @staticmethod
+    def _energy2lambda(energy):
+        """Calc. wavelength from beam energy"""
+        return constants.h * constants.c / (energy * constants.eV)
+
     def _set_cdist(self, prop):
         """Set the detector probe distance."""
         try:
@@ -325,7 +330,7 @@ class MatTab(widgets.VBox):
         """Set the detector pixel size."""
         try:
             self.pxsize = float(prop['new'])/1000.
-        except:
+        except TypeError:
             return
 
     def _set_wavelength(self, prop):
@@ -335,7 +340,7 @@ class MatTab(widgets.VBox):
         except TypeError:
             return
         # Convert energy to wavelength
-        self.wave_length = constants.h * constants.c / (energy*constants.eV)
+        self.wave_length = self._energy2lambda(energy)
 
     def _set_calibrant(self, prop):
         """Set the calibrant material."""
