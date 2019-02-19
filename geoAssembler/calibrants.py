@@ -12,7 +12,7 @@ _LiTiO2 = pyFAI.calibrant.Cell.cubic(4.14, lattice_type='F')
 
 # Add the pyFAI standard calibrants
 _cells = {'LiTiO2': _LiTiO2}
-parent = os.path.dirname(os.path.dirname(__file__))
+parent = os.path.dirname(__file__)
 celldir = os.path.join(parent, 'cells')
 calibrants = list(pyFAI.calibrant.CALIBRANT_FACTORY.keys())
 for name, cell in _cells.items():

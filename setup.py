@@ -40,6 +40,8 @@ setup(name="geoAssembler",
       packages=find_packages(),
       data_files=[('templates', find_files('templates')),
                   ('cells', find_files('cells'))],
+      package_data={'':['cells/*.D', 'templates/*.tmpl']
+          },
       entry_points={
           'gui_scripts': [
               'geoAssembler = geoAssembler.main:main'
