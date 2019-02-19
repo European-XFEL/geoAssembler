@@ -168,7 +168,7 @@ class RunDirSelecter(QtWidgets.QFrame):
         self._sel = (pulse, sum_fun, mean_fun)
         # If a run directory was already given read it
         if run_dir:
-            self._read_run(run_dir)
+            self._read_rundir(run_dir)
         # Apply no selection method (sum, mean) to select pulses by default
         self._sel_method = None
         self._read_train = True
@@ -334,7 +334,8 @@ class CircleROI(pg.EllipseROI):
 class CalibrateQt:
     """Qt-Version of the Calibration Class."""
 
-    def __init__(self, run_dir=None, geofile=None, levels=None, header=None):
+    def __init__(self, run_dir=None, geofile=None, levels=None, header=None, 
+                 test=False):
         """Display detector data and arrange panels.
 
         Keywords:
@@ -348,7 +349,12 @@ class CalibrateQt:
         """
         self.geofile = geofile
         self.levels = levels
-        self.raw_data = None
+        if test:
+           test_file = os.path.join(os.path.dirname(__file__),
+                                   'tests','data.npz')
+           self.raw_data = np.load(test_file)['data']
+        else:
+            self.raw_data = None
         self.header = header or ''
 
         # Interpret image data as row-major instead of col-major
