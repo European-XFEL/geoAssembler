@@ -224,8 +224,8 @@ class CalibTab(widgets.VBox):
         self.parent.quad = pos
 
 
-class MatTab(widgets.VBox):
-    """Calibrant-tab."""
+class MaterialTab(widgets.VBox):
+    """Calibrant Material Tab."""
 
     def __init__(self, parent):
         """Set all widgets for the tab.

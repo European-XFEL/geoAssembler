@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt, cm
 import matplotlib.patches as patches
 
 from .geometry import AGIPD_1MGeometry
-from .nb_tabs import CalibTab, MatTab
+from .nb_tabs import CalibTab, MaterialTab
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
@@ -136,7 +136,7 @@ class CalibrateNb:
     def _add_tabs(self):
         """Add panel tabs."""
         self.tabs = widgets.Tab()
-        self.tabs.children = (CalibTab(self), MatTab(self))
+        self.tabs.children = (CalibTab(self), MaterialTab(self))
         for i, tab in enumerate(self.tabs.children):
             self.tabs.set_title(i, tab.title)
 
