@@ -117,13 +117,15 @@ class RunDirSelecter(QtWidgets.QFrame):
 
         # Creat an hbox with a title, a field to add a filename and a button
         hbox = QtWidgets.QHBoxLayout()
-
         self.run_sel = QtGui.QPushButton("Run-dir")
         self.run_sel.setToolTip('Select a Run directory')
         self.run_sel.clicked.connect(self._sel_run)
         hbox.addWidget(self.run_sel)
-
-        self.line = QtGui.QLineEdit(run_dir)
+        if self.parent.test:
+            self.line = QtGui.QLabel('Testing Data Only{:>250}'.format(' '))
+            self.run_sel.setEnabled(False)
+        else:
+            self.line = QtGui.QLineEdit(run_dir)
         self.line.setMaximumHeight(22)
         hbox.addWidget(self.line)
 
@@ -349,10 +351,12 @@ class CalibrateQt:
         """
         self.geofile = geofile
         self.levels = levels
+        self.test = test
         if test:
            test_file = os.path.join(os.path.dirname(__file__),
                                    'tests','data.npz')
            self.raw_data = np.load(test_file)['data']
+           self.levels = [0, 1500]
         else:
             self.raw_data = None
         self.header = header or ''
@@ -395,10 +399,11 @@ class CalibrateQt:
         self.layout.addWidget(self.imv,  1, 0, 10, 10)
 
         # These buttons are on the top
-        self.load_geom_btn = self.geom_selector.apply_btn
-        self.load_geom_btn.clicked.connect(self._apply)
-        self.save_geom_btn = self.geom_selector.save_btn
-        self.save_geom_btn.clicked.connect(self._save_geom)
+        self.apply_btn = self.geom_selector.apply_btn
+        self.apply_btn.clicked.connect(self._apply)
+        self.save_btn = self.geom_selector.save_btn
+        self.save_btn.clicked.connect(self._save_geom)
+        self.load_geom_btn = self.geom_selector.file_sel
         # buttons go to the bottom
         self.clear_btn = QtGui.QPushButton('Clear Helpers')
         self.clear_btn.setToolTip('Remove All Buttons')
@@ -422,7 +427,7 @@ class CalibrateQt:
 
     def _apply(self):
         """Read the geometry file and position all modules."""
-        if self.run_selector.rundir is None:
+        if self.run_selector.rundir is None and self.test is False:
             return
         log.info(' Starting to assemble ... ')
 
@@ -440,7 +445,7 @@ class CalibrateQt:
             self.geom = AGIPD_1MGeometry.from_quad_positions(
                 quad_pos=FALLBACK_QUAD_POS)
 
-        self.raw_data = self.run_selector.get()
+        if not self.test: self.raw_data = self.run_selector.get()
         data, self.centre = self.geom.position_all_modules(self.raw_data)
         self.canvas = np.full(np.array(data.shape) + CANVAS_MARGIN, np.nan)
 
