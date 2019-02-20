@@ -36,9 +36,10 @@ Author: bergeman
 """
 
 
-__version__ = "0.1.0"
-
+__version__ = "0.2.0"
 
 
 from .nb_viewer import CalibrateNb
 from .qt_viewer import CalibrateQt
+from .calibrants import calibrants
+

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Setup script for intalling the geoAssembler."""
+import glob
 import os.path as osp
 import re
 from setuptools import setup, find_packages
@@ -24,6 +25,8 @@ def find_version(*parts):
         return match.group(1)
     raise RuntimeError("Unable to find version string.")
 
+def find_files(directory):
+    return glob.glob(osp.join(directory,'*'))
 
 setup(name="geoAssembler",
       version=find_version("geoAssembler", "__init__.py"),
@@ -35,10 +38,14 @@ setup(name="geoAssembler",
       long_description=read("README.md"),
       license="BSD-3-Clause",
       packages=find_packages(),
+      data_files=[('templates', find_files('templates')),
+                  ('cells', find_files('cells'))],
+      package_data={'':['cells/*.D', 'templates/*.tmpl']
+          },
       entry_points={
-          'gui_scripts':[
-              'geoAssemblerGui = geoAssembler.main:main'
-              ]},
+          'gui_scripts': [
+              'geoAssembler = geoAssembler.main:main'
+          ]},
       install_requires=[
           'cfelpyutils',
           'karabo-data',
@@ -46,8 +53,15 @@ setup(name="geoAssembler",
           'numpy',
           'pyqtgraph',
           'ipywidgets',
+          'pyFai',
           'PyQt5',
-          'PyQt5-sip'
+          'PyQt5-sip',
+          'nbparameterise',
+          'scipy'
+
+      ],
+      dependency_links=[
+          'https://github.com/takluyver/nbparameterise.git'
       ],
       extras_require={
           'docs': [
@@ -72,4 +86,4 @@ setup(name="geoAssembler",
           'Topic :: Scientific/Engineering :: Information Analysis',
           'Topic :: Scientific/Engineering :: Physics',
       ]
-)
+      )

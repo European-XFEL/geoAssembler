@@ -1,38 +1,42 @@
-"""Jupyter Version of the detector geometry calibration
-   for powder ring based calibration."""
 
+"""Jupyter Version of the detector geometry calibration."""
 
 import os
 import logging
 
 import numpy as np
 
-
 from ipywidgets import widgets, Layout
 from IPython.display import display
 from matplotlib import pyplot as plt, cm
 import matplotlib.patches as patches
 
-
 from .geometry import AGIPD_1MGeometry
-from .nb_tabs import CalibTab
-
+from .nb_tabs import CalibTab, MaterialTab
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
 
-#Fallback quad positions if no geometry file is given as a starting point:
+# Fallback quad positions if no geometry file is given as a starting point:
 FALLBACK_QUAD_POS = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
 
-#Definition of increments (INC) the quadrants should move to once a direction
-#(u = up, d = down, r = right, l = left is given:
+# Default colormaps
+DEFAULT_CMAPS = ['binary_r',
+                 'viridis',
+                 'coolwarm',
+                 'winter',
+                 'summer',
+                 'hot',
+                 'OrRd']
+# Definition of increments (INC) the quadrants should move to once a direction
+# (u = up, d = down, r = right, l = left is given:
 INC = 1
-DIRECTION = {'u' : (-INC,    0),
-             'd' : ( INC,    0),
-             'r' : (   0,  INC),
-             'l' : (   0, -INC)}
+DIRECTION = {'u': (-INC,    0),
+             'd': (INC,    0),
+             'r': (0,  INC),
+             'l': (0, -INC)}
 
-CANVAS_MARGIN = 300 #pixel, used as margin on each side of detector quadrants
+CANVAS_MARGIN = 300  # pixel, used as margin on each side of detector quadrants
 
 
 class CalibrateNb:
@@ -54,26 +58,29 @@ class CalibrateNb:
                           anything below this value will be clipped
             vmax (int) : maximum value in the data array (default: 5000)
                           anything above this value will be clipped
+            figsize (tuple): size of the figure
+            bg (str) : background color of the image
             kwargs : additional keyword arguments that are parsed to matplotlib
         """
         self.data = raw_data
         self.im = None
-        self.vmin = vmin or -1000
-        self.vmax = vmax or 5000
+        self.vmin = vmin or np.nanmin(self.data)
+        self.vmax = vmax or np.nanmax(self.data)
         self.raw_data = np.clip(raw_data, self.vmin, self.vmax)
         self.figsize = figsize or (8, 8)
         self.bg = bg or 'w'
         self.circles = {}
         self.quad = None
-        self.cmap = cm.get_cmap('binary_r')
+        self.cmap = cm.get_cmap(DEFAULT_CMAPS[0])
         try:
             self.cmap.set_bad(self.bg)
         except (ValueError, KeyError):
             self.bg = 'w'
-        
+
         # Try to assemble the data (if geom is a AGIPD_Geometry class)
         if geometry is None:
-            self.geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=FALLBACK_QUAD_POS)
+            self.geom = AGIPD_1MGeometry.from_quad_positions(
+                quad_pos=FALLBACK_QUAD_POS)
         elif isinstance(geometry, str):
             self.geom = AGIPD_1MGeometry.from_crystfel_geom(geometry)
         else:
@@ -113,9 +120,9 @@ class CalibrateNb:
             # If none then no new rectangle should be drawn
             return
         P, dx, dy =\
-        self.geom.get_quad_corners(
+            self.geom.get_quad_corners(
                 {1: 2, 2: 1, 3: 4, 4: 3}[pos],
-                np.array(self.data.shape,dtype='i')//2)
+                np.array(self.data.shape, dtype='i')//2)
 
         self.rect = patches.Rectangle(P,
                                       dx,
@@ -129,7 +136,7 @@ class CalibrateNb:
     def _add_tabs(self):
         """Add panel tabs."""
         self.tabs = widgets.Tab()
-        self.tabs.children = (CalibTab(self),)
+        self.tabs.children = (CalibTab(self), MaterialTab(self))
         for i, tab in enumerate(self.tabs.children):
             self.tabs.set_title(i, tab.title)
 
@@ -148,19 +155,8 @@ class CalibrateNb:
             readout=True,
             readout_format='d',
             layout=Layout(width='70%'))
-        self.cmap_sel = widgets.Dropdown(options=['binary_r',
-                                                  'gist_earth',
-                                                  'gist_ncar',
-                                                  'bone',
-                                                  'winter',
-                                                  'summer',
-                                                  'hot',
-                                                  'copper',
-                                                  'OrRd',
-                                                  'coolwarm',
-                                                  'CMRmap',
-                                                  'Dark2_r'],
-                                         value='binary_r',
+        self.cmap_sel = widgets.Dropdown(options=DEFAULT_CMAPS,
+                                         value=DEFAULT_CMAPS[0],
                                          description='Color Map:',
                                          disabled=False,
                                          layout=Layout(width='200px'))
@@ -171,7 +167,7 @@ class CalibrateNb:
     def _set_clim(self, plot_range):
         """Update the color limits."""
         try:
-            vmin, vmax= plot_range['new'][0], plot_range['new'][-1]
+            vmin, vmax = plot_range['new'][0], plot_range['new'][-1]
         except KeyError:
             return
         self.im.set_clim(vmin, vmax)
@@ -193,11 +189,12 @@ class CalibrateNb:
         except ValueError:
             return
 
-    def update_plot(self, plot_range=(100, 1500), cmap='gist_earth', **kwargs):
+    def update_plot(self, plot_range=(None, None), cmap=DEFAULT_CMAPS[0], **kwargs):
         """Update the plotted image."""
         # Update the image first
         self.data, centre =\
-        self.geom.position_all_modules(self.raw_data, canvas=self.canvas.shape)
+            self.geom.position_all_modules(
+                self.raw_data, canvas=self.canvas.shape)
         cy, cx = centre
         if self.im is not None:
             if plot_range is not None:
@@ -215,7 +212,7 @@ class CalibrateNb:
                                   clear=True, facecolor=self.bg)
             self.ax = self.fig.add_subplot(111)
             self.im = self.ax.imshow(
-                self.data, vmin=plot_range[0], vmax=plot_range[-1],
+                self.data, vmin=plot_range[0], vmax=plot_range[1],
                 cmap=self.cmap, **kwargs)
             self.ax.set_xticks([]), self.ax.set_yticks([])
             h1 = self.ax.hlines(cy, cx-20, cx+20, colors='r', linewidths=1)

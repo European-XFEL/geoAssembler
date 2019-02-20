@@ -1,10 +1,12 @@
+"""Provide AGIPD-D geometry information that supports quadrant moving."""
+
 from cfelpyutils.crystfel_utils import load_crystfel_geometry
 import numpy as np
 from . import __version__
 
+
 def _crystfel_format_vec(vec):
-    """Convert an array of 3 numbers to CrystFEL format like "+1.0x -0.1y"
-    """
+    """Convert an array of 3 numbers to CrystFEL format like '+1.0x -0.1y'."""
     s = '{:+}x {:+}y'.format(*vec[:2])
     try:
         if vec[2] != 0:
@@ -15,6 +17,8 @@ def _crystfel_format_vec(vec):
 
 
 class AGIPDGeometryFragment:
+    """Define the geometry for one ASCIS."""
+
     ss_pixels = 64
     fs_pixels = 128
 
@@ -147,7 +151,7 @@ class AGIPD_1MGeometry:
         return cls(modules, quad_pos)
 
     def move_quad(self, quad, inc):
-        pos = {1:0, 2:4, 3:12, 4:8}[quad] #Translate quad into mod pos
+        pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
 
         for i, module in enumerate(self.modules[pos:pos + 4]):
             n = pos + i
@@ -158,7 +162,7 @@ class AGIPD_1MGeometry:
                                                           tile.fs_vec)
 
     def get_quad_corners(self, quad, centre):
-        pos = {1:0, 2:4, 3:12, 4:8}[quad] #Translate quad into mod pos
+        pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
         X = []
         Y = []
         for i, module in enumerate(self.modules[pos:pos + 4]):

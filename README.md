@@ -16,18 +16,23 @@ It is recommended to use this Gui application through the pre-installed path
 on the on- and offline cluster.
 
 ```bash
- /gpfs/exfel/sw/software/geoAssembler/geoAssemblerGui
+source /gpfs/exfel/sw/software/modules
+module load xfel
 ```
 The following optional arguments can be set via the command line:
 
-| Argument  |   | Description  |
-|---|---|---|
-|  -h, --help |   |   |
-|  -r, --run |  run_dir |  The path name to a exp folder |
-|  -g, --geometry| geomfile  | Path to geometry file |
-|  -c, --clen    |  clen |  Detector distance [m] |
-|  -e, --energy  |  energy | Photon energy [ev]  |
-|  -l, --level   |  min max | Display range for plotting  |
+| Argument         |            | Description                                          |
+|------------------|------------|------------------------------------------------------|
+|  -h, --help |    |            |                                                      |
+|  -nb, --notebook |            | Do not start gui, create a notebook                  |
+| -no_kernel       |            | Do not try to attempt creating a xfel notebook kernel|
+| -nb_folder       |  nb_folder | Set default directory to save notebooks              |
+| -nb_file         |  nb_file   | Set file name of the notbook                         |
+|  -r, --run       |  run_dir   | The path name to a exp folder                        |
+|  -g, --geometry  |  geomfile  | Path to geometry file                                |
+|  -c, --clen      |  clen      |  Detector distance [m]                               |
+|  -e, --energy    |  energy    | Photon energy [ev]                                   |
+|  -l, --level     |  min max   | Display range for plotting                           |
 
 ![Screenshot](docs/.screenshot.png)
 
@@ -51,22 +56,29 @@ Once the quadrants have been positioned a geometry file can be saved by
 using the *Save* button.
 
 ## Calibration Using Jupyter
-```docs/Demo_calib.ipynb``` contains a notebook explaining the usage
-of the calibration tool of the Jupyter notebook.
+The -nb, --notebook flag creates a jupyter notebook uses the home direcory.
+
+## Setup
+It is recommended to use the already setup application available in xfel's
+anaconda3 distirbution.
+All packages should be available via the xfel module. At the moment
+the module has to be activated by
+```bash
+source /gpfs/exfel/sw/software/modules
+module load xfel
+```
 
 
-### Setup
-It is recommended to use the already setup application available on ```/gpfs/exfel/sw/software/geoAssembler```
-## Dependencies
-The following python packages should be available:
+### Dependencies
+If the user doesn't want or cannot use the xfel module and wants to install the
+tool the following python packages should be available:
  - numpy
  - cfelpyutils
  - pyqtgraph
  - matplotlib
  - ipywidgets
  - pyqt5
-
-All packages should be available via the desy's anaconda3 module
+ - pyFAI
 
 
 ## Testing:
