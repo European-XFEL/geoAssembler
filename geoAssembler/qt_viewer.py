@@ -417,6 +417,7 @@ class CalibrateQt:
         self.cancel_btn.clicked.connect(self._destroy)
         self.layout.addWidget(self.cancel_btn, 11, 2, 1, 1)
         self.run_selector = RunDirSelecter(run_dir, self)
+        self.run_selector_btn = self.run_selector.run_sel
         self.layout.addWidget(self.run_selector, 11, 3, 1, 8)
         self.info = QtGui.QLabel(
             'Click on Quadrant to select; CTRL+arrow-keys to move')
