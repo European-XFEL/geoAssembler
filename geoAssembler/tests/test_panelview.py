@@ -29,16 +29,21 @@ class TestQt_Gui(unittest.TestCase):
 
     def test_defaults(self):
         """Test the Gui in its default state."""
+        # Click add circle btn when no image is selected, check for circles
         QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
         self.assertEqual(len(self.calib.circles), 0)
+        # Click the add image button in test mode and check if a run-dir
+        # can selected (shouldn't be)
+        QTest.mouseClick(self.calib.apply_btn, QtCore.Qt.LeftButton)
+        self.assertEqual(self.calib.run_selector_btn.isEnabled(), False)
 
     def test_load_geo(self):
         """Test the correct loading fo geometry."""
-        #Push the geometry load button
+        # Push the geometry load button and load a geo file via mock dialog
         with mock.patch.object(QtGui.QFileDialog, 'getOpenFileName',
                                return_value=(self.geomfile, '')):
             QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
-
+        # Push apply btn and check if the geo file was loaded
         QTest.mouseClick(self.calib.apply_btn, QtCore.Qt.LeftButton)
         self.assertEqual(self.calib.geom_selector.value,
                          os.path.abspath(self.geomfile))
@@ -46,23 +51,28 @@ class TestQt_Gui(unittest.TestCase):
 
     def test_circles(self):
         """Test adding circles."""
-        #Draw image
+        # Draw image
         QTest.mouseClick(self.calib.apply_btn, QtCore.Qt.LeftButton)
         QTest.mouseClick(self.calib.clear_btn, QtCore.Qt.LeftButton)
-        #Draw circle
+        # Press the add circle button twice, check for num of circles
         QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
-        self.assertEqual(len(self.calib.circles), 1)
+        QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
+        self.assertEqual(len(self.calib.circles), 2)
 
     def test_circle_properties(self):
         """Test changeing properties of the circles."""
         QTest.mouseClick(self.calib.apply_btn, QtCore.Qt.LeftButton)
+        # Add a circle
         QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
+        # Check for the default circle size
         self.assertEqual(self.calib.radius_setter.spin_box.value(), 690)
+        # Set the size of the spinbox to 800 and check for circ. radius
         self.calib.radius_setter.spin_box.setValue(800)
+        self.assertEqual(self.calib.selected_circle.size()[0], 800)
+        # Add another circle, select the first one and check for size again
         QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
-        btn = self.calib.bottom_buttons[1]
-        QTest.mouseClick(btn, QtCore.Qt.LeftButton)
-        self.assertEqual(self.calib.selected_circle.size()[0], 690)
+        self.calib.bottom_buttons[0].click()
+        self.assertEqual(self.calib.selected_circle.size()[0], 800)
 
     def test_bottom_buttons(self):
         """Test the circle selection buttons on the bottom."""
