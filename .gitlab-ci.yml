@@ -1,4 +1,5 @@
 image: python:3.6
+test:
     script:
-        # Do unit tests
-        - pytest -vv
+    # Do unit tests
+    - pytest -vv
