@@ -438,11 +438,11 @@ class CalibrateQt:
                     self.geom_selector.value)
             except TypeError:
                 # Fallback to evenly align quadrant positions
-                log.warn(' Using fallback option')
+                log.warning(' Using fallback option')
                 self.geom = AGIPD_1MGeometry.from_quad_positions(
                     quad_pos=FALLBACK_QUAD_POS)
         else:
-            log.warn(' Using fallback option')
+            log.warning(' Using fallback option')
             self.geom = AGIPD_1MGeometry.from_quad_positions(
                 quad_pos=FALLBACK_QUAD_POS)
 
