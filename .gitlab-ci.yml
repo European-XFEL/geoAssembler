@@ -7,6 +7,8 @@ before_script:
     - pip install pytest
     - pip install future
     - pip install .
+    - source geoAssembler/tests/prepare_ci "$CI_BUILD_NAME"
+    
 
 unittest:
     script:
