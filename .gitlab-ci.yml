@@ -1,9 +1,12 @@
 #image: python:3.6
+image: bssthu/pyqt
 
 before_script:
     - echo '*** Set necessary proxies so this machine can access Internet ***'
     - export http_proxy="http://exflwgs06.desy.de:3128/"
     - export https_proxy="http://exflwgs06.desy.de:3128/"
+    - apt update
+    - apt -y install xvfb
     - pip install pytest
     - pip install future
     - pip install .
