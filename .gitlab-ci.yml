@@ -5,6 +5,7 @@ before_script:
     - export http_proxy="http://exflwgs06.desy.de:3128/"
     - export https_proxy="http://exflwgs06.desy.de:3128/"
     - pip install pytest
+    - pip install .
 
 unittest:
     script:
