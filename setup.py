@@ -60,9 +60,6 @@ setup(name="geoAssembler",
           'scipy'
 
       ],
-      dependency_links=[
-          'https://github.com/takluyver/nbparameterise.git'
-      ],
       extras_require={
           'docs': [
               'sphinx',
