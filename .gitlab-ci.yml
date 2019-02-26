@@ -1,5 +1,13 @@
 image: python:3.6
-test:
+
+before_script:
+    - echo '*** Set necessary proxies so this machine can access Internet ***'
+    - export http_proxy="http://exflwgs06.desy.de:3128/"
+    - export https_proxy="http://exflwgs06.desy.de:3128/"
+    - pip install pytest
+
+unittest:
     script:
     # Do unit tests
-    - pytest -vv
+    - make test
+
