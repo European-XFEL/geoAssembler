@@ -1,5 +1,4 @@
-#image: python:3.6
-image: bssthu/pyqt
+image: python:3.6
 
 before_script:
     - echo '*** Set necessary proxies so this machine can access Internet ***'
@@ -7,11 +6,12 @@ before_script:
     - export https_proxy="http://exflwgs06.desy.de:3128/"
     - apt update
     - apt -y install xvfb
+    - apt -y install python3-pyqt5
     - pip install pytest
     - pip install future
     - pip install .
-    - source geoAssembler/tests/prepare_ci "$CI_BUILD_NAME"
-    
+    - export DISPLAY=:99.0
+    - start-stop-daemon --start -b -x /usr/bin/Xvfb $DISPLAY
 
 unittest:
     script:
