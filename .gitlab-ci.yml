@@ -1,4 +1,4 @@
-image: python:3.6
+#image: python:3.6
 
 before_script:
     - echo '*** Set necessary proxies so this machine can access Internet ***'
