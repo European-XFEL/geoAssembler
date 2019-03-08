@@ -121,11 +121,7 @@ class RunDirSelecter(QtWidgets.QFrame):
         self.run_sel.setToolTip('Select a Run directory')
         self.run_sel.clicked.connect(self._sel_run)
         hbox.addWidget(self.run_sel)
-        if self.parent.test:
-            self.line = QtGui.QLabel('Testing Data Only{:>250}'.format(' '))
-            self.run_sel.setEnabled(False)
-        else:
-            self.line = QtGui.QLineEdit(run_dir)
+        self.line = QtGui.QLineEdit(run_dir)
         self.line.setMaximumHeight(22)
         hbox.addWidget(self.line)
 
@@ -336,8 +332,7 @@ class CircleROI(pg.EllipseROI):
 class CalibrateQt:
     """Qt-Version of the Calibration Class."""
 
-    def __init__(self, run_dir=None, geofile=None, levels=None, header=None, 
-                 test=False):
+    def __init__(self, run_dir=None, geofile=None, levels=None, header=None):
         """Display detector data and arrange panels.
 
         Keywords:
@@ -350,15 +345,8 @@ class CalibrateQt:
             header (str)  : header for the geometry file
         """
         self.geofile = geofile
-        self.levels = levels
-        self.test = test
-        if test:
-           test_file = os.path.join(os.path.dirname(__file__),
-                                   'tests','data.npz')
-           self.raw_data = np.load(test_file)['data']
-           self.levels = [0, 1500]
-        else:
-            self.raw_data = None
+        self.levels = levels or [None, None]
+        self.raw_data = None
         self.header = header or ''
 
         # Interpret image data as row-major instead of col-major
@@ -428,7 +416,7 @@ class CalibrateQt:
 
     def _apply(self):
         """Read the geometry file and position all modules."""
-        if self.run_selector.rundir is None and self.test is False:
+        if self.run_selector.rundir is None:
             return
         log.info(' Starting to assemble ... ')
 
@@ -446,7 +434,7 @@ class CalibrateQt:
             self.geom = AGIPD_1MGeometry.from_quad_positions(
                 quad_pos=FALLBACK_QUAD_POS)
 
-        if not self.test: self.raw_data = self.run_selector.get()
+        self.raw_data = self.run_selector.get()
         data, self.centre = self.geom.position_all_modules(self.raw_data)
         self.canvas = np.full(np.array(data.shape) + CANVAS_MARGIN, np.nan)
 
@@ -456,12 +444,12 @@ class CalibrateQt:
         # Display the data and assign each frame a time value from 1.0 to 3.0
         if not self.is_displayed:
             xvals = np.linspace(1., 3., self.canvas.shape[0])
-            if self.levels:
+            try:
                 self.imv.setImage(np.clip(self.data, *self.levels),
                                   levels=self.levels, xvals=xvals)
-            else:
+            except ValueError:
                 self.imv.setImage(self.data,
-                                  levels=self.levels, xvals=xvals)
+                                  levels=None, xvals=xvals)
             self.is_displayed = True
 
         else:
