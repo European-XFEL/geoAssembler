@@ -137,10 +137,20 @@ def main(argv=None):
         create_nb(args.rundir, args.geometry, args.clen, args.energy, args.level,
                   args.nb_dir, args.nb_file)
     else:
-        create_calibrate_gui(args.rundir, args.geometry, levels=args.level,
+        if args.test:
+            from tempfile import TemporaryDirectory
+            from .tests import create_test_directory
+            with TemporaryDirectory() as td:
+                log.info('Creating temp data in {}...'.format(td))
+                create_test_directory(td)
+                log.info('...done')
+                create_calibrate_gui(td, args.geometry, levels=args.level,
                              header=HEADER.format(clen=args.clen,
-                                                  energy=args.energy),
-                             test=args.test)
+                                                  energy=args.energy))
+        else:
+            create_calibrate_gui(args.rundir, args.geometry, levels=args.level,
+                             header=HEADER.format(clen=args.clen,
+                                                  energy=args.energy))
 
 
 if __name__ == '__main__':
