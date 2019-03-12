@@ -6,7 +6,7 @@ before_script:
     - export https_proxy="http://exflwgs06.desy.de:3128/"
     - apt update
     - apt -y install xvfb
-    - apt -y install python3-pyqt5
+    - apt -y install qt5-default
     - pip install pytest
     - pip install future
     - pip install .
