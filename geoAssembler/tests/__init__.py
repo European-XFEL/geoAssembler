@@ -26,7 +26,7 @@ def create_test_directory(path_dir):
                         ntrains=1, chunksize=1)
         with File(os.path.join(path_dir, fname), 'a') as f:
             group = '/INSTRUMENT/SPB_DET_AGIPD1M-1/DET/{}CH0:xtdf/image/data'.format(modno)
-            for i in range(len(f[group][:])):
+            for i in range(f[group].shape[0]):
                 f[group][i] = raw_data[modno]
 
 
