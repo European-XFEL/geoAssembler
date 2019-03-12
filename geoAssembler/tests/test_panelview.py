@@ -10,7 +10,7 @@ from pyqtgraph import (QtCore, QtGui)
 from PyQt5.QtTest import QTest
 import unittest
 
-from . import create_test_directory
+from .utils import create_test_directory
 
 from ..qt_viewer import CalibrateQt
 from ..geometry import AGIPD_1MGeometry
