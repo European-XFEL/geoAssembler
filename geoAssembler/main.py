@@ -139,7 +139,7 @@ def main(argv=None):
     else:
         if args.test:
             from tempfile import TemporaryDirectory
-            from .tests import create_test_directory
+            from .tests.utils import create_test_directory
             with TemporaryDirectory() as td:
                 log.info('Creating temp data in {}...'.format(td))
                 create_test_directory(td)
