@@ -11,6 +11,7 @@ before_script:
     - pip install future
     - pip install .
     - export DISPLAY=:99.0
+    - pip install git+https://github.com/European-XFEL/karabo_data.git
     - start-stop-daemon --start -b -x /usr/bin/Xvfb $DISPLAY
 
 unittest:

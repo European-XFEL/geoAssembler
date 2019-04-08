@@ -19,4 +19,5 @@ install:
 	python3 -m pip install -U -e .[test]
 
 test:
+	pip install git+https://github.com/European-XFEL/karabo_data.git
 	python3 -m pytest -v

@@ -144,14 +144,16 @@ def main(argv=None):
                 log.info('Creating temp data in {}...'.format(td))
                 create_test_directory(td)
                 log.info('...done')
-                create_calibrate_gui(td, args.geometry, levels=args.level,
-                             header=HEADER.format(clen=args.clen,
-                                                  energy=args.energy))
+                create_calibrate_gui(td,
+                                     args.geometry,
+                                     levels=args.level,
+                                     header=HEADER.format(clen=args.clen,
+                                                          energy=args.energy))
         else:
-            create_calibrate_gui(args.rundir, args.geometry, levels=args.level,
-                             header=HEADER.format(clen=args.clen,
-                                                  energy=args.energy))
-
+            create_calibrate_gui(args.rundir,
+                                 args.geometry, levels=args.level,
+                                 header=HEADER.format(clen=args.clen,
+                                                      energy=args.energy))
 
 if __name__ == '__main__':
     main()
