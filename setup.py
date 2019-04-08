@@ -61,6 +61,7 @@ setup(name="geoAssembler",
           'scipy'
 
       ],
+      dependency_links=['https://github.com/European-XFEL/karabo_data.git'],
       extras_require={
           'docs': [
               'sphinx',
