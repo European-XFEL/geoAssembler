@@ -46,6 +46,7 @@ setup(name="geoAssembler",
           'gui_scripts': [
               'geoAssembler = geoAssembler.main:main'
           ]},
+      dependency_links=['git+https://github.com/European-XFEL/karabo_data.git'],
       install_requires=[
           'cfelpyutils',
           'karabo-data',
@@ -57,11 +58,9 @@ setup(name="geoAssembler",
           'pyFai',
           'PyQt5',
           'PyQt5-sip',
-          'nbparameterise',
           'scipy'
 
       ],
-      dependency_links=['git+https://github.com/European-XFEL/karabo_data.git'],
       extras_require={
           'docs': [
               'sphinx',
