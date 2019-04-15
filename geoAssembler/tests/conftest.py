@@ -1,7 +1,7 @@
 import pytest
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='session', autouse=True)
 def gui_app():
     import sys
     from pyqtgraph import QtGui

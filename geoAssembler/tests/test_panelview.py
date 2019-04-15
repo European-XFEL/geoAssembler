@@ -10,7 +10,7 @@ from ..geometry import AGIPD_1MGeometry
 from ..qt_viewer import CalibrateQt
 
 
-def test_defaults(gui_app, mock_run):
+def test_defaults(mock_run):
     # Click add circle btn when no image is selected, check for circles
 
     test_calib = CalibrateQt(mock_run, geofile=None, levels=[0, 1500])
@@ -30,7 +30,7 @@ def test_defaults(gui_app, mock_run):
     assert levels[0] == 0
     assert levels[1] == 1500
 
-def test_preset(gui_app, mock_run, calib):
+def test_preset(mock_run, calib):
     with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
                 return_value=mock_run):
             QTest.mouseClick(calib.run_selector_btn, QtCore.Qt.LeftButton)
@@ -38,7 +38,7 @@ def test_preset(gui_app, mock_run, calib):
     assert calib.run_selector._sel_method == None
     assert calib.run_selector._read_train == True
 
-def test_load_geo(gui_app, mock_run, calib):
+def test_load_geo(mock_run, calib):
     """Test the correct loading fo geometry."""
     with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
                 return_value=mock_run):
@@ -54,7 +54,7 @@ def test_load_geo(gui_app, mock_run, calib):
     QTest.mouseClick(calib.apply_btn, QtCore.Qt.LeftButton)
     assert type(calib.geom) == AGIPD_1MGeometry
 
-def test_levels(gui_app, mock_run, calib):
+def test_levels(mock_run, calib):
     """Test for behavior of default levels."""
     with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
                 return_value=mock_run):
@@ -68,7 +68,7 @@ def test_levels(gui_app, mock_run, calib):
     assert levels[0] == 0
     assert levels[1] == raw_data.max()
 
-def test_circles(gui_app, mock_run, calib):
+def test_circles(mock_run, calib):
     """Test adding circles."""
     # Draw image
     with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
@@ -81,7 +81,7 @@ def test_circles(gui_app, mock_run, calib):
     QTest.mouseClick(calib.add_circ_btn, QtCore.Qt.LeftButton)
     assert len(calib.circles) == 2
 
-def test_circle_properties(gui_app, mock_run, calib):
+def test_circle_properties(mock_run, calib):
     """Test changeing properties of the circles."""
     with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
                 return_value=mock_run):
@@ -98,7 +98,7 @@ def test_circle_properties(gui_app, mock_run, calib):
     calib.bottom_buttons[1].click()
     assert calib.selected_circle.size()[0] == 690
 
-def test_bottom_buttons(gui_app, mock_run, calib):
+def test_bottom_buttons(mock_run, calib):
     """Test the circle selection buttons on the bottom."""
     with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
                 return_value=mock_run):
@@ -110,7 +110,7 @@ def test_bottom_buttons(gui_app, mock_run, calib):
     QTest.mouseClick(calib.clear_btn, QtCore.Qt.LeftButton)
     assert len(calib.bottom_buttons) == 0
 
-def test_save_geo(gui_app, mock_run, calib, tmpdir):
+def test_save_geo(mock_run, calib, tmpdir):
     """Test saving the geom file."""
     with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
                 return_value=mock_run):
