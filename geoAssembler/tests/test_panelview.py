@@ -6,7 +6,7 @@ import numpy as np
 from pyqtgraph import (QtCore, QtGui)
 from PyQt5.QtTest import QTest
 
-from ..geometry import AGIPD_1MGeometry
+from ..geometry import AGIPDGeometry
 from ..qt_viewer import CalibrateQt
 
 
@@ -24,7 +24,7 @@ def test_defaults(mock_run):
                 return_value=mock_run):
             QTest.mouseClick(test_calib.run_selector_btn, QtCore.Qt.LeftButton)
     #Test if geometry was correctly applied
-    assert type(test_calib.geom) == AGIPD_1MGeometry
+    assert type(test_calib.geom) == AGIPDGeometry
     #Test if the preset levels are correct
     levels = tuple(test_calib.imv.getImageItem().levels)
     assert levels[0] == 0
@@ -52,7 +52,7 @@ def test_load_geo(mock_run, calib):
     QTest.mouseClick(calib.apply_btn, QtCore.Qt.LeftButton)
     assert calib.geom_selector.value == os.path.abspath(geomfile)
     QTest.mouseClick(calib.apply_btn, QtCore.Qt.LeftButton)
-    assert type(calib.geom) == AGIPD_1MGeometry
+    assert type(calib.geom) == AGIPDGeometry
 
 def test_levels(mock_run, calib):
     """Test for behavior of default levels."""
@@ -96,7 +96,7 @@ def test_circle_properties(mock_run, calib):
     QTest.mouseClick(calib.add_circ_btn, QtCore.Qt.LeftButton)
     QTest.mouseClick(calib.add_circ_btn, QtCore.Qt.LeftButton)
     calib.bottom_buttons[1].click()
-    assert calib.selected_circle.size()[0] == 690
+    assert calib.selected_circle.size()[0] == 691
 
 def test_bottom_buttons(mock_run, calib):
     """Test the circle selection buttons on the bottom."""
@@ -121,5 +121,5 @@ def test_save_geo(mock_run, calib, tmpdir):
     with mock.patch.object(QtGui.QFileDialog, 'getSaveFileName',
                            return_value=(save_geo, '')):
         QTest.mouseClick(calib.save_btn, QtCore.Qt.LeftButton)
-    geom = AGIPD_1MGeometry.from_crystfel_geom(save_geo)
-    assert isinstance(geom, AGIPD_1MGeometry)
+    geom = AGIPDGeometry.from_crystfel_geom(save_geo)
+    assert isinstance(geom, AGIPDGeometry)
