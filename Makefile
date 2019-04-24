@@ -15,8 +15,6 @@ deploy:
 	$(ENV_PATH)/bin/python -m pip install -I numpy
 	ln $(DEPLOY_PATH)/env/bin/geoAssemblerGui $(DEPLOY_PATH)/geoAssemblerGui
 
-
-
 install:
 	python3 -m pip install -U -e .[test]
 

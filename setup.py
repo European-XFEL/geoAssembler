@@ -46,22 +46,20 @@ setup(name="geoAssembler",
           'gui_scripts': [
               'geoAssembler = geoAssembler.main:main'
           ]},
+      dependency_links=['git+https://github.com/European-XFEL/karabo_data.git'],
       install_requires=[
           'cfelpyutils',
           'karabo-data',
           'matplotlib',
+          'mock',
           'numpy',
           'pyqtgraph',
           'ipywidgets',
           'pyFai',
           'PyQt5',
           'PyQt5-sip',
-          'nbparameterise',
           'scipy'
 
-      ],
-      dependency_links=[
-          'https://github.com/takluyver/nbparameterise.git'
       ],
       extras_require={
           'docs': [

@@ -1,67 +1,125 @@
 import os
-import sys
+import pytest
 
+import mock
 import numpy as np
 from pyqtgraph import (QtCore, QtGui)
 from PyQt5.QtTest import QTest
 
-import unittest
-
-from ..qt_viewer import CalibrateQt
 from ..geometry import AGIPD_1MGeometry
+from ..qt_viewer import CalibrateQt
 
-app = QtGui.QApplication(sys.argv)
 
-class TestQt_Gui(unittest.TestCase):
-    """Define unit test cases for the gui."""
-    def setUp(self):
-        """Set up and create the gui."""
-        quad_pos = [ (-540, 610), (-540, -15), (540, -143), (540, 482)]
-        self.test_geo =  AGIPD_1MGeometry.from_quad_positions(quad_pos=quad_pos)
-        data = np.zeros([16, 512, 128])
-        dirname = os.path.dirname(__file__)
-        self.calib = CalibrateQt(data, geofile=os.path.join(dirname, 'test.geom'))
+def test_defaults(mock_run):
+    # Click add circle btn when no image is selected, check for circles
 
-    def test_defaults(self):
-        """Test the Gui in its default state."""
-        QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
-        self.assertEqual(len(self.calib.circles), 0)
+    test_calib = CalibrateQt(mock_run, geofile=None, levels=[0, 1500])
+    QTest.mouseClick(test_calib.add_circ_btn, QtCore.Qt.LeftButton)
+    assert len(test_calib.circles) == 0
+    # Click the add image button in test mode and check if a run-dir
+    # can selected (shouldn't be)
+    QTest.mouseClick(test_calib.apply_btn, QtCore.Qt.LeftButton)
+    assert test_calib.run_selector_btn.isEnabled() == True
+    with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
+                return_value=mock_run):
+            QTest.mouseClick(test_calib.run_selector_btn, QtCore.Qt.LeftButton)
+    #Test if geometry was correctly applied
+    assert type(test_calib.geom) == AGIPD_1MGeometry
+    #Test if the preset levels are correct
+    levels = tuple(test_calib.imv.getImageItem().levels)
+    assert levels[0] == 0
+    assert levels[1] == 1500
 
-    def test_load_geo(self):
-        """Test the correct loading fo geometry."""
-        #Push the geometry load button
-        QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
-        self.assertEqual(type(self.test_geo), type(self.calib.geom))
+def test_preset(mock_run, calib):
+    with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
+                return_value=mock_run):
+            QTest.mouseClick(calib.run_selector_btn, QtCore.Qt.LeftButton)
+    assert calib.run_selector.tid == 10000
+    assert calib.run_selector._sel_method == None
+    assert calib.run_selector._read_train == True
 
-    def test_circles(self):
-        """Test adding circles."""
-        #Draw image
-        QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
-        QTest.mouseClick(self.calib.clear_btn, QtCore.Qt.LeftButton)
-        #Draw circle
-        QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
-        self.assertEqual(len(self.calib.circles), 1)
+def test_load_geo(mock_run, calib):
+    """Test the correct loading fo geometry."""
+    with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
+                return_value=mock_run):
+            QTest.mouseClick(calib.run_selector_btn, QtCore.Qt.LeftButton)
+    geomfile = os.path.join(os.path.dirname(__file__), 'test.geom')
+    # Push the geometry load button and load a geo file via mock dialog
+    with mock.patch.object(QtGui.QFileDialog, 'getOpenFileName',
+                           return_value=(geomfile, '')):
+        QTest.mouseClick(calib.load_geom_btn, QtCore.Qt.LeftButton)
+    # Push apply btn and check if the geo file was loaded
+    QTest.mouseClick(calib.apply_btn, QtCore.Qt.LeftButton)
+    assert calib.geom_selector.value == os.path.abspath(geomfile)
+    QTest.mouseClick(calib.apply_btn, QtCore.Qt.LeftButton)
+    assert type(calib.geom) == AGIPD_1MGeometry
 
-    def test_circle_properties(self):
-        """Test changeing properties of the circles."""
-        QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
-        QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
-        self.assertEqual(self.calib.radius_setter.spin_box.value(), 695)
-        self.calib.radius_setter.spin_box.setValue(800)
-        self.assertEqual(self.calib.selected_circle.size()[0], 800)
+def test_levels(mock_run, calib):
+    """Test for behavior of default levels."""
+    with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
+                return_value=mock_run):
+            QTest.mouseClick(calib.run_selector_btn, QtCore.Qt.LeftButton)
+    parent = os.path.dirname(__file__)
+    raw_data = np.load(os.path.join(parent, 'data.npz'))['data']
+    QTest.mouseClick(calib.apply_btn, QtCore.Qt.LeftButton)
+    levels = tuple(calib.imv.getImageItem().levels)
+    print(levels)
+    return
+    assert levels[0] == 0
+    assert levels[1] == raw_data.max()
 
-    def test_bottom_buttons(self):
-        """Test the circle selection buttons on the bottom."""
-        QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
-        QTest.mouseClick(self.calib.add_circ_btn, QtCore.Qt.LeftButton)
-        self.assertEqual(len(self.calib.bottom_buttons), 1)
-        self.assertEqual(self.calib.bottom_buttons[0].text(), 'Circ.')
+def test_circles(mock_run, calib):
+    """Test adding circles."""
+    # Draw image
+    with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
+                return_value=mock_run):
+            QTest.mouseClick(calib.run_selector_btn, QtCore.Qt.LeftButton)
+    QTest.mouseClick(calib.apply_btn, QtCore.Qt.LeftButton)
+    QTest.mouseClick(calib.clear_btn, QtCore.Qt.LeftButton)
+    # Press the add circle button twice, check for num of circles
+    QTest.mouseClick(calib.add_circ_btn, QtCore.Qt.LeftButton)
+    QTest.mouseClick(calib.add_circ_btn, QtCore.Qt.LeftButton)
+    assert len(calib.circles) == 2
 
-   # def test_save_geo(self):
-   #     """Test saving the geom file."""
-   #     QTest.mouseClick(self.calib.load_geom_btn, QtCore.Qt.LeftButton)
-   #     self.assertEqual(self.calib.geom_selector.line.text(), 'sample.geom')
-   #     self.calib.geom_selector.clear(linetxt='sample_unit.geom')
-   #     QTest.mouseClick(self.calib.save_geom_btn, QtCore.Qt.LeftButton)
-   #     self.assertEqual(os.path.isfile('sample_unit.geom'), True)
-   #     os.remove('sample_unit.geom')
+def test_circle_properties(mock_run, calib):
+    """Test changeing properties of the circles."""
+    with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
+                return_value=mock_run):
+            QTest.mouseClick(calib.run_selector_btn, QtCore.Qt.LeftButton)
+    QTest.mouseClick(calib.apply_btn, QtCore.Qt.LeftButton)
+    # Add a circle
+    QTest.mouseClick(calib.add_circ_btn, QtCore.Qt.LeftButton)
+    # Set the size of the spinbox to 800 and check for circ. radius
+    calib.radius_setter.spin_box.setValue(800)
+    assert calib.selected_circle.size()[0] == 800
+    # Add another circle, select the first one and check for size again
+    QTest.mouseClick(calib.add_circ_btn, QtCore.Qt.LeftButton)
+    QTest.mouseClick(calib.add_circ_btn, QtCore.Qt.LeftButton)
+    calib.bottom_buttons[1].click()
+    assert calib.selected_circle.size()[0] == 690
+
+def test_bottom_buttons(mock_run, calib):
+    """Test the circle selection buttons on the bottom."""
+    with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
+                return_value=mock_run):
+            QTest.mouseClick(calib.run_selector_btn, QtCore.Qt.LeftButton)
+    QTest.mouseClick(calib.apply_btn, QtCore.Qt.LeftButton)
+    QTest.mouseClick(calib.add_circ_btn, QtCore.Qt.LeftButton)
+    QTest.mouseClick(calib.add_circ_btn, QtCore.Qt.LeftButton)
+    assert calib.bottom_buttons[0].text() == 'Circ.'
+    QTest.mouseClick(calib.clear_btn, QtCore.Qt.LeftButton)
+    assert len(calib.bottom_buttons) == 0
+
+def test_save_geo(mock_run, calib, tmpdir):
+    """Test saving the geom file."""
+    with mock.patch.object(QtGui.QFileDialog, 'getExistingDirectory',
+                return_value=mock_run):
+            QTest.mouseClick(calib.run_selector_btn, QtCore.Qt.LeftButton)
+    save_geo = tmpdir.join('out.geom')
+    QTest.mouseClick(calib.apply_btn, QtCore.Qt.LeftButton)
+    assert calib.save_btn.isEnabled() ==  True
+    with mock.patch.object(QtGui.QFileDialog, 'getSaveFileName',
+                           return_value=(save_geo, '')):
+        QTest.mouseClick(calib.save_btn, QtCore.Qt.LeftButton)
+    geom = AGIPD_1MGeometry.from_crystfel_geom(save_geo)
+    assert isinstance(geom, AGIPD_1MGeometry)

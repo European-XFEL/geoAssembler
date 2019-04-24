@@ -117,12 +117,10 @@ class RunDirSelecter(QtWidgets.QFrame):
 
         # Creat an hbox with a title, a field to add a filename and a button
         hbox = QtWidgets.QHBoxLayout()
-
         self.run_sel = QtGui.QPushButton("Run-dir")
         self.run_sel.setToolTip('Select a Run directory')
         self.run_sel.clicked.connect(self._sel_run)
         hbox.addWidget(self.run_sel)
-
         self.line = QtGui.QLineEdit(run_dir)
         self.line.setMaximumHeight(22)
         hbox.addWidget(self.line)
@@ -334,8 +332,7 @@ class CircleROI(pg.EllipseROI):
 class CalibrateQt:
     """Qt-Version of the Calibration Class."""
 
-    def __init__(self, run_dir=None, geofile=None, levels=None, header=None, 
-                 test=False):
+    def __init__(self, run_dir=None, geofile=None, levels=None, header=None):
         """Display detector data and arrange panels.
 
         Keywords:
@@ -348,13 +345,8 @@ class CalibrateQt:
             header (str)  : header for the geometry file
         """
         self.geofile = geofile
-        self.levels = levels
-        if test:
-           test_file = os.path.join(os.path.dirname(__file__),
-                                   'tests','data.npz')
-           self.raw_data = np.load(test_file)['data']
-        else:
-            self.raw_data = None
+        self.levels = levels or [None, None]
+        self.raw_data = None
         self.header = header or ''
 
         # Interpret image data as row-major instead of col-major
@@ -395,10 +387,11 @@ class CalibrateQt:
         self.layout.addWidget(self.imv,  1, 0, 10, 10)
 
         # These buttons are on the top
-        self.load_geom_btn = self.geom_selector.apply_btn
-        self.load_geom_btn.clicked.connect(self._apply)
-        self.save_geom_btn = self.geom_selector.save_btn
-        self.save_geom_btn.clicked.connect(self._save_geom)
+        self.apply_btn = self.geom_selector.apply_btn
+        self.apply_btn.clicked.connect(self._apply)
+        self.save_btn = self.geom_selector.save_btn
+        self.save_btn.clicked.connect(self._save_geom)
+        self.load_geom_btn = self.geom_selector.file_sel
         # buttons go to the bottom
         self.clear_btn = QtGui.QPushButton('Clear Helpers')
         self.clear_btn.setToolTip('Remove All Buttons')
@@ -412,6 +405,7 @@ class CalibrateQt:
         self.cancel_btn.clicked.connect(self._destroy)
         self.layout.addWidget(self.cancel_btn, 11, 2, 1, 1)
         self.run_selector = RunDirSelecter(run_dir, self)
+        self.run_selector_btn = self.run_selector.run_sel
         self.layout.addWidget(self.run_selector, 11, 3, 1, 8)
         self.info = QtGui.QLabel(
             'Click on Quadrant to select; CTRL+arrow-keys to move')
@@ -432,11 +426,11 @@ class CalibrateQt:
                     self.geom_selector.value)
             except TypeError:
                 # Fallback to evenly align quadrant positions
-                log.warn(' Using fallback option')
+                log.warning(' Using fallback option')
                 self.geom = AGIPD_1MGeometry.from_quad_positions(
                     quad_pos=FALLBACK_QUAD_POS)
         else:
-            log.warn(' Using fallback option')
+            log.warning(' Using fallback option')
             self.geom = AGIPD_1MGeometry.from_quad_positions(
                 quad_pos=FALLBACK_QUAD_POS)
 
@@ -450,12 +444,12 @@ class CalibrateQt:
         # Display the data and assign each frame a time value from 1.0 to 3.0
         if not self.is_displayed:
             xvals = np.linspace(1., 3., self.canvas.shape[0])
-            if self.levels:
+            try:
                 self.imv.setImage(np.clip(self.data, *self.levels),
                                   levels=self.levels, xvals=xvals)
-            else:
+            except ValueError:
                 self.imv.setImage(self.data,
-                                  levels=self.levels, xvals=xvals)
+                                  levels=None, xvals=xvals)
             self.is_displayed = True
 
         else:
