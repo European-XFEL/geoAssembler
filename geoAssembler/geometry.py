@@ -1,171 +1,42 @@
 """Provide AGIPD-D geometry information that supports quadrant moving."""
 
-from cfelpyutils.crystfel_utils import load_crystfel_geometry
 import numpy as np
+from karabo_data.geometry2 import AGIPD_1MGeometry, GeometryFragment
+
 from . import __version__
 
 
-def _crystfel_format_vec(vec):
-    """Convert an array of 3 numbers to CrystFEL format like '+1.0x -0.1y'."""
-    s = '{:+}x {:+}y'.format(*vec[:2])
-    try:
-        if vec[2] != 0:
-            s += ' {:+}z'.format(vec[2])
-    except IndexError:
-        pass
-    return s
-
-
-class AGIPDGeometryFragment:
-    """Define the geometry for one ASCIS."""
-
-    ss_pixels = 64
-    fs_pixels = 128
-
-    # The coordinates in this class are (x, y, z), in pixel units
-    def __init__(self, corner_pos, ss_vec, fs_vec):
-        self.corner_pos = corner_pos
-        self.ss_vec = ss_vec
-        self.fs_vec = fs_vec
-
-    @classmethod
-    def from_panel_dict(cls, d):
-        corner_pos = np.array([d['cnx'], d['cny']])
-        ss_vec = np.array([d['ssx'], d['ssy']])
-        fs_vec = np.array([d['fsx'], d['fsy']])
-        return cls(corner_pos, ss_vec, fs_vec)
-
-    def corners(self):
-        return np.stack([
-            self.corner_pos,
-            self.corner_pos + (self.fs_vec * self.fs_pixels),
-            self.corner_pos + (self.ss_vec * self.ss_pixels) +
-            (self.fs_vec * self.fs_pixels),
-            self.corner_pos + (self.ss_vec * self.ss_pixels),
-        ])
-
-    def centre(self):
-        return self.corner_pos + (.5 * self.ss_vec * self.ss_pixels) \
-                               + (.5 * self.fs_vec * self.fs_pixels)
-
-    def snap(self):
-        corner_pos = np.around(self.corner_pos[:2]).astype(np.int32)
-        ss_vec = np.around(self.ss_vec[:2]).astype(np.int32)
-        fs_vec = np.around(self.fs_vec[:2]).astype(np.int32)
-        assert {tuple(np.abs(ss_vec)), tuple(
-            np.abs(fs_vec))} == {(0, 1), (1, 0)}
-        # Convert xy coordinates to yx indexes
-        return GridGeometryFragment(corner_pos[::-1], ss_vec[::-1], fs_vec[::-1])
-
-
-class GridGeometryFragment:
-    ss_pixels = 64
-    fs_pixels = 128
-
-    # These coordinates are all (y, x), suitable for indexing a numpy array.
-    def __init__(self, corner_pos, ss_vec, fs_vec):
-        self.ss_vec = ss_vec
-        self.fs_vec = fs_vec
-        if fs_vec[0] == 0:
-            # Flip without transposing
-            fs_order = fs_vec[1]
-            ss_order = ss_vec[0]
-            self.transform = lambda arr: arr[..., ::ss_order, ::fs_order]
-            corner_shift = np.array([
-                min(ss_order, 0) * self.ss_pixels,
-                min(fs_order, 0) * self.fs_pixels
-            ])
-            self.pixel_dims = np.array([self.ss_pixels, self.fs_pixels])
-        else:
-            # Transpose and then flip
-            fs_order = fs_vec[0]
-            ss_order = ss_vec[1]
-            self.transform = lambda arr: arr.swapaxes(
-                -1, -2)[..., ::fs_order, ::ss_order]
-            corner_shift = np.array([
-                min(fs_order, 0) * self.fs_pixels,
-                min(ss_order, 0) * self.ss_pixels
-            ])
-            self.pixel_dims = np.array([self.fs_pixels, self.ss_pixels])
-        self.corner_idx = corner_pos + corner_shift
-        self.corner_pos = corner_pos
-        self.opp_corner_idx = self.corner_idx + self.pixel_dims
-
-    def to_crystfel_geom(self, p, a):
-        name = 'p{}a{}'.format(p, a)
-        c = self.corner_pos[::1]
-        cr = CRYSTFEL_PANEL_TEMPLATE.format(
-            name=name, p=p,
-            min_ss=(a * self.ss_pixels), max_ss=(((a + 1) * self.ss_pixels) - 1),
-            ss_vec=_crystfel_format_vec(self.ss_vec[::-1]),
-            fs_vec=_crystfel_format_vec(self.fs_vec[::-1]),
-            corner_x=c[1], corner_y=c[0], coffset=0,
-        )
-        return cr
-
-
-class AGIPD_1MGeometry:
+class AGIPDGeometry(AGIPD_1MGeometry):
     """Detector layout for AGIPD-1M
 
     The coordinates used in this class are 3D (x, y, z), and represent multiples
     of the pixel size.
     """
-    pixel_size = 2e-7  # 2e-7 metres == 0.2 mm
 
-    def __init__(self, modules, quad_pos):
-        self.modules = modules  # List of 16 lists of 8 fragments
-        self.quad_pos = quad_pos
-
-    @classmethod
-    def from_quad_positions(cls, quad_pos, asic_gap=2, panel_gap=29):
-        """Generate an AGIPD-1M geometry from quadrant positions.
-
-        This produces an idealised geometry, assuming all modules are perfectly
-        flat, aligned and equally spaced within their quadrant.
-
-        The quadrant positions are given in pixel units, referring to the first
-        pixel of the first module in each quadrant.
-        """
-        quads_x_orientation = [1, 1, -1, -1]
-        quads_y_orientation = [-1, -1, 1, 1]
-        modules = []
-        for p in range(16):
-            quad = p // 4
-            quad_corner = quad_pos[quad]
-            x_orient = quads_x_orientation[quad]
-            y_orient = quads_y_orientation[quad]
-            p_in_quad = p % 4
-            corner_y = quad_corner[1] - (p_in_quad * (128 + panel_gap))
-
-            tiles = []
-            modules.append(tiles)
-
-            for a in range(8):
-                corner_x = quad_corner[0] + x_orient * (64 + asic_gap) * a
-                tiles.append(AGIPDGeometryFragment(
-                    corner_pos=np.array([corner_x, corner_y, 0.]),
-                    ss_vec=np.array([x_orient, 0, 0]),
-                    fs_vec=np.array([0, y_orient, 0]),
-                ).snap())
-
-        return cls(modules, quad_pos)
+    def __init__(self, modules, **kwargs):
+        super(AGIPD_1MGeometry, self).__init__(modules)
+        self.geom = self._snapped()
 
     def move_quad(self, quad, inc):
         pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
-
+        inc = np.array(list(inc)+[0])
         for i, module in enumerate(self.modules[pos:pos + 4]):
             n = pos + i
             for j, tile in enumerate(module):
-
-                self.modules[n][j] = GridGeometryFragment(tile.corner_pos+inc,
-                                                          tile.ss_vec,
-                                                          tile.fs_vec)
-
+                self.modules[n][j] = GeometryFragment(\
+                        tile.corner_pos+inc,
+                        tile.ss_vec,
+                        tile.fs_vec,
+                        tile.ss_pixels,
+                        tile.fs_pixels,
+                        )
+        self._snapped_cache = None
+        self.geom = self._snapped()
     def get_quad_corners(self, quad, centre):
         pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
         X = []
         Y = []
-        for i, module in enumerate(self.modules[pos:pos + 4]):
+        for i, module in enumerate(self.geom.modules[pos:pos + 4]):
             for j, tile in enumerate(module):
                 # Offset by centre to make all coordinates positive
                 y, x = tile.corner_idx + centre
@@ -177,21 +48,6 @@ class AGIPD_1MGeometry:
         dy = abs(max(Y) - min(Y))
         dx = abs(max(X) - min(X))
         return (min(X)-2, min(Y)-2), dx+w+4, dy+4
-
-    @classmethod
-    def from_crystfel_geom(cls, filename):
-        geom_dict = load_crystfel_geometry(filename)
-        modules = []
-        quad_pos = []
-        for p in range(16):
-            tiles = []
-            modules.append(tiles)
-            for a in range(8):
-                d = geom_dict['panels']['p{}a{}'.format(p, a)]
-                tiles.append(AGIPDGeometryFragment.from_panel_dict(d).snap())
-                if p % 4 == 0 and a == 0:
-                    quad_pos.append(tuple(tiles[-1].corner_pos[:-1]))
-        return cls(modules, quad_pos)
 
     def write_crystfel_geom(self, filename, header=''):
 
@@ -227,42 +83,22 @@ class AGIPD_1MGeometry:
         """
         assert data.shape[-3:] == (16, 512, 128)
         if canvas is None:
-            size_yx, centre = self._plotting_dimensions()
+            size_yx, centre = self._get_dimensions()
         else:
             size_yx = canvas
             centre = (canvas[0]//2, canvas[-1]//2)
         out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
-        for i, module in enumerate(self.modules):
+
+        for i, module in enumerate(self.geom.modules):
             mod_data = data[..., i, :, :]
-            tiles_data = np.split(mod_data, 8, axis=-2)
+            tiles_data = self.split_tiles(mod_data)
             for j, tile in enumerate(module):
                 tile_data = tiles_data[j]
                 # Offset by centre to make all coordinates positive
                 y, x = tile.corner_idx + centre
                 h, w = tile.pixel_dims
-                out[..., y:y+h, x:x+w] = tile.transform(tile_data)
-
+                out[..., y : y + h, x : x + w] = tile.transform(tile_data)
         return out, centre
-
-    def _plotting_dimensions(self):
-        """Calculate appropriate dimensions for plotting assembled data
-
-        Returns (size_y, size_x), (centre_y, centre_x)
-        """
-        corners = []
-        for module in self.modules:
-            for tile in module:
-                corners.append(tile.corner_idx)
-                corners.append(tile.opp_corner_idx)
-        corners = np.stack(corners)
-
-        # Find extremes
-        min_yx = corners.min(axis=0)
-        max_yx = corners.max(axis=0)
-
-        size = max_yx - min_yx
-        centre = -min_yx
-        return tuple(size), centre
 
 
 CRYSTFEL_HEADER_TEMPLATE = """\
