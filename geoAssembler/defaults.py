@@ -1,13 +1,9 @@
 
 """Define global default configuration parameters."""
 
-import logging
-import os
 
 from .geometry import AGIPDGeometry, LPDGeometry
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(os.path.basename(__file__))
 
 # Fallback quad positions if no geometry file is given as a starting point:
 FALLBACK_QUAD_POS = {

@@ -2,6 +2,7 @@
 
 from collections import namedtuple
 from itertools import product
+import logging
 import os
 
 import karabo_data as kd
@@ -11,6 +12,9 @@ from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
 from .defaults import *
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(os.path.basename(__file__))
 
 Slot = QtCore.pyqtSlot
 
