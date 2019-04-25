@@ -1,9 +1,6 @@
 
 """Jupyter Version of the detector geometry calibration."""
 
-import os
-import logging
-
 import numpy as np
 
 from ipywidgets import widgets, Layout
@@ -11,39 +8,16 @@ from IPython.display import display
 from matplotlib import pyplot as plt, cm
 import matplotlib.patches as patches
 
-from .geometry import AGIPD_1MGeometry
+
+from .defaults import *
 from .nb_tabs import CalibTab, MaterialTab
-
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(os.path.basename(__file__))
-
-# Fallback quad positions if no geometry file is given as a starting point:
-FALLBACK_QUAD_POS = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
-
-# Default colormaps
-DEFAULT_CMAPS = ['binary_r',
-                 'viridis',
-                 'coolwarm',
-                 'winter',
-                 'summer',
-                 'hot',
-                 'OrRd']
-# Definition of increments (INC) the quadrants should move to once a direction
-# (u = up, d = down, r = right, l = left is given:
-INC = 1
-DIRECTION = {'u': (-INC,    0),
-             'd': (INC,    0),
-             'r': (0,  INC),
-             'l': (0, -INC)}
-
-CANVAS_MARGIN = 300  # pixel, used as margin on each side of detector quadrants
 
 
 class CalibrateNb:
     """Ipython Widget version of the Calibration Class."""
 
     def __init__(self, raw_data, geometry=None, vmin=None, vmax=None,
-                 figsize=None, bg=None, **kwargs):
+                 figsize=None, bg=None, det='AGIPD', **kwargs):
         """Display detector data and arrange panels.
 
         Parameters:
@@ -60,9 +34,13 @@ class CalibrateNb:
                           anything above this value will be clipped
             figsize (tuple): size of the figure
             bg (str) : background color of the image
+            det (str) : detector to be used
             kwargs : additional keyword arguments that are parsed to matplotlib
         """
         self.data = raw_data
+        if det not in ['AGIPD', 'LPD']:
+            raise NotImplementedError('Detector not available')
+        self.det = det
         self.im = None
         self.vmin = vmin or np.nanmin(self.data)
         self.vmax = vmax or np.nanmax(self.data)
@@ -77,16 +55,16 @@ class CalibrateNb:
         except (ValueError, KeyError):
             self.bg = 'w'
 
-        # Try to assemble the data (if geom is a AGIPD_Geometry class)
+        # Try to assemble the data (if geom is None)
         if geometry is None:
-            self.geom = AGIPD_1MGeometry.from_quad_positions(
-                quad_pos=FALLBACK_QUAD_POS)
-        elif isinstance(geometry, str):
-            self.geom = AGIPD_1MGeometry.from_crystfel_geom(geometry)
+                # Get Fall-back Quad positions
+                quad_pos = FALLBACK_QUAD_POS[self.det]
+                GeometryModule = GEOM_MODULES[self.det]
+                self.geom = GeometryModule.load('', quad_pos)
         else:
             self.geom = geometry
 
-        data, _ = self.geom.position_all_modules(self.raw_data)
+        data, _ = self.geom.position(self.raw_data)
         # Create a canvas
         self.canvas = np.full(np.array(data.shape) + CANVAS_MARGIN, np.nan)
         self._add_widgets()
@@ -99,11 +77,11 @@ class CalibrateNb:
     @property
     def centre(self):
         """Return the centre of the image (beam)."""
-        return self.geom.position_all_modules(self.raw_data)[1]
+        return self.geom.position(self.raw_data)[1]
 
     def _draw_circle(self, r, num):
         """Draw circel of radius r and add it to the circle collection."""
-        centre = self.geom.position_all_modules(self.raw_data,
+        centre = self.geom.position(self.raw_data,
                                                 canvas=self.canvas.shape)[1]
         self.circles[num] = plt.Circle(centre[::-1], r,
                                        facecolor='none', edgecolor='r', lw=1)
@@ -193,8 +171,7 @@ class CalibrateNb:
         """Update the plotted image."""
         # Update the image first
         self.data, centre =\
-            self.geom.position_all_modules(
-                self.raw_data, canvas=self.canvas.shape)
+            self.geom.position(self.raw_data, canvas=self.canvas.shape)
         cy, cx = centre
         if self.im is not None:
             if plot_range is not None:

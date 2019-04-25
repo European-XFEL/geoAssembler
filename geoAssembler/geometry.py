@@ -10,6 +10,8 @@ import numpy as np
 import pandas as pd
 
 from . import __version__
+from .defaults import *
+
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
@@ -17,7 +19,7 @@ log = logging.getLogger(os.path.basename(__file__))
 class GeometryAssembler:
     """Base class providing methods for getting quad corners, moving them
        and positioning all modules."""
-
+    filename = ''
     def move_quad(self, quad, inc):
         """Move the whole quad in a given direction.
 
@@ -27,6 +29,8 @@ class GeometryAssembler:
         """
         pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
         inc = np.array(list(inc)+[0])
+        self.panel_gap = 4
+        self.asic_gap = 4
         for i, module in enumerate(self.modules[pos:pos + 4]):
             n = pos + i
             for j, tile in enumerate(module):
@@ -99,34 +103,44 @@ class GeometryAssembler:
                 out[..., y : y + h, x : x + w] = tile.transform(tile_data)
         return out, centre
 
+    def _get_offsets(self, quad, module, asic, unit):
+        """Get the panel and asic offsets."""
+        try:
+            with h5py.File(self.filename, 'r') as f:
+                mod_grp = f['Q{}/M{}'.format(quad, module)]
+                mod_offset = mod_grp['Position'][:]
+                tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
+            return mod_offset, tile_offset
+        except (FileNotFoundError, ValueError):
+            px_conv = self.pixel_size / unit
+            return px_conv * self.panel_gap, px_conf * self.asic_gap
+
     def write_geom(self, *args, **kwargs):
         """Write the current quad positions to a csv file."""
-        version = __version__
-        pad_pos = {}
-        out_file, geom_file = args[0:2]
+        df = self.quad_pos
+        log.info(' Quadrant positions:\n{}'.format(df))
+        df.to_csv(args[0])
+    
+    @property
+    def quad_pos(self):
+        """Get the quadrant positions from the geometry object."""
         quads = {mod // 4 + 1: [] for mod in range(len(self.modules))}
         quad_pos = np.zeros((len(quads), 2))
         unit = 1e-3
-        ss_vec, fs_vec = np.array([0, 1, 0]), np.array([1, 0, 0])
         px_conversion = self.pixel_size / unit
-        with h5py.File(geom_file, 'r') as f:
-            for m, mod in enumerate(self.modules):
-                q = m // 4 + 1
-                mm = m % 4
-                mod_grp = f['Q{}/M{}'.format(q, mm+1)]
-                mod_offset = mod_grp['Position'][:]
-                for T, frag in enumerate(mod):
-                    cr_pos = (frag.corner_pos +
-                             (frag.ss_vec * self.frag_ss_pixels) +
-                             (frag.fs_vec * self.frag_fs_pixels))[:2]
-                    cr_pos *= px_conversion
-                    tile_offset = mod_grp['T{:02}/Position'.format(T+1)]
-                    quad_pos[q-1] = (cr_pos - tile_offset - mod_offset)
-        df = pd.DataFrame(quad_pos,
+        for m, mod in enumerate(self.modules):
+            q = m // 4 + 1
+            mm = m % 4 + 1
+            for asic, frag in enumerate(mod):
+                cr_pos = (frag.corner_pos +
+                         (frag.ss_vec * self.frag_ss_pixels) +
+                         (frag.fs_vec * self.frag_fs_pixels))[:2]
+                cr_pos *= px_conversion
+                mod_offset, tile_offset = self._get_offsets(q, mm, asic+1, unit)
+                quad_pos[q-1] = (cr_pos - tile_offset - mod_offset)
+        return pd.DataFrame(quad_pos,
                           columns=['Y', 'X'],
                           index=['q{}'.format(i+1) for i in range(4)])
-        df.to_csv(out_file)
-        log.info(' Quadrant positions:\n{}'.format(df))
 
 
 class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
@@ -141,13 +155,14 @@ class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
         self.geom = self._snapped()
 
     @classmethod
-    def load(cls, geom_file, quad_pos):
+    def load(cls, geom_file=None, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
+        quad_pos = quad_pos or FALLBACK_QUAD_POS['AGIPD']
         try:
             return cls.from_crystfel_geom(geom_file)
         except (FileNotFoundError, ValueError):
             log.warning(' Using fallback option')
-            return cls.from_quad_positions(quad_pos)
+            return cls.from_quad_positions(list(quad_pos))
 
     def write_geom(self, *args, **kwargs):
         """Overwrite the write_crystfel_geom method to provide a header."""
@@ -165,6 +180,10 @@ class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
             for chunk in panel_chunks:
                 f.write(chunk)
 
+        @property
+        def quad_pos(self):
+            return None
+
 
 class LPDGeometry(GeometryAssembler, LPD_1MGeometry):
     """Detector layout for LPD."""
@@ -174,9 +193,23 @@ class LPDGeometry(GeometryAssembler, LPD_1MGeometry):
         self.geom = self._snapped()
 
     @classmethod
-    def load(cls, geom_file, quad_pos):
+    def load(cls, geom_file=None, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
-        return cls.from_h5_file_and_quad_positions(geom_file, quad_pos)
+        quad_pos = quad_pos or FALLBACK_QUAD_POS['LPD']
+        try:
+            C = cls.from_h5_file_and_quad_positions(geom_file, list(quad_pos))
+            C.filename = geom_file
+            C.asic_gap = None
+            C.panel_gap = None
+            return C
+        except (FileNotFoundError, ValueError):
+            log.warning(' Using fallback option')
+            C = cls.from_quad_positions(list(quad_pos))
+            C.filename = None
+            C.asic_gap = 4
+            C.panel_gap = 4
+            return C
+
 
     
 CRYSTFEL_HEADER_TEMPLATE = """\
