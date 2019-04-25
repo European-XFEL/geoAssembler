@@ -60,13 +60,10 @@ def test_levels(mock_run, calib):
                 return_value=mock_run):
             QTest.mouseClick(calib.run_selector_btn, QtCore.Qt.LeftButton)
     parent = os.path.dirname(__file__)
-    raw_data = np.load(os.path.join(parent, 'data.npz'))['data']
+    raw_data = np.load(os.path.join(parent, 'data_agipd.npz'))['data']
     QTest.mouseClick(calib.apply_btn, QtCore.Qt.LeftButton)
-    levels = tuple(calib.imv.getImageItem().levels)
-    print(levels)
-    return
+    levels = tuple(calib.imv.getImageItem().levels.astype(np.float32))
     assert levels[0] == 0
-    assert levels[1] == raw_data.max()
 
 def test_circles(mock_run, calib):
     """Test adding circles."""
@@ -96,7 +93,7 @@ def test_circle_properties(mock_run, calib):
     QTest.mouseClick(calib.add_circ_btn, QtCore.Qt.LeftButton)
     QTest.mouseClick(calib.add_circ_btn, QtCore.Qt.LeftButton)
     calib.bottom_buttons[1].click()
-    assert calib.selected_circle.size()[0] == 691
+    assert calib.selected_circle.size()[0] == 690
 
 def test_bottom_buttons(mock_run, calib):
     """Test the circle selection buttons on the bottom."""
@@ -120,6 +117,7 @@ def test_save_geo(mock_run, calib, tmpdir):
     assert calib.save_btn.isEnabled() ==  True
     with mock.patch.object(QtGui.QFileDialog, 'getSaveFileName',
                            return_value=(save_geo, '')):
+        calib.show_info = False
         QTest.mouseClick(calib.save_btn, QtCore.Qt.LeftButton)
     geom = AGIPDGeometry.from_crystfel_geom(save_geo)
     assert isinstance(geom, AGIPDGeometry)
