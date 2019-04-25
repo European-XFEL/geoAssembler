@@ -240,18 +240,10 @@ class RunDirSelecter(QtWidgets.QFrame):
     def get(self):
         """Get the image of selected train."""
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        num_mod = len(self.rundir.detector_sources)
         if self._read_train:
             log.info('Reading train #: {}'.format(self.tid))
             _, data = self.rundir.train_from_id(self.tid)
-            img = np.empty((self.det_info['frames_per_train'],
-                            num_mod,) + self.det_info['dims'])
-            for det_source in self.rundir.detector_sources:
-                modno = int(re.search(r'/DET/(\d+)CH', det_source).group(1))
-                try:
-                    img[:, modno, :] = data[det_source]['image.data'][:]
-                except KeyError:
-                    img[:, modno, :] = np.nan
+            img = kd.stack_detector_data(data, 'image.data')
             self._img = np.clip(img, 0, None)
             self._read_train = False
         if self._sel_method is None:
