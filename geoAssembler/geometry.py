@@ -1,23 +1,30 @@
 """Provide AGIPD-D geometry information that supports quadrant moving."""
 
+import logging
+import os
+
+import h5py
+from karabo_data.geometry2 import ( AGIPD_1MGeometry,
+        LPD_1MGeometry, GeometryFragment)
 import numpy as np
-from karabo_data.geometry2 import AGIPD_1MGeometry, GeometryFragment
+import pandas as pd
 
 from . import __version__
 
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(os.path.basename(__file__))
 
-class AGIPDGeometry(AGIPD_1MGeometry):
-    """Detector layout for AGIPD-1M
-
-    The coordinates used in this class are 3D (x, y, z), and represent multiples
-    of the pixel size.
-    """
-
-    def __init__(self, modules, **kwargs):
-        super(AGIPD_1MGeometry, self).__init__(modules)
-        self.geom = self._snapped()
+class GeometryAssembler:
+    """Base class providing methods for getting quad corners, moving them
+       and positioning all modules."""
 
     def move_quad(self, quad, inc):
+        """Move the whole quad in a given direction.
+
+        Parameters:
+            quad (int): Quandrant number that is to be moved
+            inc (collection): increment of the direction to be moved
+        """
         pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
         inc = np.array(list(inc)+[0])
         for i, module in enumerate(self.modules[pos:pos + 4]):
@@ -32,7 +39,14 @@ class AGIPDGeometry(AGIPD_1MGeometry):
                         )
         self._snapped_cache = None
         self.geom = self._snapped()
+
     def get_quad_corners(self, quad, centre):
+        """Get the bounding box of a quad.
+
+           Parameters:
+               quad (int): quadrant number
+               centre (tuple): y, x coordinates of the detector centre
+        """
         pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
         X = []
         Y = []
@@ -49,21 +63,7 @@ class AGIPDGeometry(AGIPD_1MGeometry):
         dx = abs(max(X) - min(X))
         return (min(X)-2, min(Y)-2), dx+w+4, dy+4
 
-    def write_crystfel_geom(self, filename, header=''):
-
-        version = __version__
-        panel_chunks = []
-        for p, module in enumerate(self.modules):
-            for a, fragment in enumerate(module):
-                panel_chunks.append(fragment.to_crystfel_geom(p, a))
-
-        with open(filename, 'w') as f:
-            f.write(CRYSTFEL_HEADER_TEMPLATE.format(version=version,
-                                                    header=header))
-            for chunk in panel_chunks:
-                f.write(chunk)
-
-    def position_all_modules(self, data, canvas=None):
+    def position(self, data, canvas=None):
         """Assemble data from this detector according to where the pixels are.
 
         Parameters
@@ -81,9 +81,8 @@ class AGIPDGeometry(AGIPD_1MGeometry):
         centre : ndarray
           (y, x) pixel location of the detector centre in this geometry.
         """
-        assert data.shape[-3:] == (16, 512, 128)
         if canvas is None:
-            size_yx, centre = self._get_dimensions()
+            size_yx, centre = self.geom._get_dimensions()
         else:
             size_yx = canvas
             centre = (canvas[0]//2, canvas[-1]//2)
@@ -100,7 +99,86 @@ class AGIPDGeometry(AGIPD_1MGeometry):
                 out[..., y : y + h, x : x + w] = tile.transform(tile_data)
         return out, centre
 
+    def write_geom(self, *args, **kwargs):
+        """Write the current quad positions to a csv file."""
+        version = __version__
+        pad_pos = {}
+        out_file, geom_file = args[0:2]
+        quads = {mod // 4 + 1: [] for mod in range(len(self.modules))}
+        quad_pos = np.zeros((len(quads), 2))
+        unit = 1e-3
+        ss_vec, fs_vec = np.array([0, 1, 0]), np.array([1, 0, 0])
+        px_conversion = self.pixel_size / unit
+        with h5py.File(geom_file, 'r') as f:
+            for m, mod in enumerate(self.modules):
+                q = m // 4 + 1
+                mm = m % 4
+                mod_grp = f['Q{}/M{}'.format(q, mm+1)]
+                mod_offset = mod_grp['Position'][:]
+                for T, frag in enumerate(mod):
+                    cr_pos = (frag.corner_pos +
+                             (frag.ss_vec * self.frag_ss_pixels) +
+                             (frag.fs_vec * self.frag_fs_pixels))[:2]
+                    cr_pos *= px_conversion
+                    tile_offset = mod_grp['T{:02}/Position'.format(T+1)]
+                    quad_pos[q-1] = (cr_pos - tile_offset - mod_offset)
+        df = pd.DataFrame(quad_pos,
+                          columns=['Y', 'X'],
+                          index=['q{}'.format(i+1) for i in range(4)])
+        df.to_csv(out_file)
+        log.info(' Quadrant positions:\n{}'.format(df))
 
+
+class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
+    """Detector layout for AGIPD-1M
+
+    The coordinates used in this class are 3D (x, y, z), and represent multiples
+    of the pixel size.
+    """
+
+    def __init__(self, modules, **kwargs):
+        super(AGIPD_1MGeometry, self).__init__(modules)
+        self.geom = self._snapped()
+
+    @classmethod
+    def load(cls, geom_file, quad_pos):
+        """Create geometry from geometry file or quad positions."""
+        try:
+            return cls.from_crystfel_geom(geom_file)
+        except (FileNotFoundError, ValueError):
+            log.warning(' Using fallback option')
+            return cls.from_quad_positions(quad_pos)
+
+    def write_geom(self, *args, **kwargs):
+        """Overwrite the write_crystfel_geom method to provide a header."""
+        filename = args[0]
+        header = kwargs.get('header', '')
+        version = __version__
+        panel_chunks = []
+        for p, module in enumerate(self.modules):
+            for a, fragment in enumerate(module):
+                panel_chunks.append(fragment.to_crystfel_geom(p, a))
+
+        with open(filename, 'w') as f:
+            f.write(CRYSTFEL_HEADER_TEMPLATE.format(version=version,
+                                                    header=header))
+            for chunk in panel_chunks:
+                f.write(chunk)
+
+
+class LPDGeometry(GeometryAssembler, LPD_1MGeometry):
+    """Detector layout for LPD."""
+
+    def __init__(self, modules, **kwargs):
+        super(LPD_1MGeometry, self).__init__(modules)
+        self.geom = self._snapped()
+
+    @classmethod
+    def load(cls, geom_file, quad_pos):
+        """Create geometry from geometry file or quad positions."""
+        return cls.from_h5_file_and_quad_positions(geom_file, quad_pos)
+
+    
 CRYSTFEL_HEADER_TEMPLATE = """\
 ; AGIPD-1M geometry file written by geoAssembler {version}
 ; You may need to edit this file to add:
