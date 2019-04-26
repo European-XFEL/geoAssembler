@@ -320,10 +320,16 @@ class GeomWindow(QtGui.QMainWindow):
                det (str): Name of the detector (default LPD)
         """
         super(GeomWindow, self).__init__(parent)
+        centerPoint = QtWidgets.QDesktopWidget().availableGeometry().center()
+
         self.setWindowTitle('{} Geometry'.format(det))
         self.setFixedSize(240, 220)
         sel = QuadSelector(self, parent, det)
         self.setCentralWidget(sel)
+        #Move pop-up window to centre
+        qtRectangle = self.frameGeometry()
+        qtRectangle.moveCenter(centerPoint)
+        self.move(qtRectangle.topLeft())
         self.show()
 
 
@@ -465,6 +471,8 @@ class CalibrateQt:
 
         # Add widgets to the layout in their proper positions
         self.window = QtGui.QWidget()
+        self.window.showMaximized()
+        self.window.setWindowTitle('GeoAssembler Gui')
         self.layout = QtGui.QGridLayout()
 
         # circle manipulation other input dialogs go to the top
@@ -741,10 +749,3 @@ class CalibrateQt:
     def _move_left(self):
         self._move('l')
 
-
-if __name__ == '__main__':
-    import sys
-    app = QtGui.QApplication(sys.argv)
-    calib = CalibrateQt(np.load('data.npz')['data'])
-    calib.w.show()
-    app.exec_()
