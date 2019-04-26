@@ -17,20 +17,11 @@ from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from scipy import constants
 
 from . import calibrants
+from .defaults import default
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
 
-# Fallback quad positions if no geometry file is given as a starting point:
-FALLBACK_QUAD_POS = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
-
-# Definition of increments (INC) the quadrants should move to once a direction
-# (u = up, d = down, r = right, l = left is given:
-INC = 1
-DIRECTION = {'u': (-INC,    0),
-             'd': (INC,    0),
-             'r': (0,  INC),
-             'l': (0, -INC)}
 
 
 class CalibTab(widgets.VBox):

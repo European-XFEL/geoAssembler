@@ -10,8 +10,9 @@ import numpy as np
 import pandas as pd
 
 from . import __version__
-from .defaults import *
 
+from .defaults import default
+#from .defaults import get
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
@@ -165,7 +166,7 @@ class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
     @classmethod
     def load(cls, geom_file=None, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
-        quad_pos = quad_pos or FALLBACK_QUAD_POS['AGIPD']
+        quad_pos = quad_pos or default.FALLBACK_QUAD_POS['AGIPD']
         try:
             return cls.from_crystfel_geom(geom_file)
         except (FileNotFoundError, ValueError):
@@ -204,7 +205,7 @@ class LPDGeometry(GeometryAssembler, LPD_1MGeometry):
     @classmethod
     def load(cls, geom_file=None, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
-        quad_pos = quad_pos or FALLBACK_QUAD_POS['LPD']
+        quad_pos = quad_pos or default.FALLBACK_QUAD_POS['LPD']
         try:
             C = cls.from_h5_file_and_quad_positions(geom_file, list(quad_pos))
             C.filename = geom_file
@@ -275,6 +276,11 @@ CRYSTFEL_PANEL_TEMPLATE = """
 {name}/corner_y = {corner_y}
 {name}/coffset = {coffset}
 """
+
+GEOM_MODULES = {'AGIPD': AGIPDGeometry,
+                'LPD': LPDGeometry}
+
+
 
 if __name__ == '__main__':
     geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[

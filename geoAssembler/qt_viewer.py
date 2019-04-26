@@ -11,7 +11,8 @@ import pyqtgraph as pg
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
-from .defaults import *
+from .defaults import default
+from .geometry import GEOM_MODULES
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
@@ -355,7 +356,7 @@ class QuadSelector(QtWidgets.QFrame):
         self.quad_table.setToolTip('Set the Quad-Pos in mm')
         self.quad_table.setHorizontalHeaderLabels(['Quad X-Pos', 'Quad Y-Pos'])
         self.quad_table.setVerticalHeaderLabels(['1', '2', '3', '4'])
-        for n, quad_pos in enumerate(FALLBACK_QUAD_POS[det]):
+        for n, quad_pos in enumerate(default.FALLBACK_QUAD_POS[det]):
             self.quad_table.setItem(
                 n, 0, QtGui.QTableWidgetItem(str(quad_pos[0])))
             self.quad_table.setItem(
@@ -402,7 +403,7 @@ class QuadSelector(QtWidgets.QFrame):
             except ValueError:
                 _warning('Table Elements must be Float')
                 return
-        FALLBACK_QUAD_POS[self.det] = quad_pos
+        default.FALLBACK_QUAD_POS[self.det] = quad_pos
         if not self.parent.value:
             _warning('You must Select a Geometry File')
             return
@@ -484,7 +485,7 @@ class CalibrateQt:
         self.detector_sel.addItem('LPD')
         self.layout.addWidget(self.detector_sel, 0, 1, 1, 1)
         self.layout.addWidget(self.radius_setter, 0, 2, 1, 1)
-        self.geom_selector = GeometryFileSelecter(GEOM_SEL_WIDTH,
+        self.geom_selector = GeometryFileSelecter(default.GEOM_SEL_WIDTH,
                                                   'Geometry File:',
                                                   self,
                                                   geofile)
@@ -530,13 +531,14 @@ class CalibrateQt:
             _warning('Click the load button to load a geometry file')
             return
         log.info(' Starting to assemble ... ')
-        quad_pos = FALLBACK_QUAD_POS[self.det]
+        quad_pos = default.FALLBACK_QUAD_POS[self.det]
         GeometryModule = GEOM_MODULES[self.det]
         self.geom_file = self.geom_selector.value
         self.geom = GeometryModule.load(self.geom_selector.value, quad_pos)
         self.raw_data = self.run_selector.get()
         data, self.centre = self.geom.position(self.raw_data)
-        self.canvas = np.full(np.array(data.shape) + CANVAS_MARGIN, np.nan)
+        self.canvas = np.full(np.array(data.shape) + default.CANVAS_MARGIN, 
+                              np.nan)
 
         self.data, self.centre =\
             self.geom.position(self.raw_data,
@@ -596,7 +598,7 @@ class CalibrateQt:
         quad = self.quad
         if quad <= 0:
             return
-        self.geom.move_quad(quad, np.array(DIRECTION[d]))
+        self.geom.move_quad(quad, np.array(default.DIRECTION[d]))
         self.data, self.centre =\
             self.geom.position(self.raw_data,
                                canvas=self.canvas.shape)
