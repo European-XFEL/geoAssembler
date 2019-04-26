@@ -588,7 +588,7 @@ class CalibrateQt:
                 pass
             self.data, self.centre = self.geom.position(
                 self.raw_data)
-            self.geom.write_geom(fname, self.geom_file, header=self.header)
+            self.geom.write_geom(fname, header=self.header)
             if self.show_info:
                 _warning('Geometry information saved to {}'.format(fname),
                          title='Info')

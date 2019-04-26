@@ -122,11 +122,11 @@ class GeometryAssembler:
             px_conv = self.pixel_size / unit
             return px_conv * self.panel_gap, px_conf * self.asic_gap
 
-    def write_geom(self, *args, **kwargs):
+    def write_geom(self, filename, **kwargs):
         """Write the current quad positions to a csv file."""
         df = self.quad_pos
         log.info(' Quadrant positions:\n{}'.format(df))
-        df.to_csv(args[0])
+        df.to_csv(filename)
 
     @property
     def quad_pos(self):
@@ -157,9 +157,9 @@ class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
     of the pixel size.
     """
 
-    def __init__(self, modules):
+    def __init__(self, modules, **kwargs):
         """Inherit from AGIPD_1MGeometry in karabo_data."""
-        AGIPD_1MGeometry.__init__(self, modules)
+        AGIPD_1MGeometry.__init__(self, modules, **kwargs)
         self.unit = 2e-4
         self.geom = self._snapped()
 
@@ -173,10 +173,8 @@ class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
             log.warning(' Using fallback option')
             return cls.from_quad_positions(list(quad_pos))
 
-    def write_geom(self, *args, **kwargs):
+    def write_geom(self, filename, header=''):
         """Overwrite the write_crystfel_geom method to provide a header."""
-        filename = args[0]
-        header = kwargs.get('header', '')
         version = __version__
         panel_chunks = []
         for p, module in enumerate(self.modules):
@@ -213,9 +211,9 @@ class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
 class LPDGeometry(GeometryAssembler, LPD_1MGeometry):
     """Detector layout for LPD."""
 
-    def __init__(self, modules):
+    def __init__(self, modules, **kwargs):
         """Inherit from LPD_1MGeometry in karabo_data."""
-        super(LPD_1MGeometry, self).__init__(modules)
+        super(LPD_1MGeometry, self).__init__(modules, **kwargs)
         self.geom = self._snapped()
 
     @classmethod
