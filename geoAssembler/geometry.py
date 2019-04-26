@@ -4,8 +4,8 @@ import logging
 import os
 
 import h5py
-from karabo_data.geometry2 import ( AGIPD_1MGeometry,
-        LPD_1MGeometry, GeometryFragment)
+from karabo_data.geometry2 import (AGIPD_1MGeometry,
+                                   LPD_1MGeometry, GeometryFragment)
 import numpy as np
 import pandas as pd
 
@@ -16,10 +16,16 @@ from .defaults import *
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
 
+
 class GeometryAssembler:
-    """Base class providing methods for getting quad corners, moving them
-       and positioning all modules."""
+    """Base class for other methods.
+
+    This base class provides methods for getting quad corners, moving them
+    and positioning all modules.
+    """
+
     filename = ''
+
     def move_quad(self, quad, inc):
         """Move the whole quad in a given direction.
 
@@ -34,22 +40,22 @@ class GeometryAssembler:
         for i, module in enumerate(self.modules[pos:pos + 4]):
             n = pos + i
             for j, tile in enumerate(module):
-                self.modules[n][j] = GeometryFragment(\
-                        tile.corner_pos+inc,
-                        tile.ss_vec,
-                        tile.fs_vec,
-                        tile.ss_pixels,
-                        tile.fs_pixels,
-                        )
+                self.modules[n][j] = GeometryFragment(
+                    tile.corner_pos+inc,
+                    tile.ss_vec,
+                    tile.fs_vec,
+                    tile.ss_pixels,
+                    tile.fs_pixels,
+                )
         self._snapped_cache = None
         self.geom = self._snapped()
 
     def get_quad_corners(self, quad, centre):
         """Get the bounding box of a quad.
 
-           Parameters:
-               quad (int): quadrant number
-               centre (tuple): y, x coordinates of the detector centre
+        Parameters:
+            quad (int): quadrant number
+            centre (tuple): y, x coordinates of the detector centre
         """
         pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
         X = []
@@ -100,7 +106,7 @@ class GeometryAssembler:
                 # Offset by centre to make all coordinates positive
                 y, x = tile.corner_idx + centre
                 h, w = tile.pixel_dims
-                out[..., y : y + h, x : x + w] = tile.transform(tile_data)
+                out[..., y: y + h, x: x + w] = tile.transform(tile_data)
         return out, centre
 
     def _get_offsets(self, quad, module, asic, unit):
@@ -120,7 +126,7 @@ class GeometryAssembler:
         df = self.quad_pos
         log.info(' Quadrant positions:\n{}'.format(df))
         df.to_csv(args[0])
-    
+
     @property
     def quad_pos(self):
         """Get the quadrant positions from the geometry object."""
@@ -133,24 +139,26 @@ class GeometryAssembler:
             mm = m % 4 + 1
             for asic, frag in enumerate(mod):
                 cr_pos = (frag.corner_pos +
-                         (frag.ss_vec * self.frag_ss_pixels) +
-                         (frag.fs_vec * self.frag_fs_pixels))[:2]
+                          (frag.ss_vec * self.frag_ss_pixels) +
+                          (frag.fs_vec * self.frag_fs_pixels))[:2]
                 cr_pos *= px_conversion
-                mod_offset, tile_offset = self._get_offsets(q, mm, asic+1, unit)
+                mod_offset, tile_offset = self._get_offsets(
+                    q, mm, asic+1, unit)
                 quad_pos[q-1] = (cr_pos - tile_offset - mod_offset)
         return pd.DataFrame(quad_pos,
-                          columns=['Y', 'X'],
-                          index=['q{}'.format(i+1) for i in range(4)])
+                            columns=['Y', 'X'],
+                            index=['q{}'.format(i+1) for i in range(4)])
 
 
 class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
-    """Detector layout for AGIPD-1M
+    """Detector layout for AGIPD-1M.
 
     The coordinates used in this class are 3D (x, y, z), and represent multiples
     of the pixel size.
     """
 
     def __init__(self, modules, **kwargs):
+        """Inherit from AGIPD_1MGeometry in karabo_data."""
         super(AGIPD_1MGeometry, self).__init__(modules)
         self.geom = self._snapped()
 
@@ -189,6 +197,7 @@ class LPDGeometry(GeometryAssembler, LPD_1MGeometry):
     """Detector layout for LPD."""
 
     def __init__(self, modules, **kwargs):
+        """Inherit from LPD_1MGeometry in karabo_data."""
         super(LPD_1MGeometry, self).__init__(modules)
         self.geom = self._snapped()
 
@@ -211,7 +220,6 @@ class LPDGeometry(GeometryAssembler, LPD_1MGeometry):
             return C
 
 
-    
 CRYSTFEL_HEADER_TEMPLATE = """\
 ; AGIPD-1M geometry file written by geoAssembler {version}
 ; You may need to edit this file to add:

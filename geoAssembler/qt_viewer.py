@@ -18,6 +18,7 @@ log = logging.getLogger(os.path.basename(__file__))
 
 Slot = QtCore.pyqtSlot
 
+
 def _warning(txt, title="Warning"):
     """Inform user about missing information."""
     msg_box = QtWidgets.QMessageBox()
@@ -284,9 +285,9 @@ class GeometryFileSelecter(QtWidgets.QFrame):
         """Open a dialog box to select a file."""
         if self.parent.detector_sel.currentText() == 'AGIPD':
             fname, _ = QtGui.QFileDialog.getOpenFileName(self,
-                                                        'Load geometry file',
-                                                        '.',
-                                                        'CFEL file format (*.geom)')
+                                                         'Load geometry file',
+                                                         '.',
+                                                         'CFEL file format (*.geom)')
             self.parent.quad_pos = None
             if fname:
                 self.line.setText(fname)
@@ -310,14 +311,13 @@ class GeomWindow(QtGui.QMainWindow):
     """Pop-up window to select quad. positions and xfel format geometry file."""
 
     def __init__(self, parent, det='LPD'):
-        """Create a new window and add widgets quad. and geometry file
-           selection.
+        """Create new window and add widgets quad. and geometry file selection.
 
-           Parameters:
-               parent (GeometryFileSelecter): main widget dealing with geometry
-                                              selection
-           Keywords:
-               det (str): Name of the detector (default LPD)
+        Parameters:
+            parent (GeometryFileSelecter): main widget dealing with geometry
+                                           selection
+        Keywords:
+            det (str): Name of the detector (default LPD)
         """
         super(GeomWindow, self).__init__(parent)
         centerPoint = QtWidgets.QDesktopWidget().availableGeometry().center()
@@ -326,7 +326,7 @@ class GeomWindow(QtGui.QMainWindow):
         self.setFixedSize(240, 220)
         sel = QuadSelector(self, parent, det)
         self.setCentralWidget(sel)
-        #Move pop-up window to centre
+        # Move pop-up window to centre
         qtRectangle = self.frameGeometry()
         qtRectangle.moveCenter(centerPoint)
         self.move(qtRectangle.topLeft())
@@ -337,16 +337,15 @@ class QuadSelector(QtWidgets.QFrame):
     """Setup widgets for quad. positions and geometry file selection."""
 
     def __init__(self, window, parent, det='LPD'):
-        """Create a table element for quadrant selection and file selection
-           dialogue for geometry file selection (in hdf5 format).
+        """Create a table element for quad selection and file selection.
 
-           Parameters:
-               window (QtGui.QMainWindow) : window object where widgets are
-                                            going to be displayed
-               parent (GeometryFileSelecter): main widget dealing with geometry
-                                              selection
-          Keywords:
-              det (str) : Name to the detector (default LPD)
+        Parameters:
+            window (QtGui.QMainWindow) : window object where widgets are
+                                        going to be displayed
+            parent (GeometryFileSelecter): main widget dealing with geometry
+                                            selection
+        Keywords:
+            det (str) : Name to the detector (default LPD)
         """
         super(QuadSelector, self).__init__(window)
         self.parent = parent
@@ -357,12 +356,15 @@ class QuadSelector(QtWidgets.QFrame):
         self.quad_table.setHorizontalHeaderLabels(['Quad X-Pos', 'Quad Y-Pos'])
         self.quad_table.setVerticalHeaderLabels(['1', '2', '3', '4'])
         for n, quad_pos in enumerate(FALLBACK_QUAD_POS[det]):
-            self.quad_table.setItem(n, 0, QtGui.QTableWidgetItem(str(quad_pos[0])))
-            self.quad_table.setItem(n, 1, QtGui.QTableWidgetItem(str(quad_pos[1])))
-        self.quad_table.move(0,0)
+            self.quad_table.setItem(
+                n, 0, QtGui.QTableWidgetItem(str(quad_pos[0])))
+            self.quad_table.setItem(
+                n, 1, QtGui.QTableWidgetItem(str(quad_pos[1])))
+        self.quad_table.move(0, 0)
 
         self.file_sel = QtGui.QPushButton('Select Geometry File')
-        self.file_sel.setToolTip('Select a Geometry File in xfel (hdf5) format.')
+        self.file_sel.setToolTip(
+            'Select a Geometry File in xfel (hdf5) format.')
         self.file_sel.clicked.connect(self._get_files)
 
         self.ok_btn = QtGui.QPushButton('Ok')
@@ -382,9 +384,9 @@ class QuadSelector(QtWidgets.QFrame):
     def _get_files(self):
         """File-selection dialogue to get hdf5 geometry file."""
         fname, _ = QtGui.QFileDialog.getOpenFileName(self,
-                                                    'Load geometry file',
-                                                    '.',
-                                                    'XFEL file format (*.h5)')
+                                                     'Load geometry file',
+                                                     '.',
+                                                     'XFEL file format (*.h5)')
         # Put the filename into the geometry file field of the main gui
         self.parent.line.setText(fname)
 
@@ -392,8 +394,8 @@ class QuadSelector(QtWidgets.QFrame):
         """Read quad. pos and update the detectors fallback positions."""
         quad_pos = [[None, None] for i in range(self.quad_table.rowCount())]
         for i, j in product(
-                            range(self.quad_table.rowCount()),
-                            range(self.quad_table.columnCount())):
+                range(self.quad_table.rowCount()),
+                range(self.quad_table.columnCount())):
             table_element = self.quad_table.item(i, j)
             try:
                 quad_pos[i][j] = float(table_element.text())
@@ -445,8 +447,8 @@ class CalibrateQt:
         self.levels = levels or [None, None]
         self.raw_data = None
         self.header = header or ''
-        self.show_info = True # Show info pop-up after saving geometry
-                              # not used for ci-testing
+        self.show_info = True  # Show info pop-up after saving geometry
+        # not used for ci-testing
 
         # Interpret image data as row-major instead of col-major
         pg.setConfigOptions(imageAxisOrder='row-major')
@@ -538,7 +540,7 @@ class CalibrateQt:
 
         self.data, self.centre =\
             self.geom.position(self.raw_data,
-                                           canvas=self.canvas.shape)
+                               canvas=self.canvas.shape)
         # Display the data and assign each frame a time value from 1.0 to 3.0
         if not self.is_displayed:
             xvals = np.linspace(1., 3., self.canvas.shape[0])
@@ -573,7 +575,8 @@ class CalibrateQt:
             file_type = ('XFEL', 'csv')
         fname, _ = QtGui.QFileDialog.getSaveFileName(self.geom_selector,
                                                      'Save geometry file',
-                                                     'geo_assembled.{}'.format(file_type[-1]),
+                                                     'geo_assembled.{}'.format(
+                                                         file_type[-1]),
                                                      '{} file format (*.{})'.format(*file_type))
         if fname:
             log.info(' Saving output to {}'.format(fname))
@@ -596,7 +599,7 @@ class CalibrateQt:
         self.geom.move_quad(quad, np.array(DIRECTION[d]))
         self.data, self.centre =\
             self.geom.position(self.raw_data,
-                                           canvas=self.canvas.shape)
+                               canvas=self.canvas.shape)
         self._draw_rect(quad)
         self.imv.getImageItem().updateImage(self.data)
 
@@ -748,4 +751,3 @@ class CalibrateQt:
 
     def _move_left(self):
         self._move('l')
-

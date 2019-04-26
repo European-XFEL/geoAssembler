@@ -38,10 +38,11 @@ Note 1: the PORT_NUMBER should be a number of >= 1024 like 8432
 
 NB_DIR = os.path.join(os.environ['HOME'], 'notebooks')
 NB_FILE = 'GeoAssembler.ipynb'
-CLEN = 0.119 #Default sample distance
-ENERGY = 10235 #Default beam energy
+CLEN = 0.119  # Default sample distance
+ENERGY = 10235  # Default beam energy
 # Default run directory
 RUNDIR = '/gpfs/exfel/exp/XMPL/201750/p700000/proc/r0005'
+
 
 def copy_notebook(defaults):
     """Create a new notebook and copy it into the user-space."""
@@ -156,6 +157,7 @@ def main(argv=None):
                                  args.geometry, levels=args.level,
                                  header=HEADER.format(clen=args.clen,
                                                       energy=args.energy))
+
 
 if __name__ == '__main__':
     main()

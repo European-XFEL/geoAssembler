@@ -57,10 +57,10 @@ class CalibrateNb:
 
         # Try to assemble the data (if geom is None)
         if geometry is None:
-                # Get Fall-back Quad positions
-                quad_pos = FALLBACK_QUAD_POS[self.det]
-                GeometryModule = GEOM_MODULES[self.det]
-                self.geom = GeometryModule.load('', quad_pos)
+            # Get Fall-back Quad positions
+            quad_pos = FALLBACK_QUAD_POS[self.det]
+            GeometryModule = GEOM_MODULES[self.det]
+            self.geom = GeometryModule.load('', quad_pos)
         else:
             self.geom = geometry
 
@@ -82,7 +82,7 @@ class CalibrateNb:
     def _draw_circle(self, r, num):
         """Draw circel of radius r and add it to the circle collection."""
         centre = self.geom.position(self.raw_data,
-                                                canvas=self.canvas.shape)[1]
+                                    canvas=self.canvas.shape)[1]
         self.circles[num] = plt.Circle(centre[::-1], r,
                                        facecolor='none', edgecolor='r', lw=1)
         self.ax.add_artist(self.circles[num])
