@@ -12,20 +12,20 @@ import pandas as pd
 from . import __version__
 
 from .defaults import default
-#from .defaults import get
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
 
 
 class GeometryAssembler:
-    """Base class for other methods.
+    """Base class for geometry methods not part of karabo_data.
 
     This base class provides methods for getting quad corners, moving them
     and positioning all modules.
     """
 
     filename = ''
+    unit = 1e-3
 
     def move_quad(self, quad, inc):
         """Move the whole quad in a given direction.
@@ -133,8 +133,7 @@ class GeometryAssembler:
         """Get the quadrant positions from the geometry object."""
         quads = {mod // 4 + 1: [] for mod in range(len(self.modules))}
         quad_pos = np.zeros((len(quads), 2))
-        unit = 1e-3
-        px_conversion = self.pixel_size / unit
+        px_conversion = self.pixel_size / self.unit
         for m, mod in enumerate(self.modules):
             q = m // 4 + 1
             mm = m % 4 + 1
@@ -144,7 +143,7 @@ class GeometryAssembler:
                           (frag.fs_vec * self.frag_fs_pixels))[:2]
                 cr_pos *= px_conversion
                 mod_offset, tile_offset = self._get_offsets(
-                    q, mm, asic+1, unit)
+                    q, mm, asic+1, self.unit)
                 quad_pos[q-1] = (cr_pos - tile_offset - mod_offset)
         return pd.DataFrame(quad_pos,
                             columns=['Y', 'X'],
@@ -158,9 +157,10 @@ class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
     of the pixel size.
     """
 
-    def __init__(self, modules, **kwargs):
+    def __init__(self, modules):
         """Inherit from AGIPD_1MGeometry in karabo_data."""
-        super(AGIPD_1MGeometry, self).__init__(modules)
+        AGIPD_1MGeometry.__init__(self, modules)
+        self.unit = 2e-4
         self.geom = self._snapped()
 
     @classmethod
@@ -189,15 +189,31 @@ class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
             for chunk in panel_chunks:
                 f.write(chunk)
 
-        @property
-        def quad_pos(self):
-            return None
+    @property
+    def quad_pos(self):
+        """Get quadrant positions."""
+        quad = {i:[] for i in range(1,5)}
+        for n, mod in enumerate(self.modules):
+            q = n // 4 + 1
+            for a, asic in enumerate(mod):
+                quad[q].append(asic.corner_pos[:2])
+
+        quad_pos = []
+        for i in range(1, 5):
+            if i < 3:
+                quad_pos.append((np.array(quad[i])[:,0].min(),
+                                np.array(quad[i])[:,1].max()))
+            else:
+                quad_pos.append((np.array(quad[i])[:,0].max(),
+                                np.array(quad[i])[:,1].max()))
+        return pd.DataFrame(quad_pos, index=range(1, 5),
+                            columns=['X', 'Y'])
 
 
 class LPDGeometry(GeometryAssembler, LPD_1MGeometry):
     """Detector layout for LPD."""
 
-    def __init__(self, modules, **kwargs):
+    def __init__(self, modules):
         """Inherit from LPD_1MGeometry in karabo_data."""
         super(LPD_1MGeometry, self).__init__(modules)
         self.geom = self._snapped()
