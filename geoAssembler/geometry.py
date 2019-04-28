@@ -24,8 +24,19 @@ class GeometryAssembler:
     and positioning all modules.
     """
 
-    filename = ''
-    unit = 1e-3
+    filename = None
+    unit = 0
+    asic_gap = 0
+    panel_gap = 0
+    frag_ss_pixels = 0
+    frag_fs_pixels = 0
+    pixel_size = 0  # 5e-4 metres == 0.5 mm
+
+    def __init__(self, kd_geom):
+        """The class is instanciated using a karabo_data geometry object."""
+        self.snapped_geom = kd_geom._snapped()
+        self.modules = kd_geom.modules
+        self.kd_geom = kd_geom
 
     def move_quad(self, quad, inc):
         """Move the whole quad in a given direction.
@@ -48,8 +59,8 @@ class GeometryAssembler:
                     tile.ss_pixels,
                     tile.fs_pixels,
                 )
-        self._snapped_cache = None
-        self.geom = self._snapped()
+            new_tiles = [t.snap() for t in module]
+            self.snapped_geom.modules[n] = new_tiles
 
     def get_quad_corners(self, quad, centre):
         """Get the bounding box of a quad.
@@ -61,7 +72,7 @@ class GeometryAssembler:
         pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
         X = []
         Y = []
-        for i, module in enumerate(self.geom.modules[pos:pos + 4]):
+        for i, module in enumerate(self.snapped_geom.modules[pos:pos + 4]):
             for j, tile in enumerate(module):
                 # Offset by centre to make all coordinates positive
                 y, x = tile.corner_idx + centre
@@ -73,6 +84,10 @@ class GeometryAssembler:
         dy = abs(max(Y) - min(Y))
         dx = abs(max(X) - min(X))
         return (min(X)-2, min(Y)-2), dx+w+4, dy+4
+
+    def position_all_modules(self, data):
+        """Deprecated alias for :meth:`position`."""
+        return self.position(data)
 
     def position(self, data, canvas=None):
         """Assemble data from this detector according to where the pixels are.
@@ -93,15 +108,15 @@ class GeometryAssembler:
           (y, x) pixel location of the detector centre in this geometry.
         """
         if canvas is None:
-            size_yx, centre = self.geom._get_dimensions()
+            size_yx, centre = self.snapped_geom._get_dimensions()
         else:
             size_yx = canvas
             centre = (canvas[0]//2, canvas[-1]//2)
         out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
 
-        for i, module in enumerate(self.geom.modules):
+        for i, module in enumerate(self.snapped_geom.modules):
             mod_data = data[..., i, :, :]
-            tiles_data = self.split_tiles(mod_data)
+            tiles_data = self.kd_geom.split_tiles(mod_data)
             for j, tile in enumerate(module):
                 tile_data = tiles_data[j]
                 # Offset by centre to make all coordinates positive
@@ -110,16 +125,16 @@ class GeometryAssembler:
                 out[..., y: y + h, x: x + w] = tile.transform(tile_data)
         return out, centre
 
-    def _get_offsets(self, quad, module, asic, unit):
+    def _get_offsets(self, quad, module, asic):
         """Get the panel and asic offsets."""
-        try:
+        if os.path.isfile(self.filename):
             with h5py.File(self.filename, 'r') as f:
                 mod_grp = f['Q{}/M{}'.format(quad, module)]
                 mod_offset = mod_grp['Position'][:]
                 tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
             return mod_offset, tile_offset
-        except (FileNotFoundError, ValueError):
-            px_conv = self.pixel_size / unit
+        else:
+            px_conv = self.pixel_size / self.unit
             return px_conv * self.panel_gap, px_conf * self.asic_gap
 
     def write_geom(self, filename, **kwargs):
@@ -142,36 +157,47 @@ class GeometryAssembler:
                           (frag.ss_vec * self.frag_ss_pixels) +
                           (frag.fs_vec * self.frag_fs_pixels))[:2]
                 cr_pos *= px_conversion
-                mod_offset, tile_offset = self._get_offsets(
-                    q, mm, asic+1, self.unit)
+                mod_offset, tile_offset = self._get_offsets(q, mm, asic+1)
                 quad_pos[q-1] = (cr_pos - tile_offset - mod_offset)
         return pd.DataFrame(quad_pos,
                             columns=['Y', 'X'],
                             index=['q{}'.format(i+1) for i in range(4)])
 
 
-class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
+class AGIPDGeometry(GeometryAssembler):
     """Detector layout for AGIPD-1M.
 
     The coordinates used in this class are 3D (x, y, z), and represent multiples
     of the pixel size.
     """
 
-    def __init__(self, modules, **kwargs):
-        """Inherit from AGIPD_1MGeometry in karabo_data."""
-        AGIPD_1MGeometry.__init__(self, modules, **kwargs)
+    def __init__(self, kd_geom):
+        """Set the properties for AGIPD detector.
+
+        Paramerters:
+            kd_geom (LPD_1MGeometry) : karabo_data geometry objet
+        """
+        GeometryAssembler.__init__(self, kd_geom)
         self.unit = 2e-4
-        self.geom = self._snapped()
+        self.asic_gap = 2
+        self.panel_gap = 29
+        self.pixel_size = 2e-4  # 2e-4 metres == 0.2 mm
+        self.frag_ss_pixels = 64
+        self.frag_fs_pixels = 128
 
     @classmethod
     def load(cls, geom_file=None, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
         quad_pos = quad_pos or default.FALLBACK_QUAD_POS['AGIPD']
         try:
-            return cls.from_crystfel_geom(geom_file)
-        except (FileNotFoundError, ValueError):
+            # Create a karabo_data geometry object from crystfel geom file
+            kd_geom = AGIPD_1MGeometry.from_crystfel_geom(geom_file)
+            return cls(kd_geom)
+        except (FileNotFoundError, TypeError):
             log.warning(' Using fallback option')
-            return cls.from_quad_positions(list(quad_pos))
+            # Fallback is creating the karabo_data geometry from quad_pos
+            kd_geom = AGIPD_1MGeometry.from_quad_positions(quad_pos)
+            return cls(kd_geom)
 
     def write_geom(self, filename, header=''):
         """Overwrite the write_crystfel_geom method to provide a header."""
@@ -186,6 +212,20 @@ class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
                                                     header=header))
             for chunk in panel_chunks:
                 f.write(chunk)
+
+    def write_crystfel_geom(self, filename, header=''):
+        """Deprecated alias for :meth:`write_geom`."""
+        return self.write_geom(filename, header)
+
+    @classmethod
+    def from_quad_positions(cls, quad_pos=None):
+        """Deprecated alias for :meth:`load`."""
+        return cls.load(quad_pos=quad_pos)
+
+    @classmethod
+    def from_crystfel_geom(cls, filename=None):
+        """Deprecated alias for :meth:`load`."""
+        return cls.load(geom_file=filename)
 
     @property
     def quad_pos(self):
@@ -208,31 +248,39 @@ class AGIPDGeometry(GeometryAssembler, AGIPD_1MGeometry):
                             columns=['X', 'Y'])
 
 
-class LPDGeometry(GeometryAssembler, LPD_1MGeometry):
+class LPDGeometry(GeometryAssembler):
     """Detector layout for LPD."""
 
-    def __init__(self, modules, **kwargs):
-        """Inherit from LPD_1MGeometry in karabo_data."""
-        super(LPD_1MGeometry, self).__init__(modules, **kwargs)
-        self.geom = self._snapped()
+    def __init__(self, kd_geom, filename, asic_gap=4, panel_gap=4):
+        """Set the properties for LPD detector.
+
+        Paramerters:
+            kd_geom (LPD_1MGeometry) : karabo_data geometry objet
+            filename (str) : path to the hdf5 geometry description
+        Keywords:
+            asic_gap : gap between asics/tiles (default: 4)
+            panel_gap : gap between panels/modules (dfault:4)
+        """
+        GeometryAssembler.__init__(self, kd_geom)
+        self.filename = filename
+        self.asic_gap = asic_gap
+        self.panel_gap = panel_gap
+        self.unit = 1e-3
+        self.pixel_size = 5e-4  # 5e-4 metres == 0.5 mm
+        self.frag_ss_pixels = 32
+        self.frag_fs_pixels = 128
 
     @classmethod
-    def load(cls, geom_file=None, quad_pos=None):
+    def load(cls, geom_file=None, quad_pos=None, asic_gap=4, panel_gap=4):
         """Create geometry from geometry file or quad positions."""
         quad_pos = quad_pos or default.FALLBACK_QUAD_POS['LPD']
         try:
-            C = cls.from_h5_file_and_quad_positions(geom_file, list(quad_pos))
-            C.filename = geom_file
-            C.asic_gap = None
-            C.panel_gap = None
-            return C
+            kd_geom = LPD_1MGeometry.from_h5_file_and_quad_positions(geom_file,
+                                                                     quad_pos)
         except (FileNotFoundError, ValueError):
             log.warning(' Using fallback option')
-            C = cls.from_quad_positions(list(quad_pos))
-            C.filename = None
-            C.asic_gap = 4
-            C.panel_gap = 4
-            return C
+            kd_geom = LPD_1MGeometry.from_quad_positions(quad_pos)
+        return cls(kd_geom, geom_file, asic_gap, panel_gap)
 
 
 CRYSTFEL_HEADER_TEMPLATE = """\
