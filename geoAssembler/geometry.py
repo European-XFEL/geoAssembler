@@ -125,43 +125,11 @@ class GeometryAssembler:
                 out[..., y: y + h, x: x + w] = tile.transform(tile_data)
         return out, centre
 
-    def _get_offsets(self, quad, module, asic):
-        """Get the panel and asic offsets."""
-        if os.path.isfile(self.filename):
-            with h5py.File(self.filename, 'r') as f:
-                mod_grp = f['Q{}/M{}'.format(quad, module)]
-                mod_offset = mod_grp['Position'][:]
-                tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
-            return mod_offset, tile_offset
-        else:
-            px_conv = self.pixel_size / self.unit
-            return px_conv * self.panel_gap, px_conf * self.asic_gap
-
     def write_geom(self, filename, **kwargs):
         """Write the current quad positions to a csv file."""
         df = self.quad_pos
         log.info(' Quadrant positions:\n{}'.format(df))
         df.to_csv(filename)
-
-    @property
-    def quad_pos(self):
-        """Get the quadrant positions from the geometry object."""
-        quads = {mod // 4 + 1: [] for mod in range(len(self.modules))}
-        quad_pos = np.zeros((len(quads), 2))
-        px_conversion = self.pixel_size / self.unit
-        for m, mod in enumerate(self.modules):
-            q = m // 4 + 1
-            mm = m % 4 + 1
-            for asic, frag in enumerate(mod):
-                cr_pos = (frag.corner_pos +
-                          (frag.ss_vec * self.frag_ss_pixels) +
-                          (frag.fs_vec * self.frag_fs_pixels))[:2]
-                cr_pos *= px_conversion
-                mod_offset, tile_offset = self._get_offsets(q, mm, asic+1)
-                quad_pos[q-1] = (cr_pos - tile_offset - mod_offset)
-        return pd.DataFrame(quad_pos,
-                            columns=['Y', 'X'],
-                            index=['q{}'.format(i+1) for i in range(4)])
 
 
 class AGIPDGeometry(GeometryAssembler):
@@ -244,7 +212,8 @@ class AGIPDGeometry(GeometryAssembler):
             else:
                 quad_pos.append((np.array(quad[i])[:,0].max(),
                                 np.array(quad[i])[:,1].max()))
-        return pd.DataFrame(quad_pos, index=range(1, 5),
+        return pd.DataFrame(quad_pos,
+                            index=['q{}'.format(i) for i in range(1, 5)],
                             columns=['X', 'Y'])
 
 
@@ -274,14 +243,38 @@ class LPDGeometry(GeometryAssembler):
     def load(cls, geom_file=None, quad_pos=None, asic_gap=4, panel_gap=4):
         """Create geometry from geometry file or quad positions."""
         quad_pos = quad_pos or default.FALLBACK_QUAD_POS['LPD']
-        try:
+        geom_file = geom_file or ' '
+        if os.path.isfile(geom_file):
             kd_geom = LPD_1MGeometry.from_h5_file_and_quad_positions(geom_file,
                                                                      quad_pos)
-        except (FileNotFoundError, ValueError):
-            log.warning(' Using fallback option')
-            kd_geom = LPD_1MGeometry.from_quad_positions(quad_pos)
+        else:
+            raise NotImplementedError("A geometry file must be provided")
         return cls(kd_geom, geom_file, asic_gap, panel_gap)
 
+    @property
+    def quad_pos(self):
+        """Get the quadrant positions from the geometry object."""
+        quad_pos = np.zeros((4, 2))
+        for q in range(1, 5):
+            quad_pos[q-1] = self._get_offsets(q, 4, 16)
+        return pd.DataFrame(quad_pos,
+                            columns=['Y', 'X'],
+                            index=['q{}'.format(i) for i in range(1, 5)])
+
+    def _get_offsets(self, quad, module, asic):
+        """Get the panel and asic offsets."""
+        px_conv = self.pixel_size / self.unit
+        nmod = (quad-1) * 4 + module
+        frag = self.modules[nmod-1][asic-1]
+        cr_pos = (frag.corner_pos +
+                  (frag.ss_vec * self.frag_ss_pixels) +
+                  (frag.fs_vec * self.frag_fs_pixels))[:2]
+        with h5py.File(self.filename, 'r') as f:
+            mod_grp = f['Q{}/M{}'.format(quad, module)]
+            mod_offset = mod_grp['Position'][:]
+            tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
+            cr_pos *= px_conv
+        return cr_pos - (mod_offset + tile_offset)
 
 CRYSTFEL_HEADER_TEMPLATE = """\
 ; AGIPD-1M geometry file written by geoAssembler {version}
