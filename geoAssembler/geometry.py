@@ -11,10 +11,26 @@ import pandas as pd
 
 from . import __version__
 
-from .defaults import default
+from .defaults import params
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
+
+
+def _move_mod(module, inc):
+    """Move module into an given direction.
+
+    Parameters:
+        module (list): List containing Geometry Fragments
+        inc (nd array) : 3d vector containing the move direction
+    """
+    return [GeometryFragment(
+              tile.corner_pos+inc,
+              tile.ss_vec,
+              tile.fs_vec,
+              tile.ss_pixels,
+              tile.fs_pixels,
+            ) for tile in module]
 
 
 class GeometryAssembler:
@@ -25,18 +41,25 @@ class GeometryAssembler:
     """
 
     filename = None
-    unit = 0
-    asic_gap = 0
-    panel_gap = 0
-    frag_ss_pixels = 0
-    frag_fs_pixels = 0
-    pixel_size = 0  # 5e-4 metres == 0.5 mm
+    unit = None
+    asic_gap = None
+    panel_gap = None
+    frag_ss_pixels = None
+    frag_fs_pixels = None
+    pixel_size = None
 
     def __init__(self, kd_geom):
         """The class is instanciated using a karabo_data geometry object."""
-        self.snapped_geom = kd_geom._snapped()
-        self.modules = kd_geom.modules
         self.kd_geom = kd_geom
+
+    @property
+    def modules(self):
+        return self.kd_geom.modules
+
+    @property
+    def snapped_geom(self):
+        return self.kd_geom._snapped()
+
 
     def move_quad(self, quad, inc):
         """Move the whole quad in a given direction.
@@ -46,21 +69,12 @@ class GeometryAssembler:
             inc (collection): increment of the direction to be moved
         """
         pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
-        inc = np.array(list(inc)+[0])
-        self.panel_gap = 4
-        self.asic_gap = 4
-        for i, module in enumerate(self.modules[pos:pos + 4]):
-            n = pos + i
-            for j, tile in enumerate(module):
-                self.modules[n][j] = GeometryFragment(
-                    tile.corner_pos+inc,
-                    tile.ss_vec,
-                    tile.fs_vec,
-                    tile.ss_pixels,
-                    tile.fs_pixels,
-                )
-            new_tiles = [t.snap() for t in module]
-            self.snapped_geom.modules[n] = new_tiles
+        if len(inc) == 2:
+            inc = np.array(list(inc)+[0])
+        new_modules = [_move_mod(m, inc) if pos >= i and pos < i+4 else m
+                       for i, m in enumerate(self.modules)]
+        kd_geom_cls = type(self.kd_geom)
+        self.kd_geom = kd_geom_cls(new_modules)
 
     def get_quad_corners(self, quad, centre):
         """Get the bounding box of a quad.
@@ -85,11 +99,7 @@ class GeometryAssembler:
         dx = abs(max(X) - min(X))
         return (min(X)-2, min(Y)-2), dx+w+4, dy+4
 
-    def position_all_modules(self, data):
-        """Deprecated alias for :meth:`position`."""
-        return self.position(data)
-
-    def position(self, data, canvas=None):
+    def position_all_modules(self, data, canvas=None):
         """Assemble data from this detector according to where the pixels are.
 
         Parameters
@@ -109,11 +119,17 @@ class GeometryAssembler:
         """
         if canvas is None:
             size_yx, centre = self.snapped_geom._get_dimensions()
+            out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
         else:
+            size_yx, centre = self.snapped_geom._get_dimensions()
             size_yx = canvas
-            centre = (canvas[0]//2, canvas[-1]//2)
-        out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
 
+            cv_centre = (canvas[0]//2, canvas[-1]//2)
+            shift = np.array(centre) - np.array(cv_centre)
+            out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
+            out = np.roll(out, shift[0], axis=-2)
+            out = np.roll(out, shift[1], axis=-1)
+            centre -= shift
         for i, module in enumerate(self.snapped_geom.modules):
             mod_data = data[..., i, :, :]
             tiles_data = self.kd_geom.split_tiles(mod_data)
@@ -125,25 +141,47 @@ class GeometryAssembler:
                 out[..., y: y + h, x: x + w] = tile.transform(tile_data)
         return out, centre
 
-    def write_geom(self, filename, **kwargs):
-        """Write the current quad positions to a csv file."""
+    def write_crystfel_geom(self, filename, header=None):
+        """Write the geometry to a crystfel geometry file.
+
+        Parameters:
+            filename (str): filename the geometry description is written
+
+        Keywords:
+            header (str): specific header for a geometry file
+        """
+        header = header or ''
+        panel_chunks = []
+        for p, module in enumerate(self.modules):
+            for a, fragment in enumerate(module):
+                panel_chunks.append(fragment.to_crystfel_geom(p, a))
+
+        with open(filename, 'w') as f:
+            f.write(CRYSTFEL_HEADER_TEMPLATE.format(version=__version__,
+                                                    header=header))
+            for chunk in panel_chunks:
+                f.write(chunk)
+
+    def write_quad_pos(self, filename):
+        """Write current quadrant positions to csv file.
+
+        Parameters:
+            filename (str): filename containing the quad postions
+        """
         df = self.quad_pos
         log.info(' Quadrant positions:\n{}'.format(df))
         df.to_csv(filename)
 
 
-class AGIPDGeometry(GeometryAssembler):
-    """Detector layout for AGIPD-1M.
 
-    The coordinates used in this class are 3D (x, y, z), and represent multiples
-    of the pixel size.
-    """
+class AGIPDGeometry(GeometryAssembler):
+    """Detector layout for AGIPD-1M."""
 
     def __init__(self, kd_geom):
         """Set the properties for AGIPD detector.
 
         Paramerters:
-            kd_geom (LPD_1MGeometry) : karabo_data geometry objet
+            kd_geom (AGIPD_1MGeometry) : karabo_data geometry objet
         """
         GeometryAssembler.__init__(self, kd_geom)
         self.unit = 2e-4
@@ -154,46 +192,17 @@ class AGIPDGeometry(GeometryAssembler):
         self.frag_fs_pixels = 128
 
     @classmethod
-    def load(cls, geom_file=None, quad_pos=None):
-        """Create geometry from geometry file or quad positions."""
-        quad_pos = quad_pos or default.FALLBACK_QUAD_POS['AGIPD']
-        try:
-            # Create a karabo_data geometry object from crystfel geom file
-            kd_geom = AGIPD_1MGeometry.from_crystfel_geom(geom_file)
-            return cls(kd_geom)
-        except (FileNotFoundError, TypeError):
-            log.warning(' Using fallback option')
-            # Fallback is creating the karabo_data geometry from quad_pos
-            kd_geom = AGIPD_1MGeometry.from_quad_positions(quad_pos)
-            return cls(kd_geom)
-
-    def write_geom(self, filename, header=''):
-        """Overwrite the write_crystfel_geom method to provide a header."""
-        version = __version__
-        panel_chunks = []
-        for p, module in enumerate(self.modules):
-            for a, fragment in enumerate(module):
-                panel_chunks.append(fragment.to_crystfel_geom(p, a))
-
-        with open(filename, 'w') as f:
-            f.write(CRYSTFEL_HEADER_TEMPLATE.format(version=version,
-                                                    header=header))
-            for chunk in panel_chunks:
-                f.write(chunk)
-
-    def write_crystfel_geom(self, filename, header=''):
-        """Deprecated alias for :meth:`write_geom`."""
-        return self.write_geom(filename, header)
-
-    @classmethod
     def from_quad_positions(cls, quad_pos=None):
-        """Deprecated alias for :meth:`load`."""
-        return cls.load(quad_pos=quad_pos)
+        """Generate geometry from quadrant positions"""
+        quad_pos = quad_pos or params.FALLBACK_QUAD_POS['AGIPD']
+        kd_geom = AGIPD_1MGeometry.from_quad_positions(quad_pos)
+        return cls(kd_geom)
 
     @classmethod
-    def from_crystfel_geom(cls, filename=None):
-        """Deprecated alias for :meth:`load`."""
-        return cls.load(geom_file=filename)
+    def from_crystfel_geom(cls, filename):
+        """Load geometry from crystfel geometry"""
+        kd_geom = AGIPD_1MGeometry.from_crystfel_geom(filename)
+        return cls(kd_geom)
 
     @property
     def quad_pos(self):
@@ -220,42 +229,37 @@ class AGIPDGeometry(GeometryAssembler):
 class LPDGeometry(GeometryAssembler):
     """Detector layout for LPD."""
 
-    def __init__(self, kd_geom, filename, asic_gap=4, panel_gap=4):
+    def __init__(self, kd_geom, filename):
         """Set the properties for LPD detector.
 
         Paramerters:
             kd_geom (LPD_1MGeometry) : karabo_data geometry objet
             filename (str) : path to the hdf5 geometry description
-        Keywords:
-            asic_gap : gap between asics/tiles (default: 4)
-            panel_gap : gap between panels/modules (dfault:4)
         """
         GeometryAssembler.__init__(self, kd_geom)
         self.filename = filename
-        self.asic_gap = asic_gap
-        self.panel_gap = panel_gap
+        self.asic_gap = 4
+        self.panel_gap = 4
         self.unit = 1e-3
         self.pixel_size = 5e-4  # 5e-4 metres == 0.5 mm
         self.frag_ss_pixels = 32
         self.frag_fs_pixels = 128
 
     @classmethod
-    def load(cls, geom_file=None, quad_pos=None, asic_gap=4, panel_gap=4):
+    def from_h5_file_and_quad_positions(cls, geom_file, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
-        quad_pos = quad_pos or default.FALLBACK_QUAD_POS['LPD']
-        geom_file = geom_file or ' '
-        if os.path.isfile(geom_file):
-            kd_geom = LPD_1MGeometry.from_h5_file_and_quad_positions(geom_file,
-                                                                     quad_pos)
-        else:
-            raise NotImplementedError("A geometry file must be provided")
-        return cls(kd_geom, geom_file, asic_gap, panel_gap)
+        quad_pos = quad_pos or params.FALLBACK_QUAD_POS['LPD']
+        kd_geom = LPD_1MGeometry.from_h5_file_and_quad_positions(geom_file,
+                                                                 quad_pos)
+        return cls(kd_geom, geom_file)
 
     @property
     def quad_pos(self):
         """Get the quadrant positions from the geometry object."""
         quad_pos = np.zeros((4, 2))
         for q in range(1, 5):
+            # Getting the offset for one tile (4th module, 16th tile)
+            # is sufficient
             quad_pos[q-1] = self._get_offsets(q, 4, 16)
         return pd.DataFrame(quad_pos,
                             columns=['Y', 'X'],
