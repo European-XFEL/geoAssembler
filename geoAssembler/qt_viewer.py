@@ -11,8 +11,9 @@ import pyqtgraph as pg
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
-from .defaults import default
-from .geometry import GEOM_MODULES
+
+from .defaults import params
+from .gui_utils import (read_geometry, write_geometry)
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
@@ -356,7 +357,7 @@ class QuadSelector(QtWidgets.QFrame):
         self.quad_table.setToolTip('Set the Quad-Pos in mm')
         self.quad_table.setHorizontalHeaderLabels(['Quad X-Pos', 'Quad Y-Pos'])
         self.quad_table.setVerticalHeaderLabels(['1', '2', '3', '4'])
-        for n, quad_pos in enumerate(default.FALLBACK_QUAD_POS[det]):
+        for n, quad_pos in enumerate(params.FALLBACK_QUAD_POS[det]):
             self.quad_table.setItem(
                 n, 0, QtGui.QTableWidgetItem(str(quad_pos[0])))
             self.quad_table.setItem(
@@ -403,7 +404,7 @@ class QuadSelector(QtWidgets.QFrame):
             except ValueError:
                 _warning('Table Elements must be Float')
                 return
-        default.FALLBACK_QUAD_POS[self.det] = quad_pos
+        params.FALLBACK_QUAD_POS[self.det] = quad_pos
         if not self.parent.value:
             _warning('You must Select a Geometry File')
             return
@@ -485,7 +486,7 @@ class CalibrateQt:
         self.detector_sel.addItem('LPD')
         self.layout.addWidget(self.detector_sel, 0, 1, 1, 1)
         self.layout.addWidget(self.radius_setter, 0, 2, 1, 1)
-        self.geom_selector = GeometryFileSelecter(default.GEOM_SEL_WIDTH,
+        self.geom_selector = GeometryFileSelecter(params.GEOM_SEL_WIDTH,
                                                   'Geometry File:',
                                                   self,
                                                   geofile)
@@ -526,23 +527,22 @@ class CalibrateQt:
         """Read the geometry file and position all modules."""
         self.det = self.detector_sel.currentText()
         if self.run_selector.rundir is None:
+            _warning('Click the Rundirectory button to select a run directory')
             return
         if self.det != 'AGIPD' and not self.geom_selector.value:
             _warning('Click the load button to load a geometry file')
             return
         log.info(' Starting to assemble ... ')
-        quad_pos = default.FALLBACK_QUAD_POS[self.det]
-        GeometryModule = GEOM_MODULES[self.det]
+        quad_pos = params.FALLBACK_QUAD_POS[self.det]
         self.geom_file = self.geom_selector.value
-        self.geom = GeometryModule.load(self.geom_selector.value, quad_pos)
+        self.geom = read_geometry(self.geom_selector.value, quad_pos)
         self.raw_data = self.run_selector.get()
         data, self.centre = self.geom.position(self.raw_data)
-        self.canvas = np.full(np.array(data.shape) + default.CANVAS_MARGIN, 
+        self.canvas = np.full(np.array(data.shape) + params.CANVAS_MARGIN, 
                               np.nan)
 
-        self.data, self.centre =\
-            self.geom.position(self.raw_data,
-                               canvas=self.canvas.shape)
+        self.data, _ = self.geom.position(self.raw_data,
+                                          canvas=self.canvas.shape)
         # Display the data and assign each frame a time value from 1.0 to 3.0
         if not self.is_displayed:
             xvals = np.linspace(1., 3., self.canvas.shape[0])
@@ -573,7 +573,7 @@ class CalibrateQt:
         """Save the adapted geometry to a file in cfel output format."""
         if self.det == 'AGIPD':
             file_type = ('CFEL', 'geom')
-        else:
+        elif self.det == 'LPD':
             file_type = ('XFEL', 'csv')
         fname, _ = QtGui.QFileDialog.getSaveFileName(self.geom_selector,
                                                      'Save geometry file',
@@ -586,9 +586,9 @@ class CalibrateQt:
                 os.remove(fname)
             except (FileNotFoundError, PermissionError):
                 pass
-            self.data, self.centre = self.geom.position(
+            self.data, self.centre = self.geom.position_all_modules(
                 self.raw_data)
-            self.geom.write_geom(fname, header=self.header)
+            write_geometry(self.geom, fname, self.header)
             if self.show_info:
                 _warning('Geometry information saved to {}'.format(fname),
                          title='Info')
@@ -598,7 +598,7 @@ class CalibrateQt:
         quad = self.quad
         if quad <= 0:
             return
-        self.geom.move_quad(quad, np.array(default.DIRECTION[d]))
+        self.geom.move_quad(quad, np.array(params.DIRECTION[d]))
         self.data, self.centre =\
             self.geom.position(self.raw_data,
                                canvas=self.canvas.shape)
