@@ -1,9 +1,10 @@
 
-"""Define global default configuration parameters."""
+"""Methods and classes that handle different detectors and their defaults."""
 
+import os
 
-
-class default:
+class params:
+    """Define global default configuration parameters."""
     # Fallback quad positions if no geometry file is given as a starting point:
     #from .geometry import AGIPDGeometry, LPDGeometry
     FALLBACK_QUAD_POS = {
