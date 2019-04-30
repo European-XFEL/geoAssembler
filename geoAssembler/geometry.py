@@ -60,6 +60,9 @@ class GeometryAssembler:
     def snapped_geom(self):
         return self.kd_geom._snapped()
 
+    def inspect(self):
+        """Alias for inspect method of kd_geom object."""
+        return self.kd_geom.inspect()
 
     def move_quad(self, quad, inc):
         """Move the whole quad in a given direction.
@@ -68,10 +71,10 @@ class GeometryAssembler:
             quad (int): Quandrant number that is to be moved
             inc (collection): increment of the direction to be moved
         """
-        pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
+        pos = {1: 12, 2: 8, 3: 4, 4: 0}[quad] # Translate quad into mod pos
         if len(inc) == 2:
             inc = np.array(list(inc)+[0])
-        new_modules = [_move_mod(m, inc) if pos >= i and pos < i+4 else m
+        new_modules = [_move_mod(m, inc) if (pos <= i < pos + 4) else m
                        for i, m in enumerate(self.modules)]
         kd_geom_cls = type(self.kd_geom)
         self.kd_geom = kd_geom_cls(new_modules)
@@ -83,7 +86,7 @@ class GeometryAssembler:
             quad (int): quadrant number
             centre (tuple): y, x coordinates of the detector centre
         """
-        pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
+        pos = {1: 12, 2: 8, 3: 4, 4: 0}[quad] # Translate quad into mod pos
         X = []
         Y = []
         for i, module in enumerate(self.snapped_geom.modules[pos:pos + 4]):

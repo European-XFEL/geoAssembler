@@ -5,17 +5,19 @@ import os
 
 from .defaults import params
 
-def read_geometry(detector, filename, quad_pos):
+def read_geometry(detector, filename, quad_pos=None):
     """Create the correct geometry class for a given detector.
 
     Parameters:
-        detector (str): Name of the considered detector 
+        detector (str): Name of the considered detector
         filename (str): Path to the geometry file
-        quad_pos (list): X,Y coordinates of quadrants
+    Keywords:
+        quad_pos (list): X,Y coordinates of quadrants (default None)
 
     Retruns:
         GeometryAssembler Object
     """
+    filename = filename or ''
     if detector == 'AGIPD':
         from .geometry import AGIPDGeometry
         if os.path.isfile(filename):
@@ -38,9 +40,9 @@ def write_geometry(geom, filename, header=''):
         filename (str): Output filename
     """
     from .geometry import AGIPDGeometry, LPDGeometry
-    if isinstance(type(geom), AGIPDGeometry):
+    if isinstance(geom, AGIPDGeometry):
         geom.write_crystfel_geom(filename, header=header)
-    elif isinstance(type(geom), LPDGeometry):
+    elif isinstance(geom, LPDGeometry):
         geom.write_quad_pos(filename)
     else:
         raise NotImplementedError('Detector Class not available')

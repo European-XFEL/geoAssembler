@@ -11,8 +11,7 @@ import matplotlib.patches as patches
 
 from .defaults import params
 from .nb_tabs import CalibTab, MaterialTab
-from .geometry import GEOM_MODULES
-
+from .gui_utils import read_geometry
 class CalibrateNb:
     """Ipython Widget version of the Calibration Class."""
 
@@ -57,14 +56,11 @@ class CalibrateNb:
 
         # Try to assemble the data (if geom is None)
         if geometry is None:
-            # Get Fall-back Quad positions
-            quad_pos = params.FALLBACK_QUAD_POS[self.det]
-            GeometryModule = GEOM_MODULES[self.det]
-            self.geom = GeometryModule.load('', quad_pos)
+            self.geom = read_geometry(det, None, None)
         else:
             self.geom = geometry
 
-        data, _ = self.geom.position(self.raw_data)
+        data, _ = self.geom.position_all_modules(self.raw_data)
         # Create a canvas
         self.canvas = np.full(np.array(data.shape) + params.CANVAS_MARGIN,
                               np.nan)
@@ -78,11 +74,11 @@ class CalibrateNb:
     @property
     def centre(self):
         """Return the centre of the image (beam)."""
-        return self.geom.position(self.raw_data)[1]
+        return self.geom.position_all_modules(self.raw_data)[1]
 
     def _draw_circle(self, r, num):
         """Draw circel of radius r and add it to the circle collection."""
-        centre = self.geom.position(self.raw_data,
+        centre = self.geom.position_all_modules(self.raw_data,
                                     canvas=self.canvas.shape)[1]
         self.circles[num] = plt.Circle(centre[::-1], r,
                                        facecolor='none', edgecolor='r', lw=1)
@@ -172,9 +168,9 @@ class CalibrateNb:
                     cmap=params.DEFAULT_CMAPS[0], **kwargs):
         """Update the plotted image."""
         # Update the image first
-        self.data, centre =\
-            self.geom.position(self.raw_data, canvas=self.canvas.shape)
-        cy, cx = centre
+        self.data, cnt = self.geom.position_all_modules(self.raw_data,
+                                                        self.canvas.shape)
+        cy, cx = cnt
         if self.im is not None:
             if plot_range is not None:
                 self.im.set_clim(*plot_range)

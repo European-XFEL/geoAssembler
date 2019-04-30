@@ -535,13 +535,13 @@ class CalibrateQt:
         log.info(' Starting to assemble ... ')
         quad_pos = params.FALLBACK_QUAD_POS[self.det]
         self.geom_file = self.geom_selector.value
-        self.geom = read_geometry(self.geom_selector.value, quad_pos)
+        self.geom = read_geometry(self.det, self.geom_selector.value, quad_pos)
         self.raw_data = self.run_selector.get()
-        data, self.centre = self.geom.position(self.raw_data)
+        data, self.centre = self.geom.position_all_modules(self.raw_data)
         self.canvas = np.full(np.array(data.shape) + params.CANVAS_MARGIN, 
                               np.nan)
 
-        self.data, _ = self.geom.position(self.raw_data,
+        self.data, _ = self.geom.position_all_modules(self.raw_data,
                                           canvas=self.canvas.shape)
         # Display the data and assign each frame a time value from 1.0 to 3.0
         if not self.is_displayed:
@@ -600,7 +600,7 @@ class CalibrateQt:
             return
         self.geom.move_quad(quad, np.array(params.DIRECTION[d]))
         self.data, self.centre =\
-            self.geom.position(self.raw_data,
+            self.geom.position_all_modules(self.raw_data,
                                canvas=self.canvas.shape)
         self._draw_rect(quad)
         self.imv.getImageItem().updateImage(self.data)
@@ -694,12 +694,13 @@ class CalibrateQt:
         """Return the quadrant for a given set of coordinates."""
         y1, y2, y3 = 0, self.data.shape[-1]/2, self.data.shape[-1]
         x1, x2, x3 = 0, self.data.shape[-2]/2, self.data.shape[-2]
-        self.bounding_boxes = {1: (x2, x3, y1, y2),
-                               2: (x1, x2, y1, y2),
-                               3: (x2, x3, y2, y3),
-                               4: (x1, x2, y2, y3)}
+        self.bounding_boxes = {1: (x2, x3, y2, y3),
+                               2: (x1, x2, y2, y3),
+                               3: (x1, x2, y1, y2),
+                               4: (x2, x3, y1, y2)}
         for quadrant, bbox in self.bounding_boxes.items():
             if bbox[0] <= x < bbox[1] and bbox[2] <= y < bbox[3]:
+                print(quadrant)
                 return quadrant
 
     def _draw_rect(self, quad):
