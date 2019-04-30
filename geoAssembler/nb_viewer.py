@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt, cm
 import matplotlib.patches as patches
 
 
-from .defaults import default
+from .defaults import params
 from .nb_tabs import CalibTab, MaterialTab
 from .geometry import GEOM_MODULES
 
@@ -49,7 +49,7 @@ class CalibrateNb:
         self.bg = bg or 'w'
         self.circles = {}
         self.quad = None
-        self.cmap = cm.get_cmap(default.DEFAULT_CMAPS[0])
+        self.cmap = cm.get_cmap(params.DEFAULT_CMAPS[0])
         try:
             self.cmap.set_bad(self.bg)
         except (ValueError, KeyError):
@@ -58,7 +58,7 @@ class CalibrateNb:
         # Try to assemble the data (if geom is None)
         if geometry is None:
             # Get Fall-back Quad positions
-            quad_pos = default.FALLBACK_QUAD_POS[self.det]
+            quad_pos = params.FALLBACK_QUAD_POS[self.det]
             GeometryModule = GEOM_MODULES[self.det]
             self.geom = GeometryModule.load('', quad_pos)
         else:
@@ -66,7 +66,7 @@ class CalibrateNb:
 
         data, _ = self.geom.position(self.raw_data)
         # Create a canvas
-        self.canvas = np.full(np.array(data.shape) + default.CANVAS_MARGIN,
+        self.canvas = np.full(np.array(data.shape) + params.CANVAS_MARGIN,
                               np.nan)
         self._add_widgets()
         self.update_plot(plot_range=(self.vmin, self.vmax), **kwargs)
@@ -134,8 +134,8 @@ class CalibrateNb:
             readout=True,
             readout_format='d',
             layout=Layout(width='70%'))
-        self.cmap_sel = widgets.Dropdown(options=default.DEFAULT_CMAPS,
-                                         value=default.DEFAULT_CMAPS[0],
+        self.cmap_sel = widgets.Dropdown(options=params.DEFAULT_CMAPS,
+                                         value=params.DEFAULT_CMAPS[0],
                                          description='Color Map:',
                                          disabled=False,
                                          layout=Layout(width='200px'))
@@ -169,7 +169,7 @@ class CalibrateNb:
             return
 
     def update_plot(self, plot_range=(None, None),
-                    cmap=default.DEFAULT_CMAPS[0], **kwargs):
+                    cmap=params.DEFAULT_CMAPS[0], **kwargs):
         """Update the plotted image."""
         # Update the image first
         self.data, centre =\

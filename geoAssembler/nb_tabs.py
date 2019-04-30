@@ -17,7 +17,7 @@ from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from scipy import constants
 
 from . import calibrants
-from .defaults import default
+from .defaults import params
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(os.path.basename(__file__))
