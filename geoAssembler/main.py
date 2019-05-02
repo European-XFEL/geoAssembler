@@ -8,8 +8,8 @@ import os
 from pyqtgraph import QtGui
 from . import CalibrateQt
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(os.path.basename(__file__))
+logging.getLogger(__name__).addHandler(logging.NullHandler())
+log = logging.getLogger(__name__)
 
 # Define a header that should be added to the geometry file, this is useful
 # to use the geometry file with tools like hdfsee

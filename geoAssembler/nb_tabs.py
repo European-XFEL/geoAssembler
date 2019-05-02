@@ -19,10 +19,8 @@ from scipy import constants
 from . import calibrants
 from .defaults import params
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(os.path.basename(__file__))
 
-
+log = logging.getLogger(__name__)
 
 class CalibTab(widgets.VBox):
     """Calibration-tab of type ipython widget vbox."""

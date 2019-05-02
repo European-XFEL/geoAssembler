@@ -1,6 +1,8 @@
 
 """Jupyter Version of the detector geometry calibration."""
 
+import logging
+
 import numpy as np
 
 from ipywidgets import widgets, Layout
@@ -12,6 +14,9 @@ import matplotlib.patches as patches
 from .defaults import params
 from .nb_tabs import CalibTab, MaterialTab
 from .gui_utils import read_geometry
+
+log = logging.getLogger(__name__)
+
 class CalibrateNb:
     """Ipython Widget version of the Calibration Class."""
 

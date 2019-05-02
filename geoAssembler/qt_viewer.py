@@ -15,9 +15,7 @@ from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 from .defaults import params
 from .gui_utils import (read_geometry, write_geometry)
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(os.path.basename(__file__))
-
+log = logging.getLogger(__name__)
 Slot = QtCore.pyqtSlot
 
 

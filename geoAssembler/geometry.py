@@ -13,9 +13,7 @@ from . import __version__
 
 from .defaults import params
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(os.path.basename(__file__))
-
+log = logging.getLogger(__name__)
 
 def _move_mod(module, inc):
     """Move module into an given direction.
