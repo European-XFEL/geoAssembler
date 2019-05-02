@@ -157,9 +157,9 @@ class CalibTab(widgets.VBox):
 
         sign = np.sign(po - pn)
         if d == 'h':
-            pos = np.array((0, sign))
-        else:
             pos = np.array((sign, 0))
+        else:
+            pos = np.array((0, sign))
         self.parent.geom.move_quad(self.parent.quad, pos)
         self.parent._draw_rect(
             {0: None, 1: 2, 2: 1, 3: 4, 4: 3}[self.parent.quad])
@@ -167,20 +167,20 @@ class CalibTab(widgets.VBox):
 
     def _update_navi(self, pos):
         """Add navigation buttons."""
-        posx_sel = widgets.BoundedIntText(value=0,
-                                          min=-1000,
-                                          max=1000,
-                                          step=1,
-                                          disabled=False,
-                                          continuous_update=True,
-                                          description='Vertical')
         posy_sel = widgets.BoundedIntText(value=0,
                                           min=-1000,
                                           max=1000,
                                           step=1,
                                           disabled=False,
                                           continuous_update=True,
-                                          description='Horizontal')
+                                          description='Horz.')
+        posx_sel = widgets.BoundedIntText(value=0,
+                                          min=-1000,
+                                          max=1000,
+                                          step=1,
+                                          disabled=False,
+                                          continuous_update=True,
+                                          description='Vert.')
         posx_sel.observe(self._move_quadrants)
         posy_sel.observe(self._move_quadrants)
 
