@@ -173,14 +173,14 @@ class CalibTab(widgets.VBox):
                                           step=1,
                                           disabled=False,
                                           continuous_update=True,
-                                          description='Horizontal')
+                                          description='Vertical')
         posy_sel = widgets.BoundedIntText(value=0,
                                           min=-1000,
                                           max=1000,
                                           step=1,
                                           disabled=False,
                                           continuous_update=True,
-                                          description='Vertical')
+                                          description='Horizontal')
         posx_sel.observe(self._move_quadrants)
         posy_sel.observe(self._move_quadrants)
 
