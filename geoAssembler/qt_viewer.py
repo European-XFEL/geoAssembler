@@ -265,7 +265,7 @@ class GeometryFileSelecter(QtWidgets.QFrame):
         hbox.addWidget(self.line)
 
         self.file_sel = QtGui.QPushButton("Load")
-        self.file_sel.clicked.connect(self._get_files)
+        self.file_sel.clicked.connect(self._load)
         hbox.addWidget(self.file_sel)
         self.apply_btn = QtGui.QPushButton('Apply')
         self.apply_btn.setToolTip('Assemble Data')
@@ -283,21 +283,10 @@ class GeometryFileSelecter(QtWidgets.QFrame):
         info.setToolTip('Click into the Image to select a Quadrant')
         vlayout.addWidget(info)
 
-    def _get_files(self):
+    def _load(self):
         """Open a dialog box to select a file."""
-        if self.parent.detector_sel.currentText() == 'AGIPD':
-            fname, _ = QtGui.QFileDialog.getOpenFileName(self,
-                                                         'Load geometry file',
-                                                         '.',
-                                                         'CFEL file format (*.geom)')
-            self.parent.quad_pos = None
-            if fname:
-                self.line.setText(fname)
-            else:
-                self.line.setText(None)
-
-        else:
-            self.win = GeomWindow(self, self.parent.detector_sel.currentText())
+        self.win = DetectorHelper.load(self,
+                                       self.parent.detector_combobox.currentText())
 
     @property
     def value(self):
@@ -309,36 +298,10 @@ class GeometryFileSelecter(QtWidgets.QFrame):
         self.save_btn.setEnabled(True)
 
 
-class GeomWindow(QtGui.QMainWindow):
-    """Pop-up window to select quad. positions and xfel format geometry file."""
-
-    def __init__(self, parent, det='LPD'):
-        """Create new window and add widgets quad. and geometry file selection.
-
-        Parameters:
-            parent (GeometryFileSelecter): main widget dealing with geometry
-                                           selection
-        Keywords:
-            det (str): Name of the detector (default LPD)
-        """
-        super(GeomWindow, self).__init__(parent)
-        centerPoint = QtWidgets.QDesktopWidget().availableGeometry().center()
-
-        self.setWindowTitle('{} Geometry'.format(det))
-        self.setFixedSize(240, 220)
-        sel = QuadSelector(self, parent, det)
-        self.setCentralWidget(sel)
-        # Move pop-up window to centre
-        qtRectangle = self.frameGeometry()
-        qtRectangle.moveCenter(centerPoint)
-        self.move(qtRectangle.topLeft())
-        self.show()
-
-
-class QuadSelector(QtWidgets.QFrame):
+class DetectorHelper(QtGui.QDialog):
     """Setup widgets for quad. positions and geometry file selection."""
 
-    def __init__(self, window, parent, det='LPD'):
+    def __init__(self, parent, det='LPD'):
         """Create a table element for quad selection and file selection.
 
         Parameters:
@@ -349,9 +312,10 @@ class QuadSelector(QtWidgets.QFrame):
         Keywords:
             det (str) : Name to the detector (default LPD)
         """
-        super(QuadSelector, self).__init__(window)
+        super().__init__()
+        self.setWindowTitle('{} Geometry'.format(det))
+        self.setFixedSize(240, 220)
         self.parent = parent
-        self.window = window
         self.det = det
         self.quad_table = QtGui.QTableWidget(4, 2)
         self.quad_table.setToolTip('Set the Quad-Pos in mm')
@@ -364,33 +328,50 @@ class QuadSelector(QtWidgets.QFrame):
                 n, 1, QtGui.QTableWidgetItem(str(quad_pos[1])))
         self.quad_table.move(0, 0)
 
-        self.file_sel = QtGui.QPushButton('Select Geometry File')
-        self.file_sel.setToolTip(
+        file_sel = QtGui.QPushButton('Select Geometry File')
+        file_sel.setToolTip(
             'Select a Geometry File in xfel (hdf5) format.')
-        self.file_sel.clicked.connect(self._get_files)
+        file_sel.clicked.connect(self._get_files)
 
-        self.ok_btn = QtGui.QPushButton('Ok')
-        self.ok_btn.clicked.connect(self._apply)
-        self.cancel_btn = QtGui.QPushButton('Cancel')
-        self.cancel_btn.clicked.connect(self._cancel)
+        ok_btn = QtGui.QPushButton('Ok')
+        ok_btn.clicked.connect(self._apply)
+        cancel_btn = QtGui.QPushButton('Cancel')
+        cancel_btn.clicked.connect(self._cancel)
         hbox = QtWidgets.QHBoxLayout()
-        hbox.addWidget(self.ok_btn)
-        hbox.addWidget(self.cancel_btn)
+        hbox.addWidget(ok_btn)
+        hbox.addWidget(cancel_btn)
 
-        layout = QtWidgets.QVBoxLayout(self)
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.quad_table)
-        layout.addWidget(self.file_sel)
+        layout.addWidget(file_sel)
         layout.addLayout(hbox)
         self.setLayout(layout)
+        self.show()
+
+    @classmethod
+    def load(cls, parent, det='AGIPD'):
+        """Handels loading the right configuration for a given detector."""
+        if det == 'AGIPD':
+            parent.quad_pos = None
+            fname = cls.file_dialog(parent, format=('CFEL', '*.geom'))
+            parent.line.setText(fname)
+        else:
+            return cls(parent, det)
 
     def _get_files(self):
+        fname = self.file_dialog(self.parent, format=('XFEL', '*.h5'))
+        self.parent.line.setText(fname)
+
+    @staticmethod
+    def file_dialog(parent, format=('CFEL', '*.geom')):
         """File-selection dialogue to get hdf5 geometry file."""
-        fname, _ = QtGui.QFileDialog.getOpenFileName(self,
+        fname, _ = QtGui.QFileDialog.getOpenFileName(parent,
                                                      'Load geometry file',
                                                      '.',
-                                                     'XFEL file format (*.h5)')
+                                                     '{} file format ({})'.format(format[0],
+                                                                                  format[1]))
         # Put the filename into the geometry file field of the main gui
-        self.parent.line.setText(fname)
+        return fname
 
     def _apply(self):
         """Read quad. pos and update the detectors fallback positions."""
@@ -408,11 +389,11 @@ class QuadSelector(QtWidgets.QFrame):
         if not self.parent.value:
             _warning('You must Select a Geometry File')
             return
-        self.window.destroy()
+        self.destroy()
 
     def _cancel(self):
         """Close the window."""
-        self.window.destroy()
+        self.destroy()
 
 
 class CircleROI(pg.EllipseROI):
@@ -481,10 +462,11 @@ class CalibrateQt:
 
         # circle manipulation other input dialogs go to the top
         self.radius_setter = RadiusSetter('', None, self)
-        self.detector_sel = QtGui.QComboBox()
-        self.detector_sel.addItem('AGIPD')
-        self.detector_sel.addItem('LPD')
-        self.layout.addWidget(self.detector_sel, 0, 1, 1, 1)
+        self.detector_combobox = QtGui.QComboBox()
+        self.detector_combobox.addItem('AGIPD')
+        self.detector_combobox.addItem('LPD')
+        self.detector_combobox.setCurrentIndex(0)
+        self.layout.addWidget(self.detector_combobox, 0, 1, 1, 1)
         self.layout.addWidget(self.radius_setter, 0, 2, 1, 1)
         self.geom_selector = GeometryFileSelecter(params.GEOM_SEL_WIDTH,
                                                   'Geometry File:',
@@ -525,9 +507,9 @@ class CalibrateQt:
 
     def _apply(self):
         """Read the geometry file and position all modules."""
-        self.det = self.detector_sel.currentText()
+        self.det = self.detector_combobox.currentText()
         if self.run_selector.rundir is None:
-            _warning('Click the Rundirectory button to select a run directory')
+            _warning('Click the Run-dir button to select a run directory')
             return
         if self.det != 'AGIPD' and not self.geom_selector.value:
             _warning('Click the load button to load a geometry file')
