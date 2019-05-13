@@ -25,8 +25,10 @@ def find_version(*parts):
         return match.group(1)
     raise RuntimeError("Unable to find version string.")
 
+
 def find_files(directory):
-    return glob.glob(osp.join(directory,'*'))
+    return glob.glob(osp.join(directory, '*'))
+
 
 setup(name="geoAssembler",
       version=find_version("geoAssembler", "__init__.py"),
@@ -40,14 +42,15 @@ setup(name="geoAssembler",
       packages=find_packages(),
       data_files=[('templates', find_files('templates')),
                   ('cells', find_files('cells'))],
-      package_data={'':['cells/*.D', 'templates/*.tmpl'],
+      package_data={'': ['cells/*.D', 'templates/*.tmpl'],
                     'geoAssembler.tests': ['data_*.npz', 'test.geom'],
-          },
+                    },
       entry_points={
           'gui_scripts': [
               'geoAssembler = geoAssembler.main:main'
           ]},
-      dependency_links=['git+https://github.com/European-XFEL/karabo_data.git'],
+      dependency_links=[
+          'git+https://github.com/European-XFEL/karabo_data.git'],
       install_requires=[
           'cfelpyutils',
           'karabo-data',
