@@ -423,7 +423,6 @@ class CalibrateQt:
         self.levels = levels or [None, None]
         self.raw_data = None
         self.header = header or ''
-        self.show_info = True  # Show info pop-up after saving geometry
         # not used for ci-testing
 
         # Interpret image data as row-major instead of col-major
@@ -564,9 +563,8 @@ class CalibrateQt:
             self.data, self.centre = self.geom.position_all_modules(
                 self.raw_data)
             write_geometry(self.geom, fname, self.header)
-            if self.show_info:
-                _warning('Geometry information saved to {}'.format(fname),
-                         title='Info')
+            _warning('Geometry information saved to {}'.format(fname), 
+                     title='Info')
 
     def _move(self, d):
         """Move the quadrant."""
