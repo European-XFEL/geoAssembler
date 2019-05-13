@@ -545,15 +545,13 @@ class CalibrateQt:
 
     def _save_geom(self):
         """Save the adapted geometry to a file in cfel output format."""
-        if self.det == 'AGIPD':
-            file_type = ('CFEL', 'geom')
-        elif self.det == 'LPD':
-            file_type = ('XFEL', 'csv')
+        file_format = Defaults.file_formats[self.det]
+        file_type = 'file format (*.{})'.format(*file_format)
         fname, _ = QtGui.QFileDialog.getSaveFileName(self.geom_selector,
                                                      'Save geometry file',
                                                      'geo_assembled.{}'.format(
-                                                         file_type[-1]),
-                                                     '{} file format (*.{})'.format(*file_type))
+                                                         file_format[-1]),
+                                                     file_type)
         if fname:
             log.info(' Saving output to {}'.format(fname))
             try:

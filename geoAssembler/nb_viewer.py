@@ -20,8 +20,8 @@ log = logging.getLogger(__name__)
 class CalibrateNb:
     """Ipython Widget version of the Calibration Class."""
 
-    def __init__(self, raw_data, geometry=None, vmin=None, vmax=None,
-                 figsize=None, bg=None, det='AGIPD', **kwargs):
+    def __init__(self, raw_data, geometry=None, det='AGIPD', vmin=None, 
+                 vmax=None, figsize=None, bg=None, **kwargs):
         """Display detector data and arrange panels.
 
         Parameters:
@@ -32,19 +32,17 @@ class CalibrateNb:
                                                an AGIPD_1MGeometry object or
                                                the filename to the geometry
                                                file in CFEL fromat
+            det (str) : detector to be used (if geometry is None)
             vmin (int) : minimal value in the data array (default: -1000)
                           anything below this value will be clipped
             vmax (int) : maximum value in the data array (default: 5000)
                           anything above this value will be clipped
             figsize (tuple): size of the figure
             bg (str) : background color of the image
-            det (str) : detector to be used
             kwargs : additional keyword arguments that are parsed to matplotlib
         """
         self.data = raw_data
-        if det not in ['AGIPD', 'LPD']:
-            raise NotImplementedError('Detector not available')
-        self.det = det
+        Defaults.check_detector(det)
         self.im = None
         self.vmin = vmin or np.nanmin(self.data)
         self.vmax = vmax or np.nanmax(self.data)

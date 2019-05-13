@@ -7,8 +7,9 @@ INC = 1
 
 class DefaultGeometryConfig:
     """Define global default configuration parameters."""
+    # Define all implemented detectors
+    detectors = ('AGIPD', 'LPD') 
     # Fallback quad positions if no geometry file is given as a starting point:
-    #from .geometry import AGIPDGeometry, LPDGeometry
     fallback_quad_pos = {
                         'AGIPD': [(-540, 610),
                                   (-540, -15),
@@ -49,3 +50,10 @@ class DefaultGeometryConfig:
                     'AGIPD': ('CFEL', '*.geom'),
                     'LPD': ('XFEL', '*.h5')
                    }
+
+    @classmethod
+    def check_detector(cls, det):
+        """Rais and Error if a given detector is not implemented."""
+        if det not in cls.detectors:
+            raise NotImplementedError('Detector is currently not Implemented')
+
