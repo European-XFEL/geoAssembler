@@ -3,7 +3,7 @@
 
 import os
 
-from .defaults import params
+from .defaults import DefaultGeometryConfig as Defaults
 
 def read_geometry(detector, filename, quad_pos=None):
     """Create the correct geometry class for a given detector.
@@ -18,19 +18,20 @@ def read_geometry(detector, filename, quad_pos=None):
         GeometryAssembler Object
     """
     filename = filename or ''
+    try:
+        quad_pos = quad_pos or Defaults.fallback_quad_pos[detector]
+    except KeyError:
+        raise NotImplementedError('Detector Class not available')
+
     if detector == 'AGIPD':
         from .geometry import AGIPDGeometry
         if os.path.isfile(filename):
             return AGIPDGeometry.from_crystfel_geom(filename)
         else:
-            quad_pos = quad_pos or params.FALLBACK_QUAD_POS['AGIPD']
             return AGIPDGeometry.from_quad_positions(quad_pos)
     elif detector == 'LPD':
         from .geometry import LPDGeometry
-        quad_pos = quad_pos or params.FALLBACK_QUAD_POS['AGIPD']
         return LPDGeometry.from_h5_file_and_quad_positions(filename, quad_pos)
-    else:
-        raise NotImplementedError('Detector Class not available')
 
 def write_geometry(geom, filename, header=''):
     """Write the correct geometry description.

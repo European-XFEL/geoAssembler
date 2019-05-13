@@ -11,7 +11,7 @@ import pandas as pd
 
 from . import __version__
 
-from .defaults import params
+from .defaults import DefaultGeometryConfig as Defaults
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +45,7 @@ class GeometryAssembler:
     frag_ss_pixels = None
     frag_fs_pixels = None
     pixel_size = None
+    detector_name = 'generic'
 
     def __init__(self, kd_geom):
         """The class is instanciated using a karabo_data geometry object."""
@@ -69,7 +70,7 @@ class GeometryAssembler:
             quad (int): Quandrant number that is to be moved
             inc (collection): increment of the direction to be moved
         """
-        pos = {1: 12, 2: 8, 3: 4, 4: 0}[quad] # Translate quad into mod pos
+        pos = Defaults.quad2index[self.detector_name][quad]
         if len(inc) == 2:
             inc = np.array(list(inc)+[0])
         new_modules = [_move_mod(m, inc) if (pos <= i < pos + 4) else m
@@ -84,7 +85,7 @@ class GeometryAssembler:
             quad (int): quadrant number
             centre (tuple): y, x coordinates of the detector centre
         """
-        pos = {1: 12, 2: 8, 3: 4, 4: 0}[quad] # Translate quad into mod pos
+        pos = Defaults.quad2index[self.detector_name][quad]
         X = []
         Y = []
         for i, module in enumerate(self.snapped_geom.modules[pos:pos + 4]):
@@ -110,6 +111,12 @@ class GeometryAssembler:
           The last three dimensions should be channelno, pixel_ss, pixel_fs
           (lengths 16, 512, 128). ss/fs are slow-scan and fast-scan.
 
+        Keywords
+        ---------
+        canvas : ndarray
+          The canvas the out array will be embeded in. If None is given
+          (default) no embedding will be applied.
+
         Returns
         -------
         out : ndarray
@@ -117,12 +124,13 @@ class GeometryAssembler:
           The last two dimensions represent pixel y and x in the detector space.
         centre : ndarray
           (y, x) pixel location of the detector centre in this geometry.
+
         """
         if canvas is None:
             size_yx, centre = self.snapped_geom._get_dimensions()
             out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
         else:
-            size_yx, centre = self.snapped_geom._get_dimensions()
+            _, centre = self.snapped_geom._get_dimensions()
             size_yx = canvas
 
             cv_centre = (canvas[0]//2, canvas[-1]//2)
@@ -142,7 +150,7 @@ class GeometryAssembler:
                 out[..., y: y + h, x: x + w] = tile.transform(tile_data)
         return out, centre
 
-    def write_crystfel_geom(self, filename, header=None):
+    def write_crystfel_geom(self, filename, header=''):
         """Write the geometry to a crystfel geometry file.
 
         Parameters:
@@ -151,7 +159,6 @@ class GeometryAssembler:
         Keywords:
             header (str): specific header for a geometry file
         """
-        header = header or ''
         panel_chunks = []
         for p, module in enumerate(self.modules):
             for a, fragment in enumerate(module):
@@ -191,11 +198,12 @@ class AGIPDGeometry(GeometryAssembler):
         self.pixel_size = 2e-4  # 2e-4 metres == 0.2 mm
         self.frag_ss_pixels = 64
         self.frag_fs_pixels = 128
+        self.detector_name = 'AGIPD'
 
     @classmethod
     def from_quad_positions(cls, quad_pos=None):
         """Generate geometry from quadrant positions"""
-        quad_pos = quad_pos or params.FALLBACK_QUAD_POS['AGIPD']
+        quad_pos = quad_pos or Defaults.fallback_quad_pos[self.detector_name]
         kd_geom = AGIPD_1MGeometry.from_quad_positions(quad_pos)
         return cls(kd_geom)
 
@@ -245,11 +253,12 @@ class LPDGeometry(GeometryAssembler):
         self.pixel_size = 5e-4  # 5e-4 metres == 0.5 mm
         self.frag_ss_pixels = 32
         self.frag_fs_pixels = 128
+        self.detector_name = 'AGIPD'
 
     @classmethod
     def from_h5_file_and_quad_positions(cls, geom_file, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
-        quad_pos = quad_pos or params.FALLBACK_QUAD_POS['LPD']
+        quad_pos = quad_pos or Defaults.fallback_quad_pos[self.detector_name]
         kd_geom = LPD_1MGeometry.from_h5_file_and_quad_positions(geom_file,
                                                                  quad_pos)
         return cls(kd_geom, geom_file)

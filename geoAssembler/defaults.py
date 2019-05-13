@@ -3,11 +3,13 @@
 
 import os
 
-class params:
+INC = 1
+
+class DefaultGeometryConfig:
     """Define global default configuration parameters."""
     # Fallback quad positions if no geometry file is given as a starting point:
     #from .geometry import AGIPDGeometry, LPDGeometry
-    FALLBACK_QUAD_POS = {
+    fallback_quad_pos = {
                         'AGIPD': [(-540, 610),
                                   (-540, -15),
                                   (540, -143),
@@ -20,20 +22,30 @@ class params:
 
     # Definition of increments (INC) the quadrants should move
     # (u = up, d = down, r = right, l = left is given:
-    INC = 1
-    DIRECTION = {'u': (0, -INC),
+    direction = {'u': (0, -INC),
                  'd': (0, INC),
                  'r': (INC, 0),
                  'l': (-INC, 0)}
+    # Translate quad's into module indices
+    quad2index = {
+                  'AGIPD' : {1: 12, 2: 8, 3: 4, 4: 0},
+                  'LPD' : {1: 12, 2: 8, 3: 4, 4: 0},
+                }
 
-    CANVAS_MARGIN = 300  # pixel, used as margin on each side of detector quadrants
-    GEOM_SEL_WIDTH = 114
+    canvas_margin = 300  # pixel, used as margin on each side of detector quadrants
+    geom_sel_width = 114
 
     # Default colormaps
-    DEFAULT_CMAPS = ['binary_r',
-                     'viridis',
-                     'coolwarm',
-                     'winter',
-                     'summer',
-                     'hot',
-                     'OrRd']
+    cmaps = ['binary_r',
+             'viridis',
+             'coolwarm',
+             'winter',
+             'summer',
+             'hot',
+             'OrRd']
+
+    # Default file formats for certain detectors
+    file_formats = {
+                    'AGIPD': ('CFEL', '*.geom'),
+                    'LPD': ('XFEL', '*.h5')
+                   }
