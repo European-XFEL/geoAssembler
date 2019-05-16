@@ -1,171 +1,94 @@
 """Provide AGIPD-D geometry information that supports quadrant moving."""
 
-from cfelpyutils.crystfel_utils import load_crystfel_geometry
+import logging
+import os
+
+import h5py
+from karabo_data.geometry2 import (AGIPD_1MGeometry,
+                                   LPD_1MGeometry, GeometryFragment)
 import numpy as np
+import pandas as pd
+
 from . import __version__
 
+from .defaults import DefaultGeometryConfig as Defaults
 
-def _crystfel_format_vec(vec):
-    """Convert an array of 3 numbers to CrystFEL format like '+1.0x -0.1y'."""
-    s = '{:+}x {:+}y'.format(*vec[:2])
-    try:
-        if vec[2] != 0:
-            s += ' {:+}z'.format(vec[2])
-    except IndexError:
-        pass
-    return s
+log = logging.getLogger(__name__)
 
+def _move_mod(module, inc):
+    """Move module into an given direction.
 
-class AGIPDGeometryFragment:
-    """Define the geometry for one ASCIS."""
-
-    ss_pixels = 64
-    fs_pixels = 128
-
-    # The coordinates in this class are (x, y, z), in pixel units
-    def __init__(self, corner_pos, ss_vec, fs_vec):
-        self.corner_pos = corner_pos
-        self.ss_vec = ss_vec
-        self.fs_vec = fs_vec
-
-    @classmethod
-    def from_panel_dict(cls, d):
-        corner_pos = np.array([d['cnx'], d['cny']])
-        ss_vec = np.array([d['ssx'], d['ssy']])
-        fs_vec = np.array([d['fsx'], d['fsy']])
-        return cls(corner_pos, ss_vec, fs_vec)
-
-    def corners(self):
-        return np.stack([
-            self.corner_pos,
-            self.corner_pos + (self.fs_vec * self.fs_pixels),
-            self.corner_pos + (self.ss_vec * self.ss_pixels) +
-            (self.fs_vec * self.fs_pixels),
-            self.corner_pos + (self.ss_vec * self.ss_pixels),
-        ])
-
-    def centre(self):
-        return self.corner_pos + (.5 * self.ss_vec * self.ss_pixels) \
-                               + (.5 * self.fs_vec * self.fs_pixels)
-
-    def snap(self):
-        corner_pos = np.around(self.corner_pos[:2]).astype(np.int32)
-        ss_vec = np.around(self.ss_vec[:2]).astype(np.int32)
-        fs_vec = np.around(self.fs_vec[:2]).astype(np.int32)
-        assert {tuple(np.abs(ss_vec)), tuple(
-            np.abs(fs_vec))} == {(0, 1), (1, 0)}
-        # Convert xy coordinates to yx indexes
-        return GridGeometryFragment(corner_pos[::-1], ss_vec[::-1], fs_vec[::-1])
-
-
-class GridGeometryFragment:
-    ss_pixels = 64
-    fs_pixels = 128
-
-    # These coordinates are all (y, x), suitable for indexing a numpy array.
-    def __init__(self, corner_pos, ss_vec, fs_vec):
-        self.ss_vec = ss_vec
-        self.fs_vec = fs_vec
-        if fs_vec[0] == 0:
-            # Flip without transposing
-            fs_order = fs_vec[1]
-            ss_order = ss_vec[0]
-            self.transform = lambda arr: arr[..., ::ss_order, ::fs_order]
-            corner_shift = np.array([
-                min(ss_order, 0) * self.ss_pixels,
-                min(fs_order, 0) * self.fs_pixels
-            ])
-            self.pixel_dims = np.array([self.ss_pixels, self.fs_pixels])
-        else:
-            # Transpose and then flip
-            fs_order = fs_vec[0]
-            ss_order = ss_vec[1]
-            self.transform = lambda arr: arr.swapaxes(
-                -1, -2)[..., ::fs_order, ::ss_order]
-            corner_shift = np.array([
-                min(fs_order, 0) * self.fs_pixels,
-                min(ss_order, 0) * self.ss_pixels
-            ])
-            self.pixel_dims = np.array([self.fs_pixels, self.ss_pixels])
-        self.corner_idx = corner_pos + corner_shift
-        self.corner_pos = corner_pos
-        self.opp_corner_idx = self.corner_idx + self.pixel_dims
-
-    def to_crystfel_geom(self, p, a):
-        name = 'p{}a{}'.format(p, a)
-        c = self.corner_pos[::1]
-        cr = CRYSTFEL_PANEL_TEMPLATE.format(
-            name=name, p=p,
-            min_ss=(a * self.ss_pixels), max_ss=(((a + 1) * self.ss_pixels) - 1),
-            ss_vec=_crystfel_format_vec(self.ss_vec[::-1]),
-            fs_vec=_crystfel_format_vec(self.fs_vec[::-1]),
-            corner_x=c[1], corner_y=c[0], coffset=0,
-        )
-        return cr
-
-
-class AGIPD_1MGeometry:
-    """Detector layout for AGIPD-1M
-
-    The coordinates used in this class are 3D (x, y, z), and represent multiples
-    of the pixel size.
+    Parameters:
+        module (list): List containing Geometry Fragments
+        inc (nd array) : 3d vector containing the move direction
     """
-    pixel_size = 2e-7  # 2e-7 metres == 0.2 mm
+    return [GeometryFragment(
+              tile.corner_pos+inc,
+              tile.ss_vec,
+              tile.fs_vec,
+              tile.ss_pixels,
+              tile.fs_pixels,
+            ) for tile in module]
 
-    def __init__(self, modules, quad_pos):
-        self.modules = modules  # List of 16 lists of 8 fragments
-        self.quad_pos = quad_pos
 
-    @classmethod
-    def from_quad_positions(cls, quad_pos, asic_gap=2, panel_gap=29):
-        """Generate an AGIPD-1M geometry from quadrant positions.
+class GeometryAssembler:
+    """Base class for geometry methods not part of karabo_data.
 
-        This produces an idealised geometry, assuming all modules are perfectly
-        flat, aligned and equally spaced within their quadrant.
+    This base class provides methods for getting quad corners, moving them
+    and positioning all modules.
+    """
 
-        The quadrant positions are given in pixel units, referring to the first
-        pixel of the first module in each quadrant.
-        """
-        quads_x_orientation = [1, 1, -1, -1]
-        quads_y_orientation = [-1, -1, 1, 1]
-        modules = []
-        for p in range(16):
-            quad = p // 4
-            quad_corner = quad_pos[quad]
-            x_orient = quads_x_orientation[quad]
-            y_orient = quads_y_orientation[quad]
-            p_in_quad = p % 4
-            corner_y = quad_corner[1] - (p_in_quad * (128 + panel_gap))
+    filename = None
+    unit = None
+    asic_gap = None
+    panel_gap = None
+    frag_ss_pixels = None
+    frag_fs_pixels = None
+    pixel_size = None
+    detector_name = 'generic'
 
-            tiles = []
-            modules.append(tiles)
+    def __init__(self, kd_geom):
+        """The class is instanciated using a karabo_data geometry object."""
+        self.kd_geom = kd_geom
 
-            for a in range(8):
-                corner_x = quad_corner[0] + x_orient * (64 + asic_gap) * a
-                tiles.append(AGIPDGeometryFragment(
-                    corner_pos=np.array([corner_x, corner_y, 0.]),
-                    ss_vec=np.array([x_orient, 0, 0]),
-                    fs_vec=np.array([0, y_orient, 0]),
-                ).snap())
+    @property
+    def modules(self):
+        return self.kd_geom.modules
 
-        return cls(modules, quad_pos)
+    @property
+    def snapped_geom(self):
+        return self.kd_geom._snapped()
+
+    def inspect(self):
+        """Alias for inspect method of kd_geom object."""
+        return self.kd_geom.inspect()
 
     def move_quad(self, quad, inc):
-        pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
+        """Move the whole quad in a given direction.
 
-        for i, module in enumerate(self.modules[pos:pos + 4]):
-            n = pos + i
-            for j, tile in enumerate(module):
-
-                self.modules[n][j] = GridGeometryFragment(tile.corner_pos+inc,
-                                                          tile.ss_vec,
-                                                          tile.fs_vec)
+        Parameters:
+            quad (int): Quandrant number that is to be moved
+            inc (collection): increment of the direction to be moved
+        """
+        pos = Defaults.quad2index[self.detector_name][quad]
+        if len(inc) == 2:
+            inc = np.array(list(inc)+[0])
+        new_modules = [_move_mod(m, inc) if (pos <= i < pos + 4) else m
+                       for i, m in enumerate(self.modules)]
+        kd_geom_cls = type(self.kd_geom)
+        self.kd_geom = kd_geom_cls(new_modules)
 
     def get_quad_corners(self, quad, centre):
-        pos = {1: 0, 2: 4, 3: 12, 4: 8}[quad]  # Translate quad into mod pos
+        """Get the bounding box of a quad.
+
+        Parameters:
+            quad (int): quadrant number
+            centre (tuple): y, x coordinates of the detector centre
+        """
+        pos = Defaults.quad2index[self.detector_name][quad]
         X = []
         Y = []
-        for i, module in enumerate(self.modules[pos:pos + 4]):
+        for i, module in enumerate(self.snapped_geom.modules[pos:pos + 4]):
             for j, tile in enumerate(module):
                 # Offset by centre to make all coordinates positive
                 y, x = tile.corner_idx + centre
@@ -178,35 +101,6 @@ class AGIPD_1MGeometry:
         dx = abs(max(X) - min(X))
         return (min(X)-2, min(Y)-2), dx+w+4, dy+4
 
-    @classmethod
-    def from_crystfel_geom(cls, filename):
-        geom_dict = load_crystfel_geometry(filename)
-        modules = []
-        quad_pos = []
-        for p in range(16):
-            tiles = []
-            modules.append(tiles)
-            for a in range(8):
-                d = geom_dict['panels']['p{}a{}'.format(p, a)]
-                tiles.append(AGIPDGeometryFragment.from_panel_dict(d).snap())
-                if p % 4 == 0 and a == 0:
-                    quad_pos.append(tuple(tiles[-1].corner_pos[:-1]))
-        return cls(modules, quad_pos)
-
-    def write_crystfel_geom(self, filename, header=''):
-
-        version = __version__
-        panel_chunks = []
-        for p, module in enumerate(self.modules):
-            for a, fragment in enumerate(module):
-                panel_chunks.append(fragment.to_crystfel_geom(p, a))
-
-        with open(filename, 'w') as f:
-            f.write(CRYSTFEL_HEADER_TEMPLATE.format(version=version,
-                                                    header=header))
-            for chunk in panel_chunks:
-                f.write(chunk)
-
     def position_all_modules(self, data, canvas=None):
         """Assemble data from this detector according to where the pixels are.
 
@@ -217,6 +111,12 @@ class AGIPD_1MGeometry:
           The last three dimensions should be channelno, pixel_ss, pixel_fs
           (lengths 16, 512, 128). ss/fs are slow-scan and fast-scan.
 
+        Keywords
+        ---------
+        canvas : ndarray
+          The canvas the out array will be embeded in. If None is given
+          (default) no embedding will be applied.
+
         Returns
         -------
         out : ndarray
@@ -224,46 +124,171 @@ class AGIPD_1MGeometry:
           The last two dimensions represent pixel y and x in the detector space.
         centre : ndarray
           (y, x) pixel location of the detector centre in this geometry.
+
         """
-        assert data.shape[-3:] == (16, 512, 128)
         if canvas is None:
-            size_yx, centre = self._plotting_dimensions()
+            size_yx, centre = self.snapped_geom._get_dimensions()
+            out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
         else:
+            _, centre = self.snapped_geom._get_dimensions()
             size_yx = canvas
-            centre = (canvas[0]//2, canvas[-1]//2)
-        out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
-        for i, module in enumerate(self.modules):
+
+            cv_centre = (canvas[0]//2, canvas[-1]//2)
+            shift = np.array(centre) - np.array(cv_centre)
+            out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
+            out = np.roll(out, shift[0], axis=-2)
+            out = np.roll(out, shift[1], axis=-1)
+            centre -= shift
+        for i, module in enumerate(self.snapped_geom.modules):
             mod_data = data[..., i, :, :]
-            tiles_data = np.split(mod_data, 8, axis=-2)
+            tiles_data = self.kd_geom.split_tiles(mod_data)
             for j, tile in enumerate(module):
                 tile_data = tiles_data[j]
                 # Offset by centre to make all coordinates positive
                 y, x = tile.corner_idx + centre
                 h, w = tile.pixel_dims
-                out[..., y:y+h, x:x+w] = tile.transform(tile_data)
-
+                out[..., y: y + h, x: x + w] = tile.transform(tile_data)
         return out, centre
 
-    def _plotting_dimensions(self):
-        """Calculate appropriate dimensions for plotting assembled data
+    def write_crystfel_geom(self, filename, header=''):
+        """Write the geometry to a crystfel geometry file.
 
-        Returns (size_y, size_x), (centre_y, centre_x)
+        Parameters:
+            filename (str): filename the geometry description is written
+
+        Keywords:
+            header (str): specific header for a geometry file
         """
-        corners = []
-        for module in self.modules:
-            for tile in module:
-                corners.append(tile.corner_idx)
-                corners.append(tile.opp_corner_idx)
-        corners = np.stack(corners)
+        panel_chunks = []
+        for p, module in enumerate(self.modules):
+            for a, fragment in enumerate(module):
+                panel_chunks.append(fragment.to_crystfel_geom(p, a))
 
-        # Find extremes
-        min_yx = corners.min(axis=0)
-        max_yx = corners.max(axis=0)
+        with open(filename, 'w') as f:
+            f.write(CRYSTFEL_HEADER_TEMPLATE.format(version=__version__,
+                                                    header=header))
+            for chunk in panel_chunks:
+                f.write(chunk)
 
-        size = max_yx - min_yx
-        centre = -min_yx
-        return tuple(size), centre
+    def write_quad_pos(self, filename):
+        """Write current quadrant positions to csv file.
 
+        Parameters:
+            filename (str): filename containing the quad postions
+        """
+        df = self.quad_pos
+        log.info(' Quadrant positions:\n{}'.format(df))
+        df.to_csv(filename)
+
+
+
+class AGIPDGeometry(GeometryAssembler):
+    """Detector layout for AGIPD-1M."""
+
+    def __init__(self, kd_geom):
+        """Set the properties for AGIPD detector.
+
+        Paramerters:
+            kd_geom (AGIPD_1MGeometry) : karabo_data geometry objet
+        """
+        GeometryAssembler.__init__(self, kd_geom)
+        self.unit = 2e-4
+        self.asic_gap = 2
+        self.panel_gap = 29
+        self.pixel_size = 2e-4  # 2e-4 metres == 0.2 mm
+        self.frag_ss_pixels = 64
+        self.frag_fs_pixels = 128
+        self.detector_name = 'AGIPD'
+
+    @classmethod
+    def from_quad_positions(cls, quad_pos=None):
+        """Generate geometry from quadrant positions"""
+        quad_pos = quad_pos or Defaults.fallback_quad_pos[self.detector_name]
+        kd_geom = AGIPD_1MGeometry.from_quad_positions(quad_pos)
+        return cls(kd_geom)
+
+    @classmethod
+    def from_crystfel_geom(cls, filename):
+        """Load geometry from crystfel geometry"""
+        kd_geom = AGIPD_1MGeometry.from_crystfel_geom(filename)
+        return cls(kd_geom)
+
+    @property
+    def quad_pos(self):
+        """Get quadrant positions."""
+        quad = {i:[] for i in range(1,5)}
+        for n, mod in enumerate(self.modules):
+            q = n // 4 + 1
+            for a, asic in enumerate(mod):
+                quad[q].append(asic.corner_pos[:2])
+
+        quad_pos = []
+        for i in range(1, 5):
+            if i < 3:
+                quad_pos.append((np.array(quad[i])[:,0].min(),
+                                np.array(quad[i])[:,1].max()))
+            else:
+                quad_pos.append((np.array(quad[i])[:,0].max(),
+                                np.array(quad[i])[:,1].max()))
+        return pd.DataFrame(quad_pos,
+                            index=['q{}'.format(i) for i in range(1, 5)],
+                            columns=['X', 'Y'])
+
+
+class LPDGeometry(GeometryAssembler):
+    """Detector layout for LPD."""
+
+    def __init__(self, kd_geom, filename):
+        """Set the properties for LPD detector.
+
+        Paramerters:
+            kd_geom (LPD_1MGeometry) : karabo_data geometry objet
+            filename (str) : path to the hdf5 geometry description
+        """
+        GeometryAssembler.__init__(self, kd_geom)
+        self.filename = filename
+        self.asic_gap = 4
+        self.panel_gap = 4
+        self.unit = 1e-3
+        self.pixel_size = 5e-4  # 5e-4 metres == 0.5 mm
+        self.frag_ss_pixels = 32
+        self.frag_fs_pixels = 128
+        self.detector_name = 'AGIPD'
+
+    @classmethod
+    def from_h5_file_and_quad_positions(cls, geom_file, quad_pos=None):
+        """Create geometry from geometry file or quad positions."""
+        quad_pos = quad_pos or Defaults.fallback_quad_pos[self.detector_name]
+        kd_geom = LPD_1MGeometry.from_h5_file_and_quad_positions(geom_file,
+                                                                 quad_pos)
+        return cls(kd_geom, geom_file)
+
+    @property
+    def quad_pos(self):
+        """Get the quadrant positions from the geometry object."""
+        quad_pos = np.zeros((4, 2))
+        for q in range(1, 5):
+            # Getting the offset for one tile (4th module, 16th tile)
+            # is sufficient
+            quad_pos[q-1] = self._get_offsets(q, 4, 16)
+        return pd.DataFrame(quad_pos,
+                            columns=['Y', 'X'],
+                            index=['q{}'.format(i) for i in range(1, 5)])
+
+    def _get_offsets(self, quad, module, asic):
+        """Get the panel and asic offsets."""
+        px_conv = self.pixel_size / self.unit
+        nmod = (quad-1) * 4 + module
+        frag = self.modules[nmod-1][asic-1]
+        cr_pos = (frag.corner_pos +
+                  (frag.ss_vec * self.frag_ss_pixels) +
+                  (frag.fs_vec * self.frag_fs_pixels))[:2]
+        with h5py.File(self.filename, 'r') as f:
+            mod_grp = f['Q{}/M{}'.format(quad, module)]
+            mod_offset = mod_grp['Position'][:]
+            tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
+            cr_pos *= px_conv
+        return cr_pos - (mod_offset + tile_offset)
 
 CRYSTFEL_HEADER_TEMPLATE = """\
 ; AGIPD-1M geometry file written by geoAssembler {version}
@@ -320,6 +345,11 @@ CRYSTFEL_PANEL_TEMPLATE = """
 {name}/corner_y = {corner_y}
 {name}/coffset = {coffset}
 """
+
+GEOM_MODULES = {'AGIPD': AGIPDGeometry,
+                'LPD': LPDGeometry}
+
+
 
 if __name__ == '__main__':
     geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[

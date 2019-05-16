@@ -1,9 +1,9 @@
 """Qt Version of the detector geometry calibration."""
 
 from collections import namedtuple
+from itertools import product
 import logging
 import os
-import re
 
 import karabo_data as kd
 import numpy as np
@@ -11,26 +11,22 @@ import pyqtgraph as pg
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
-from .geometry import AGIPD_1MGeometry
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(os.path.basename(__file__))
+from .defaults import DefaultGeometryConfig as Defaults
+from .gui_utils import (read_geometry, write_geometry)
 
-# Fallback quad positions if no geometry file is given as a starting point:
-FALLBACK_QUAD_POS = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
-
-# Definition of increments (INC) the quadrants should move to once a direction
-# (u = up, d = down, r = right, l = left is given:
-INC = 1
-DIRECTION = {'u': (-INC,    0),
-             'd': (INC,    0),
-             'r': (0,  INC),
-             'l': (0, -INC)}
-
-CANVAS_MARGIN = 300  # pixel, used as margin on each side of detector quadrants
-GEOM_SEL_WIDTH = 154
-
+log = logging.getLogger(__name__)
 Slot = QtCore.pyqtSlot
+
+
+def _warning(txt, title="Warning"):
+    """Inform user about missing information."""
+    msg_box = QtWidgets.QMessageBox()
+    msg_box.setIcon(QtWidgets.QMessageBox.Information)
+    msg_box.setText(txt)
+    msg_box.setWindowTitle(title)
+    msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
+    msg_box.exec_()
 
 
 class RadiusSetter(QtWidgets.QFrame):
@@ -225,18 +221,10 @@ class RunDirSelecter(QtWidgets.QFrame):
     def get(self):
         """Get the image of selected train."""
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        num_mod = len(self.rundir.detector_sources)
         if self._read_train:
             log.info('Reading train #: {}'.format(self.tid))
             _, data = self.rundir.train_from_id(self.tid)
-            img = np.empty((self.det_info['frames_per_train'],
-                            num_mod,) + self.det_info['dims'])
-            for det_source in self.rundir.detector_sources:
-                modno = int(re.search(r'/DET/(\d+)CH', det_source).group(1))
-                try:
-                    img[:, modno, :] = data[det_source]['image.data'][:]
-                except KeyError:
-                    img[:, modno, :] = np.nan
+            img = kd.stack_detector_data(data, 'image.data')
             self._img = np.clip(img, 0, None)
             self._read_train = False
         if self._sel_method is None:
@@ -259,9 +247,9 @@ class GeometryFileSelecter(QtWidgets.QFrame):
              width (int) : width of the QLineEdit element
              txt (str) : label of the QLineEdit element
 
-           Keywords:
-               content (str) : pre filled content of the QLineEdit element
-                               (dfault empty)
+        Keywords:
+            content (str) : pre filled content of the QLineEdit element
+                            (dfault empty)
         """
         super(GeometryFileSelecter, self).__init__()
         # Creat an hbox with a title, a field to add a filename and a button
@@ -275,7 +263,7 @@ class GeometryFileSelecter(QtWidgets.QFrame):
         hbox.addWidget(self.line)
 
         self.file_sel = QtGui.QPushButton("Load")
-        self.file_sel.clicked.connect(self._get_files)
+        self.file_sel.clicked.connect(self._load)
         hbox.addWidget(self.file_sel)
         self.apply_btn = QtGui.QPushButton('Apply')
         self.apply_btn.setToolTip('Assemble Data')
@@ -293,16 +281,10 @@ class GeometryFileSelecter(QtWidgets.QFrame):
         info.setToolTip('Click into the Image to select a Quadrant')
         vlayout.addWidget(info)
 
-    def _get_files(self):
+    def _load(self):
         """Open a dialog box to select a file."""
-        fname, _ = QtGui.QFileDialog.getOpenFileName(self,
-                                                     'Load geometry file',
-                                                     '.',
-                                                     'CFEL file format (*.geom)')
-        if fname:
-            self.line.setText(fname)
-        else:
-            self.line.setText(None)
+        self.win = DetectorHelper.load(self,
+                                       self.parent.detector_combobox.currentText())
 
     @property
     def value(self):
@@ -313,6 +295,99 @@ class GeometryFileSelecter(QtWidgets.QFrame):
         """Change the content of buttons and QLineEdit elements."""
         self.save_btn.setEnabled(True)
 
+
+class DetectorHelper(QtGui.QDialog):
+    """Setup widgets for quad. positions and geometry file selection."""
+
+    def __init__(self, parent, det='LPD'):
+        """Create a table element for quad selection and file selection.
+
+        Parameters:
+            window (QtGui.QMainWindow) : window object where widgets are
+                                        going to be displayed
+            parent (GeometryFileSelecter): main widget dealing with geometry
+                                            selection
+        Keywords:
+            det (str) : Name to the detector (default LPD)
+        """
+        super().__init__()
+        self.setWindowTitle('{} Geometry'.format(det))
+        self.setFixedSize(240, 220)
+        self.parent = parent
+        self.det = det
+        self.quad_table = QtGui.QTableWidget(4, 2)
+        self.quad_table.setToolTip('Set the Quad-Pos in mm')
+        self.quad_table.setHorizontalHeaderLabels(['Quad X-Pos', 'Quad Y-Pos'])
+        self.quad_table.setVerticalHeaderLabels(['1', '2', '3', '4'])
+        for n, quad_pos in enumerate(Defaults.fallback_quad_pos[det]):
+            self.quad_table.setItem(
+                n, 0, QtGui.QTableWidgetItem(str(quad_pos[0])))
+            self.quad_table.setItem(
+                n, 1, QtGui.QTableWidgetItem(str(quad_pos[1])))
+        self.quad_table.move(0, 0)
+
+        file_sel = QtGui.QPushButton('Select Geometry File')
+        file_sel.setToolTip(
+            'Select a Geometry File in xfel (hdf5) format.')
+        file_sel.clicked.connect(self._get_files)
+
+        ok_btn = QtGui.QPushButton('Ok')
+        ok_btn.clicked.connect(self._apply)
+        cancel_btn = QtGui.QPushButton('Cancel')
+        cancel_btn.clicked.connect(self.cancel)
+        hbox = QtWidgets.QHBoxLayout()
+        hbox.addWidget(ok_btn)
+        hbox.addWidget(cancel_btn)
+
+        layout = QtWidgets.QVBoxLayout()
+        layout.addWidget(self.quad_table)
+        layout.addWidget(file_sel)
+        layout.addLayout(hbox)
+        self.setLayout(layout)
+        self.show()
+
+    @classmethod
+    def load(cls, parent, det='AGIPD'):
+        """Handels loading the right configuration for a given detector."""
+        if det == 'AGIPD':
+            parent.quad_pos = None
+            fname = cls.file_dialog(parent, Defaults.file_formats[det])
+            parent.line.setText(fname)
+        else:
+            return cls(parent, det)
+
+    def _get_files(self):
+        fname = self.file_dialog(self.parent, Defaults.file_formats[det])
+        self.parent.line.setText(fname)
+
+    @staticmethod
+    def file_dialog(parent, file_format):
+        """File-selection dialogue to get the geometry file."""
+        f_type = '{} file format ({})'.format(*file_format)
+        fname, _ = QtGui.QFileDialog.getOpenFileName(parent,
+                                                     'Load geometry file',
+                                                     '.',
+                                                     f_type)
+        # Put the filename into the geometry file field of the main gui
+        return fname
+
+    def _apply(self):
+        """Read quad. pos and update the detectors fallback positions."""
+        quad_pos = [[None, None] for i in range(self.quad_table.rowCount())]
+        for i, j in product(
+                range(self.quad_table.rowCount()),
+                range(self.quad_table.columnCount())):
+            table_element = self.quad_table.item(i, j)
+            try:
+                quad_pos[i][j] = float(table_element.text())
+            except ValueError:
+                _warning('Table Elements must be Float')
+                return
+        Defaults.fallback_quad_pos[self.det] = quad_pos
+        if not self.parent.value:
+            _warning('You must Select a Geometry File')
+            return
+        self.destroy()
 
 class CircleROI(pg.EllipseROI):
     """Define a Elliptic ROI with a fixed aspect ratio (aka circle)."""
@@ -348,6 +423,7 @@ class CalibrateQt:
         self.levels = levels or [None, None]
         self.raw_data = None
         self.header = header or ''
+        # not used for ci-testing
 
         # Interpret image data as row-major instead of col-major
         pg.setConfigOptions(imageAxisOrder='row-major')
@@ -372,12 +448,19 @@ class CalibrateQt:
 
         # Add widgets to the layout in their proper positions
         self.window = QtGui.QWidget()
+        self.window.showMaximized()
+        self.window.setWindowTitle('GeoAssembler Gui')
         self.layout = QtGui.QGridLayout()
 
-        # circle/ellipse selection and input dialogs go to the top
+        # circle manipulation other input dialogs go to the top
         self.radius_setter = RadiusSetter('', None, self)
+        self.detector_combobox = QtGui.QComboBox()
+        self.detector_combobox.addItem('AGIPD')
+        self.detector_combobox.addItem('LPD')
+        self.detector_combobox.setCurrentIndex(0)
+        self.layout.addWidget(self.detector_combobox, 0, 1, 1, 1)
         self.layout.addWidget(self.radius_setter, 0, 2, 1, 1)
-        self.geom_selector = GeometryFileSelecter(GEOM_SEL_WIDTH,
+        self.geom_selector = GeometryFileSelecter(Defaults.geom_sel_width,
                                                   'Geometry File:',
                                                   self,
                                                   geofile)
@@ -416,31 +499,24 @@ class CalibrateQt:
 
     def _apply(self):
         """Read the geometry file and position all modules."""
+        self.det = self.detector_combobox.currentText()
         if self.run_selector.rundir is None:
+            _warning('Click the Run-dir button to select a run directory')
+            return
+        if self.det != 'AGIPD' and not self.geom_selector.value:
+            _warning('Click the load button to load a geometry file')
             return
         log.info(' Starting to assemble ... ')
-
-        if len(self.geom_selector.value):
-            try:
-                self.geom = AGIPD_1MGeometry.from_crystfel_geom(
-                    self.geom_selector.value)
-            except TypeError:
-                # Fallback to evenly align quadrant positions
-                log.warning(' Using fallback option')
-                self.geom = AGIPD_1MGeometry.from_quad_positions(
-                    quad_pos=FALLBACK_QUAD_POS)
-        else:
-            log.warning(' Using fallback option')
-            self.geom = AGIPD_1MGeometry.from_quad_positions(
-                quad_pos=FALLBACK_QUAD_POS)
-
+        quad_pos = Defaults.fallback_quad_pos[self.det]
+        self.geom_file = self.geom_selector.value
+        self.geom = read_geometry(self.det, self.geom_selector.value, quad_pos)
         self.raw_data = self.run_selector.get()
         data, self.centre = self.geom.position_all_modules(self.raw_data)
-        self.canvas = np.full(np.array(data.shape) + CANVAS_MARGIN, np.nan)
+        self.canvas = np.full(np.array(data.shape) + Defaults.canvas_margin,
+                              np.nan)
 
-        self.data, self.centre =\
-            self.geom.position_all_modules(self.raw_data,
-                                           canvas=self.canvas.shape)
+        self.data, _ = self.geom.position_all_modules(self.raw_data,
+                                          canvas=self.canvas.shape)
         # Display the data and assign each frame a time value from 1.0 to 3.0
         if not self.is_displayed:
             xvals = np.linspace(1., 3., self.canvas.shape[0])
@@ -469,10 +545,13 @@ class CalibrateQt:
 
     def _save_geom(self):
         """Save the adapted geometry to a file in cfel output format."""
+        file_format = Defaults.file_formats[self.det]
+        file_type = 'file format (*.{})'.format(*file_format)
         fname, _ = QtGui.QFileDialog.getSaveFileName(self.geom_selector,
                                                      'Save geometry file',
-                                                     'geo_assembled.geom',
-                                                     'CFEL file format (*.geom)')
+                                                     'geo_assembled.{}'.format(
+                                                         file_format[-1]),
+                                                     file_type)
         if fname:
             log.info(' Saving output to {}'.format(fname))
             try:
@@ -481,17 +560,19 @@ class CalibrateQt:
                 pass
             self.data, self.centre = self.geom.position_all_modules(
                 self.raw_data)
-            self.geom.write_crystfel_geom(fname, header=self.header)
+            write_geometry(self.geom, fname, self.header)
+            _warning('Geometry information saved to {}'.format(fname), 
+                     title='Info')
 
     def _move(self, d):
         """Move the quadrant."""
         quad = self.quad
         if quad <= 0:
             return
-        self.geom.move_quad(quad, np.array(DIRECTION[d]))
+        self.geom.move_quad(quad, np.array(Defaults.direction[d]))
         self.data, self.centre =\
             self.geom.position_all_modules(self.raw_data,
-                                           canvas=self.canvas.shape)
+                               canvas=self.canvas.shape)
         self._draw_rect(quad)
         self.imv.getImageItem().updateImage(self.data)
 
@@ -584,10 +665,10 @@ class CalibrateQt:
         """Return the quadrant for a given set of coordinates."""
         y1, y2, y3 = 0, self.data.shape[-1]/2, self.data.shape[-1]
         x1, x2, x3 = 0, self.data.shape[-2]/2, self.data.shape[-2]
-        self.bounding_boxes = {1: (x2, x3, y1, y2),
-                               2: (x1, x2, y1, y2),
-                               3: (x2, x3, y2, y3),
-                               4: (x1, x2, y2, y3)}
+        self.bounding_boxes = {1: (x2, x3, y2, y3),
+                               2: (x1, x2, y2, y3),
+                               3: (x1, x2, y1, y2),
+                               4: (x2, x3, y1, y2)}
         for quadrant, bbox in self.bounding_boxes.items():
             if bbox[0] <= x < bbox[1] and bbox[2] <= y < bbox[3]:
                 return quadrant
@@ -643,11 +724,3 @@ class CalibrateQt:
 
     def _move_left(self):
         self._move('l')
-
-
-if __name__ == '__main__':
-    import sys
-    app = QtGui.QApplication(sys.argv)
-    calib = CalibrateQt(np.load('data.npz')['data'])
-    calib.w.show()
-    app.exec_()

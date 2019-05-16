@@ -18,20 +18,8 @@ from scipy import constants
 
 from . import calibrants
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(os.path.basename(__file__))
 
-# Fallback quad positions if no geometry file is given as a starting point:
-FALLBACK_QUAD_POS = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
-
-# Definition of increments (INC) the quadrants should move to once a direction
-# (u = up, d = down, r = right, l = left is given:
-INC = 1
-DIRECTION = {'u': (-INC,    0),
-             'd': (INC,    0),
-             'r': (0,  INC),
-             'l': (0, -INC)}
-
+log = logging.getLogger(__name__)
 
 class CalibTab(widgets.VBox):
     """Calibration-tab of type ipython widget vbox."""
@@ -166,9 +154,9 @@ class CalibTab(widgets.VBox):
 
         sign = np.sign(po - pn)
         if d == 'h':
-            pos = np.array((0, sign))
-        else:
             pos = np.array((sign, 0))
+        else:
+            pos = np.array((0, sign))
         self.parent.geom.move_quad(self.parent.quad, pos)
         self.parent._draw_rect(
             {0: None, 1: 2, 2: 1, 3: 4, 4: 3}[self.parent.quad])
@@ -176,20 +164,20 @@ class CalibTab(widgets.VBox):
 
     def _update_navi(self, pos):
         """Add navigation buttons."""
-        posx_sel = widgets.BoundedIntText(value=0,
-                                          min=-1000,
-                                          max=1000,
-                                          step=1,
-                                          disabled=False,
-                                          continuous_update=True,
-                                          description='Horizontal')
         posy_sel = widgets.BoundedIntText(value=0,
                                           min=-1000,
                                           max=1000,
                                           step=1,
                                           disabled=False,
                                           continuous_update=True,
-                                          description='Vertical')
+                                          description='Horz.')
+        posx_sel = widgets.BoundedIntText(value=0,
+                                          min=-1000,
+                                          max=1000,
+                                          step=1,
+                                          disabled=False,
+                                          continuous_update=True,
+                                          description='Vert.')
         posx_sel.observe(self._move_quadrants)
         posy_sel.observe(self._move_quadrants)
 

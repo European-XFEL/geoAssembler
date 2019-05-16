@@ -1,10 +1,10 @@
 import numpy as np
 
-from ..geometry import AGIPD_1MGeometry
+from ..geometry import AGIPDGeometry
 
 def test_snap_assemble_data():
     """Tes the crude assembly with quadrant positions."""
-    geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[
+    geom = AGIPDGeometry.from_quad_positions(quad_pos=[
         (-525, 625),
         (-550, -10),
         (520, -160),
@@ -20,7 +20,7 @@ def test_snap_assemble_data():
 
 def test_write_read_crystfel_file(tmpdir):
     """Try writing geometry to crysFEL files."""
-    geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[
+    geom = AGIPDGeometry.from_quad_positions(quad_pos=[
         (-525, 625),
         (-550, -10),
         (520, -160),
@@ -38,7 +38,7 @@ def test_write_read_crystfel_file(tmpdir):
         f.write('adu_per_eV = 0.0075\n')
         f.write(contents)
 
-    loaded = AGIPD_1MGeometry.from_crystfel_geom(path)
+    loaded = AGIPDGeometry.from_crystfel_geom(path)
     np.testing.assert_allclose(loaded.modules[0][0].corner_pos,
                                geom.modules[0][0].corner_pos)
     np.testing.assert_allclose(loaded.modules[0][0].fs_vec,
@@ -46,30 +46,33 @@ def test_write_read_crystfel_file(tmpdir):
 
 def test_move_quad():
     """Move the quadrant by left/right/up/down."""
-    geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[
+    geom = AGIPDGeometry.from_quad_positions(quad_pos=[
         (-525, 625),
         (-550, -10),
         (520, -160),
         (542.5, 475),
     ])
 
-    corners_before = np.empty(2)
-    corners_after = np.empty_like(corners_before)
     asic = geom.modules[0][0]
     corners_before = asic.corner_pos
 
-    geom.move_quad(1, np.array((-1,0)))
-    geom.move_quad(1, np.array((0,1)))
-    geom.move_quad(1, np.array((0,-1)))
-    geom.move_quad(1, np.array((1,0)))
+    geom.move_quad(4, np.array((0,-1)))
+    geom.move_quad(4, np.array((1,0)))
+
+    np.testing.assert_allclose(geom.modules[0][0].corner_pos,
+                               corners_before + np.array([1, -1, 0]))
+
+    # Move back to original position
+    geom.move_quad(4, np.array((-1,0)))
+    geom.move_quad(4, np.array((0,1)))
 
     asic = geom.modules[0][0]
     corners_after = asic.corner_pos
-    assert np.all(corners_before - corners_after == np.zeros(2, dtype='i'))
+    assert np.all(corners_before - corners_after == np.zeros(3, dtype='i'))
 
 def get_quad_corners():
     """The the mothod returning the quadrant corners."""
-    geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[
+    geom = AGIPDGeometry.from_quad_positions(quad_pos=[
         (-525, 625),
         (-550, -10),
         (520, -160),
@@ -81,3 +84,4 @@ def get_quad_corners():
     assert corner == (23, 655)
     assert width == 530
     assert height == 603
+

@@ -8,8 +8,8 @@ import os
 from pyqtgraph import QtGui
 from . import CalibrateQt
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(os.path.basename(__file__))
+logging.getLogger(__name__).addHandler(logging.NullHandler())
+log = logging.getLogger(__name__)
 
 # Define a header that should be added to the geometry file, this is useful
 # to use the geometry file with tools like hdfsee
@@ -38,10 +38,11 @@ Note 1: the PORT_NUMBER should be a number of >= 1024 like 8432
 
 NB_DIR = os.path.join(os.environ['HOME'], 'notebooks')
 NB_FILE = 'GeoAssembler.ipynb'
-CLEN = 0.119 #Default sample distance
-ENERGY = 10235 #Default beam energy
+CLEN = 0.119  # Default sample distance
+ENERGY = 10235  # Default beam energy
 # Default run directory
 RUNDIR = '/gpfs/exfel/exp/XMPL/201750/p700000/proc/r0005'
+
 
 def copy_notebook(defaults):
     """Create a new notebook and copy it into the user-space."""
@@ -110,26 +111,28 @@ def main(argv=None):
 
     To select quadrants click on the quadrant and to move the selected quadrant
     use CTRL+arrow-keys.""")
-    ap.add_argument('-nb', '--notebook', default=False, action='store_true',
+    ap.add_argument('--notebook', default=False, action='store_true',
                     help='Create a notebook from a template that is saved in '
                          'your userspace')
-    ap.add_argument('-nb_dir',
+    ap.add_argument('--nb_dir',
                     default=NB_DIR,
                     help='Set default directory to save notebooks')
-    ap.add_argument('-nb_file', default=NB_FILE,
+    ap.add_argument('--nb_file', default=NB_FILE,
                     help='Set file name of the notbook (default {})'.format(NB_FILE))
-    ap.add_argument('-r', '--rundir', default=None,
+    ap.add_argument('--rundir', default=None,
                     help='Select a run (default {})'.format(RUNDIR))
-    ap.add_argument('-g', '--geometry', default=None,
+    ap.add_argument('--geometry', default=None,
                     help='Select a cfel geometry file (default None)')
-    ap.add_argument('-c', '--clen', default=CLEN,
+    ap.add_argument('--clen', default=CLEN,
                     help='Detector distance [m] (default {})'.format(CLEN))
-    ap.add_argument('-e', '--energy', default=ENERGY,
+    ap.add_argument('--energy', default=ENERGY,
                     help='Photon energy [ev] (default {})'.format(ENERGY))
-    ap.add_argument('-l', '--level', nargs=2, default=[None, None],
+    ap.add_argument('--level', nargs=2, default=[None, None], type=float,
                     help='Pre defined display range for plotting')
-    ap.add_argument('-t', '--test', default=False, action='store_true',
+    ap.add_argument('--test', default=False, action='store_true',
                     help='Test mode')
+    ap.add_argument('--det', default='AGIPD', choices=('AGIPD', 'LPD'),
+                    help='If test mode is activated, the name of the detector')
 
     args = ap.parse_args()
 
@@ -142,7 +145,7 @@ def main(argv=None):
             from .tests.utils import create_test_directory
             with TemporaryDirectory() as td:
                 log.info('Creating temp data in {}...'.format(td))
-                create_test_directory(td)
+                create_test_directory(td, det=args.det)
                 log.info('...done')
                 create_calibrate_gui(td,
                                      args.geometry,
@@ -154,6 +157,7 @@ def main(argv=None):
                                  args.geometry, levels=args.level,
                                  header=HEADER.format(clen=args.clen,
                                                       energy=args.energy))
+
 
 if __name__ == '__main__':
     main()

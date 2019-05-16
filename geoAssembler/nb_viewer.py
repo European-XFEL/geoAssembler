@@ -1,7 +1,6 @@
 
 """Jupyter Version of the detector geometry calibration."""
 
-import os
 import logging
 
 import numpy as np
@@ -11,39 +10,18 @@ from IPython.display import display
 from matplotlib import pyplot as plt, cm
 import matplotlib.patches as patches
 
-from .geometry import AGIPD_1MGeometry
+
+from .defaults import DefaultGeometryConfig as Defaults
 from .nb_tabs import CalibTab, MaterialTab
+from .gui_utils import read_geometry
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(os.path.basename(__file__))
-
-# Fallback quad positions if no geometry file is given as a starting point:
-FALLBACK_QUAD_POS = [(-540, 610), (-540, -15), (540, -143), (540, 482)]
-
-# Default colormaps
-DEFAULT_CMAPS = ['binary_r',
-                 'viridis',
-                 'coolwarm',
-                 'winter',
-                 'summer',
-                 'hot',
-                 'OrRd']
-# Definition of increments (INC) the quadrants should move to once a direction
-# (u = up, d = down, r = right, l = left is given:
-INC = 1
-DIRECTION = {'u': (-INC,    0),
-             'd': (INC,    0),
-             'r': (0,  INC),
-             'l': (0, -INC)}
-
-CANVAS_MARGIN = 300  # pixel, used as margin on each side of detector quadrants
-
+log = logging.getLogger(__name__)
 
 class CalibrateNb:
     """Ipython Widget version of the Calibration Class."""
 
-    def __init__(self, raw_data, geometry=None, vmin=None, vmax=None,
-                 figsize=None, bg=None, **kwargs):
+    def __init__(self, raw_data, geometry=None, det='AGIPD', vmin=None, 
+                 vmax=None, figsize=None, bg=None, **kwargs):
         """Display detector data and arrange panels.
 
         Parameters:
@@ -54,6 +32,7 @@ class CalibrateNb:
                                                an AGIPD_1MGeometry object or
                                                the filename to the geometry
                                                file in CFEL fromat
+            det (str) : detector to be used (if geometry is None)
             vmin (int) : minimal value in the data array (default: -1000)
                           anything below this value will be clipped
             vmax (int) : maximum value in the data array (default: 5000)
@@ -63,6 +42,7 @@ class CalibrateNb:
             kwargs : additional keyword arguments that are parsed to matplotlib
         """
         self.data = raw_data
+        Defaults.check_detector(det)
         self.im = None
         self.vmin = vmin or np.nanmin(self.data)
         self.vmax = vmax or np.nanmax(self.data)
@@ -71,24 +51,22 @@ class CalibrateNb:
         self.bg = bg or 'w'
         self.circles = {}
         self.quad = None
-        self.cmap = cm.get_cmap(DEFAULT_CMAPS[0])
+        self.cmap = cm.get_cmap(Defaults.cmaps[0])
         try:
             self.cmap.set_bad(self.bg)
         except (ValueError, KeyError):
             self.bg = 'w'
 
-        # Try to assemble the data (if geom is a AGIPD_Geometry class)
+        # Try to assemble the data (if geom is None)
         if geometry is None:
-            self.geom = AGIPD_1MGeometry.from_quad_positions(
-                quad_pos=FALLBACK_QUAD_POS)
-        elif isinstance(geometry, str):
-            self.geom = AGIPD_1MGeometry.from_crystfel_geom(geometry)
+            self.geom = read_geometry(det, None, None)
         else:
             self.geom = geometry
 
         data, _ = self.geom.position_all_modules(self.raw_data)
         # Create a canvas
-        self.canvas = np.full(np.array(data.shape) + CANVAS_MARGIN, np.nan)
+        self.canvas = np.full(np.array(data.shape) + Defaults.canvas_margin,
+                              np.nan)
         self._add_widgets()
         self.update_plot(plot_range=(self.vmin, self.vmax), **kwargs)
         self.rect = None
@@ -104,7 +82,7 @@ class CalibrateNb:
     def _draw_circle(self, r, num):
         """Draw circel of radius r and add it to the circle collection."""
         centre = self.geom.position_all_modules(self.raw_data,
-                                                canvas=self.canvas.shape)[1]
+                                    canvas=self.canvas.shape)[1]
         self.circles[num] = plt.Circle(centre[::-1], r,
                                        facecolor='none', edgecolor='r', lw=1)
         self.ax.add_artist(self.circles[num])
@@ -155,8 +133,8 @@ class CalibrateNb:
             readout=True,
             readout_format='d',
             layout=Layout(width='70%'))
-        self.cmap_sel = widgets.Dropdown(options=DEFAULT_CMAPS,
-                                         value=DEFAULT_CMAPS[0],
+        self.cmap_sel = widgets.Dropdown(options=Defaults.cmaps,
+                                         value=Defaults.cmaps[0],
                                          description='Color Map:',
                                          disabled=False,
                                          layout=Layout(width='200px'))
@@ -189,13 +167,13 @@ class CalibrateNb:
         except ValueError:
             return
 
-    def update_plot(self, plot_range=(None, None), cmap=DEFAULT_CMAPS[0], **kwargs):
+    def update_plot(self, plot_range=(None, None),
+                    cmap=Defaults.cmaps[0], **kwargs):
         """Update the plotted image."""
         # Update the image first
-        self.data, centre =\
-            self.geom.position_all_modules(
-                self.raw_data, canvas=self.canvas.shape)
-        cy, cx = centre
+        self.data, cnt = self.geom.position_all_modules(self.raw_data,
+                                                        self.canvas.shape)
+        cy, cx = cnt
         if self.im is not None:
             if plot_range is not None:
                 self.im.set_clim(*plot_range)
