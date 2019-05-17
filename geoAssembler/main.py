@@ -6,7 +6,7 @@ import logging
 import os
 
 from pyqtgraph import QtGui
-from . import CalibrateQt
+from . import QtMainWidget
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 log = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ def create_nb(rundir=None, geofile=None, clen=None, energy=None, levels=None,
 def create_calibrate_gui(*args, **kwargs):
     """Create a QtGui Application and return an instance of CalibrateQt."""
     app = QtGui.QApplication([])
-    calib = CalibrateQt(*args, **kwargs)
+    calib = QtMainWidget(*args, **kwargs)
     calib.window.show()
     app.exec_()
     app.closeAllWindows()

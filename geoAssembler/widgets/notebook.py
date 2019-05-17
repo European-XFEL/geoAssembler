@@ -11,13 +11,13 @@ from matplotlib import pyplot as plt, cm
 import matplotlib.patches as patches
 
 
-from .defaults import DefaultGeometryConfig as Defaults
+from ..defaults import DefaultGeometryConfig as Defaults
 from .nb_tabs import CalibTab, MaterialTab
-from .gui_utils import read_geometry
+from ..gui_utils import read_geometry
 
 log = logging.getLogger(__name__)
 
-class CalibrateNb:
+class MainWidget:
     """Ipython Widget version of the Calibration Class."""
 
     def __init__(self, raw_data, geometry=None, det='AGIPD', vmin=None, 
