@@ -17,10 +17,11 @@ from ..gui_utils import read_geometry
 
 log = logging.getLogger(__name__)
 
+
 class MainWidget:
     """Ipython Widget version of the Calibration Class."""
 
-    def __init__(self, raw_data, geometry=None, det='AGIPD', vmin=None, 
+    def __init__(self, raw_data, geometry=None, det='AGIPD', vmin=None,
                  vmax=None, figsize=None, bg=None, **kwargs):
         """Display detector data and arrange panels.
 
@@ -82,7 +83,7 @@ class MainWidget:
     def _draw_circle(self, r, num):
         """Draw circel of radius r and add it to the circle collection."""
         centre = self.geom.position_all_modules(self.raw_data,
-                                    canvas=self.canvas.shape)[1]
+                                                canvas=self.canvas.shape)[1]
         self.circles[num] = plt.Circle(centre[::-1], r,
                                        facecolor='none', edgecolor='r', lw=1)
         self.ax.add_artist(self.circles[num])

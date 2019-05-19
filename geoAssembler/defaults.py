@@ -1,5 +1,5 @@
 
-"""Methods and classes that handle different detectors and their defaults."""
+"""Methods and Classes that handle different detectors and their defaults."""
 
 import os
 
@@ -7,6 +7,7 @@ INC = 1
 
 class DefaultGeometryConfig:
     """Define global default configuration parameters."""
+
     # Define all implemented detectors
     detectors = ('AGIPD', 'LPD') 
     # Fallback quad positions if no geometry file is given as a starting point:
@@ -53,7 +54,7 @@ class DefaultGeometryConfig:
 
     @classmethod
     def check_detector(cls, det):
-        """Rais and Error if a given detector is not implemented."""
+        """Raise and Error if a given detector is not implemented."""
         if det not in cls.detectors:
             raise NotImplementedError('Detector is currently not Implemented')
 

@@ -14,7 +14,8 @@ from .qt_subwidgets import GeometryWidget, RunDataWidget, FitObjectWidget
 from .qt_objects import QLogger, warning
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..gui_utils import (create_button, get_icon, read_geometry, write_geometry)
+from ..gui_utils import (create_button, get_icon,
+                         read_geometry, write_geometry)
 
 
 Slot = QtCore.pyqtSlot
@@ -22,8 +23,10 @@ Slot = QtCore.pyqtSlot
 
 class QtMainWidget(QtGui.QMainWindow):
     """Qt-Version of the Calibration Class."""
+
     log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
+
     def __init__(self, run_dir=None, geofile=None, levels=None, header=None):
         """Display detector data and arrange panels.
 
@@ -97,36 +100,40 @@ class QtMainWidget(QtGui.QMainWindow):
         pg.LabelItem(justify='right')
         main_widget.setLayout(self.layout)
 
-    @property
-    def run_selector_btn(self):
-        return self.run_selector.run_sel
-
+    # Some properties coming up
     @property
     def rois(self):
+        """Get all rois from fit widget."""
         return self.fit_widget.rois
 
     @property
     def current_roi(self):
+        """Get currently selected roi from fit widget."""
         return self.fit_widget.rois[self.fit_widget.current_roi]
 
     @property
     def image(self):
+        """Get the image fomr the pyqtgraph image object."""
         return self.imv.getView()
 
     @property
     def det(self):
+        """Get the currently selected detector from the geometry widget."""
         return self.geom_selector.det
 
     @property
     def run_dir(self):
+        """Get the currently set run directory from the run dir widget."""
         return self.run_selector.rundir
 
     @property
     def geom_file(self):
+        """Get the current geometry file from the geom selector widget."""
         return self.geom_selector.geom_file
 
     @property
     def geom_obj(self):
+        """Get the karabo data geometry object."""
         return self.geom_selector.geom
 
     def _draw(self):
@@ -142,7 +149,7 @@ class QtMainWidget(QtGui.QMainWindow):
                               np.nan)
 
         self.data, _ = self.geom_obj.position_all_modules(self.raw_data,
-                                          canvas=self.canvas.shape)
+                                                          canvas=self.canvas.shape)
         # Display the data and assign each frame a time value from 1.0 to 3.0
         if not self.is_displayed:
             xvals = np.linspace(1., 3., self.canvas.shape[0])
@@ -178,13 +185,12 @@ class QtMainWidget(QtGui.QMainWindow):
         self.geom_obj.move_quad(quad, np.array(Defaults.direction[d]))
         self.data, self.centre =\
             self.geom_obj.position_all_modules(self.raw_data,
-                               canvas=self.canvas.shape)
+                                               canvas=self.canvas.shape)
         self._draw_rect(quad)
         self.imv.getImageItem().updateImage(self.data)
 
     def _draw_roi(self):
         """Add a fit object to the image."""
-
         self.image.addItem(self.current_roi)
 
     def _clear_roi(self):
@@ -213,7 +219,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.quad = quad
         P, dx, dy =\
             self.geom_obj.get_quad_corners(quad,
-                                       np.array(self.data.shape, dtype='i')//2)
+                                           np.array(self.data.shape, dtype='i')//2)
         pen = QtGui.QPen(QtCore.Qt.red, 0.002)
         self.rect = pg.RectROI(pos=P,
                                size=(dx, dy),
@@ -224,7 +230,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.rect.handleSize = 0
         self.imv.getView().addItem(self.rect)
         _ = [self.rect.removeHandle(handle)
-         for handle in self.rect.getHandles()]
+             for handle in self.rect.getHandles()]
 
     def _click(self, event):
         """Event for mouse-click into ImageRegion."""

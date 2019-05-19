@@ -42,7 +42,7 @@ setup(name="geoAssembler",
       packages=find_packages(),
       data_files=[('templates', find_files('templates')),
                   ('cells', find_files('cells'))],
-      package_data={'': ['cells/*.D', 'templates/*.tmpl'],
+      package_data={'': ['cells/*.D', 'templates/*.tmpl', 'icons/*.png'],
                     'geoAssembler.tests': ['data_*.npz', 'test.geom'],
                     },
       entry_points={

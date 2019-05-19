@@ -53,14 +53,16 @@ class GeometryAssembler:
 
     @property
     def modules(self):
+        """The karabo data geometry modules."""
         return self.kd_geom.modules
 
     @property
     def snapped_geom(self):
+        """Create a snapped geometry."""
         return self.kd_geom._snapped()
 
     def inspect(self):
-        """Alias for inspect method of kd_geom object."""
+        """Return inspect method of kd_geom object."""
         return self.kd_geom.inspect()
 
     def move_quad(self, quad, inc):
@@ -202,14 +204,14 @@ class AGIPDGeometry(GeometryAssembler):
 
     @classmethod
     def from_quad_positions(cls, quad_pos=None):
-        """Generate geometry from quadrant positions"""
+        """Generate geometry from quadrant positions."""
         quad_pos = quad_pos or Defaults.fallback_quad_pos[self.detector_name]
         kd_geom = AGIPD_1MGeometry.from_quad_positions(quad_pos)
         return cls(kd_geom)
 
     @classmethod
     def from_crystfel_geom(cls, filename):
-        """Load geometry from crystfel geometry"""
+        """Load geometry from crystfel geometry."""
         kd_geom = AGIPD_1MGeometry.from_crystfel_geom(filename)
         return cls(kd_geom)
 

@@ -1,3 +1,6 @@
+
+"""Definitions of all widgets that go into the geoAssembler."""
+
 from collections import namedtuple
 import os
 
@@ -8,25 +11,25 @@ from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 from .qt_objects import (CircleROI, DetectorHelper, SquareROI, warning)
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..gui_utils import (create_button, get_icon, read_geometry, write_geometry)
+from ..gui_utils import (create_button, get_icon,
+                         read_geometry, write_geometry)
 
 
 Slot = QtCore.pyqtSlot
 Signal = QtCore.pyqtSignal
+
 
 class FitObjectWidget(QtWidgets.QFrame):
     """Define a Hbox containing a Spinbox with a Label."""
 
     draw_roi_signal = Signal()
     delete_roi_signal = Signal()
+
     def __init__(self, main_widget):
         """Add a spin box with a label to set radii.
 
         Parameters:
-           label (str) : label for the spin box
-
-        Keywords:
-           roi : selected region of interest
+           main_widget : Parent widget
         """
         super().__init__()
         # Create a hbox with a title and a spin-box to select the circ. radius
@@ -92,7 +95,7 @@ class FitObjectWidget(QtWidgets.QFrame):
         self.draw_roi_signal.emit()
 
     def _set_colors(self):
-        """Set the colors of all roi"""
+        """Set the colors of all roi."""
         for n, roi in self.rois.items():
             roi.setPen(QtGui.QPen(QtCore.Qt.gray, 0.002))
         roi = self.rois[self.current_roi]
@@ -117,6 +120,7 @@ class FitObjectWidget(QtWidgets.QFrame):
         self._roi_combobox.update()
 
     def _get_roi(self):
+        """Get the current roi form the roi combobox."""
         try:
             num = int(self._roi_combobox.currentText())
         except ValueError:
@@ -160,7 +164,7 @@ class FitObjectWidget(QtWidgets.QFrame):
         self.current_roi = None
         self.rois = {}
 
-    
+
 class RunDataWidget(QtWidgets.QFrame):
     """A widget that defines run-directory, trainId and pulse selection."""
 
@@ -180,6 +184,7 @@ class RunDataWidget(QtWidgets.QFrame):
 
         Parameters:
             run_dir (str) : The default run directory
+            main_widget : Parent widget
         """
         super().__init__()
         self.main_widget = main_widget
@@ -301,7 +306,7 @@ class RunDataWidget(QtWidgets.QFrame):
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self._read_train:
             self.main_widget.log.info('Reading train #: {}'.format(self.tid))
-            _, data = self.rundir.train_from_id(self.tid, 
+            _, data = self.rundir.train_from_id(self.tid,
                                                 devices=[('*DET*',
                                                           'image.data')])
             img = kd.stack_detector_data(data, 'image.data')
@@ -321,6 +326,7 @@ class GeometryWidget(QtWidgets.QFrame):
     """Define a Hbox containing a QLineEdit with a Label."""
 
     draw_img_signal = Signal()
+
     def __init__(self, main_widget, content):
         """Create nested widgets to select and save geometry files.
 
@@ -337,7 +343,8 @@ class GeometryWidget(QtWidgets.QFrame):
         self.detector_combobox = QtGui.QComboBox()
         for det in Defaults.detectors:
             self.detector_combobox.addItem(det)
-        self.detector_combobox.currentIndexChanged.connect(self._update_quadpos)
+        self.detector_combobox.currentIndexChanged.connect(
+            self._update_quadpos)
         self.detector_combobox.setCurrentIndex(0)
         label1 = QtGui.QLabel('Geometry File:')
         label1.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
@@ -363,7 +370,7 @@ class GeometryWidget(QtWidgets.QFrame):
         self._geom_file_sel.setMaximumHeight(22)
         self._geom_file_sel.setAlignment(QtCore.Qt.AlignLeft |
                                          QtCore.Qt.AlignVCenter)
-        hbox.addWidget(self._geom_file_sel,5)
+        hbox.addWidget(self._geom_file_sel, 5)
         self.header = main_widget.header
 
         vlayout = QtWidgets.QVBoxLayout(self)
@@ -380,7 +387,7 @@ class GeometryWidget(QtWidgets.QFrame):
         self._geom_window.header_set_signal.connect(self._set_header)
 
     def _update_quadpos(self):
-        """Update the quad posistions"""
+        """Update the quad posistions."""
         self._geom_window.quad_pos = None
         self._geom_window.update_quad_table()
         self._geom_window.setWindowTitle('{} Geometry'.format(self.det))
@@ -406,7 +413,7 @@ class GeometryWidget(QtWidgets.QFrame):
             except (FileNotFoundError, PermissionError):
                 pass
             write_geometry(self.geom, fname, self.header)
-            txt  = ' Geometry information saved to {}'.format(fname)
+            txt = ' Geometry information saved to {}'.format(fname)
             self.main_widget.log.info(txt)
             warning(txt, title='Info')
 
@@ -428,6 +435,7 @@ class GeometryWidget(QtWidgets.QFrame):
         return self.detector_combobox.currentText()
 
     def _set_text(self):
+        """Put the geometry file name into the text box."""
         self._geom_file_sel.setText(self._geom_window.fname)
 
     def _create_gemetry_obj(self):

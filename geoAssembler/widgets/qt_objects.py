@@ -1,3 +1,6 @@
+
+"""Definition of additionla qt helper objects."""
+
 from itertools import product
 import logging
 
@@ -7,6 +10,7 @@ from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 from ..defaults import DefaultGeometryConfig as Defaults
 from ..gui_utils import create_button
 
+
 def warning(txt, title="Warning"):
     """Inform user about missing information."""
     msg_box = QtWidgets.QMessageBox()
@@ -15,6 +19,7 @@ def warning(txt, title="Warning"):
     msg_box.setWindowTitle(title)
     msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
     msg_box.exec_()
+
 
 class CircleROI(pg.EllipseROI):
     """Define a Elliptic ROI with a fixed aspect ratio (aka circle)."""
@@ -38,6 +43,7 @@ class CircleROI(pg.EllipseROI):
         self.handleSize = 0
         _ = [self.removeHandle(handle) for handle in self.getHandles()]
 
+
 class SquareROI(pg.RectROI):
     """Define a rectangular ROI with a fixed aspect ratio (aka square)."""
 
@@ -60,20 +66,24 @@ class SquareROI(pg.RectROI):
         self.handleSize = 0
         _ = [self.removeHandle(handle) for handle in self.getHandles()]
 
+
 class DetectorHelper(QtGui.QDialog):
     """Setup widgets for quad. positions and geometry file selection."""
+
     filename_set_signal = QtCore.pyqtSignal()
     header_set_signal = QtCore.pyqtSignal()
-    def __init__(self, parent, header, fname):
+
+    def __init__(self, parent, header='', fname=''):
         """Create a table element for quad selection and file selection.
 
         Parameters:
-            window (QtGui.QMainWindow) : window object where widgets are
-                                        going to be displayed
             parent (GeometryFileSelecter): main widget dealing with geometry
-                                            selection
-        Keywords:
-            det (str) : Name to the detector (default LPD)
+                                           selection
+        Keywords
+            header (str) :  Additional informations added to the geometry file
+                            (affects CFEL format only, Default '')
+
+            fname (str) :  file name of the geometry file (Default '')
         """
         super().__init__()
         self.setFixedSize(260, 240)
@@ -91,7 +101,8 @@ class DetectorHelper(QtGui.QDialog):
         file_sel.clicked.connect(self._get_files)
 
         header_btn = create_button('Set header', 'quads')
-        header_btn.setToolTip('Add additional infromation to the Geometry File')
+        header_btn.setToolTip(
+            'Add additional infromation to the Geometry File')
         header_btn.clicked.connect(self._set_header)
 
         ok_btn = create_button('Ok', 'ok')
@@ -113,6 +124,7 @@ class DetectorHelper(QtGui.QDialog):
         self.fname = fname
 
     def _get_files(self):
+        """Read the geometry filename of from the dialog."""
         self.fname = self.file_dialog()
         if len(self.fname):
             self.filename_set_signal.emit()
@@ -129,6 +141,7 @@ class DetectorHelper(QtGui.QDialog):
 
     @property
     def det(self):
+        """Get the selected detector from the parent widget."""
         return self.parent.det
 
     def file_dialog(self):
@@ -191,10 +204,18 @@ class DetectorHelper(QtGui.QDialog):
         self.header_set_signal.emit()
         self.header_win.close()
 
+
 class QLogger(logging.Handler):
-    def __init__(self, parent):
+    """Logger object connected python logging."""
+
+    def __init__(self, main_widget):
+        """Create a Dialog that displays the log connected to logging.
+
+        Parameters:
+            main_widget : Parent creating this dialog
+        """
         super().__init__()
-        self.win = QtGui.QDialog(parent)
+        self.win = QtGui.QDialog(main_widget)
         layout = QtWidgets.QGridLayout()
 
         self.widget = QtGui.QPlainTextEdit()
@@ -206,10 +227,10 @@ class QLogger(logging.Handler):
         self.win.setLayout(layout)
 
     def emit(self, record):
+        """Overload emit signal to write into text widget."""
         msg = self.format(record)
         self.widget.appendPlainText(msg)
 
     def write(self, m):
+        """Overload write and do nothing."""
         pass
-
-

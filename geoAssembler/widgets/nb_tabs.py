@@ -1,6 +1,5 @@
 """Define the Widget tabs that are using in CalibrateNb."""
 
-
 import os
 import logging
 
@@ -20,6 +19,7 @@ from .. import calibrants
 
 
 log = logging.getLogger(__name__)
+
 
 class CalibTab(widgets.VBox):
     """Calibration-tab of type ipython widget vbox."""
@@ -218,7 +218,7 @@ class MaterialTab(widgets.VBox):
     def __init__(self, parent):
         """Set all widgets for the tab.
 
-        Arguments:
+        Parameters:
             parent (ipywidget) : The parent widget object embeding this tab
         """
         self.parent = parent
@@ -306,7 +306,7 @@ class MaterialTab(widgets.VBox):
 
     @staticmethod
     def _energy2lambda(energy):
-        """Calc. wavelength from beam energy"""
+        """Calc. wavelength from beam energy."""
         return constants.h * constants.c / (energy * constants.eV)
 
     def _set_cdist(self, prop):
