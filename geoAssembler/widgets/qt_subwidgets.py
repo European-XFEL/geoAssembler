@@ -1,25 +1,24 @@
 from collections import namedtuple
-import logging
+import os
 
 import karabo_data as kd
 import numpy as np
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
-from .qt_objects import (CircleROI, SquareROI)
+from .qt_objects import (CircleROI, DetectorHelper, SquareROI, warning)
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..gui_utils import (read_geometry, write_geometry)
+from ..gui_utils import (create_button, get_icon, read_geometry, write_geometry)
 
 
-log = logging.getLogger(__name__)
 Slot = QtCore.pyqtSlot
+Signal = QtCore.pyqtSignal
 
 class FitObjectWidget(QtWidgets.QFrame):
     """Define a Hbox containing a Spinbox with a Label."""
-    draw_signal = QtCore.pyqtSignal()
-    delete_signal = QtCore.pyqtSignal()
 
-
+    draw_roi_signal = Signal()
+    delete_roi_signal = Signal()
     def __init__(self, main_widget):
         """Add a spin box with a label to set radii.
 
@@ -54,13 +53,15 @@ class FitObjectWidget(QtWidgets.QFrame):
         self._roi_combobox.currentIndexChanged.connect(self._get_roi)
 
         # Add button to create fit helpers
-        self._add_roi_btn = QtGui.QPushButton('Draw Helper Object')
+        self._add_roi_btn = create_button('Draw Helper Object', 'rois')
         self._add_roi_btn.setToolTip('Add Circles to the Image')
+        self._add_roi_btn.setEnabled(False)
         self._add_roi_btn.clicked.connect(self._draw)
 
         # Add button to clear all fit helpers
-        self._clr_roi_btn = QtGui.QPushButton('Clear Helpers')
+        self._clr_roi_btn = create_button('Clear Helpers', 'clear')
         self._clr_roi_btn.setToolTip('Remove all fit Helpers')
+        self._clr_roi_btn.setEnabled(False)
         self._clr_roi_btn.clicked.connect(self._clear)
 
         self.rois = {}
@@ -88,7 +89,7 @@ class FitObjectWidget(QtWidgets.QFrame):
         self._update_spin_box(roi)
         self._set_colors()
         self._update_combo_box()
-        self.draw_signal.emit()
+        self.draw_roi_signal.emit()
 
     def _set_colors(self):
         """Set the colors of all roi"""
@@ -96,7 +97,6 @@ class FitObjectWidget(QtWidgets.QFrame):
             roi.setPen(QtGui.QPen(QtCore.Qt.gray, 0.002))
         roi = self.rois[self.current_roi]
         roi.setPen(QtGui.QPen(QtCore.Qt.red, 0.002))
-
 
     def _get_roi_type(self):
         """Return the correct roi type."""
@@ -113,10 +113,15 @@ class FitObjectWidget(QtWidgets.QFrame):
         self._roi_combobox.addItem(str(self.current_roi))
         self._roi_combobox.setCurrentIndex(len(self.rois)-1)
         self._roi_combobox.setEnabled(True)
+        self._clr_roi_btn.setEnabled(True)
         self._roi_combobox.update()
 
     def _get_roi(self):
-        num = int(self._roi_combobox.currentText())
+        try:
+            num = int(self._roi_combobox.currentText())
+        except ValueError:
+            # Roi is empty, do nothing
+            return
         self.current_roi = num
         self._update_spin_box(self.rois[num])
         self._set_colors()
@@ -147,14 +152,15 @@ class FitObjectWidget(QtWidgets.QFrame):
 
     def _clear(self):
         """Delete all helper objects."""
-        self.delete_signal.emit()
+        self.delete_roi_signal.emit()
         self._roi_combobox.clear()
         self._roi_combobox.setEnabled(False)
+        self._clr_roi_btn.setEnabled(False)
         self._spin_box.setEnabled(False)
         self.current_roi = None
         self.rois = {}
 
-
+    
 class RunDataWidget(QtWidgets.QFrame):
     """A widget that defines run-directory, trainId and pulse selection."""
 
@@ -185,7 +191,7 @@ class RunDataWidget(QtWidgets.QFrame):
 
         # Creat an hbox with a title, a field to add a filename and a button
         hbox = QtWidgets.QHBoxLayout()
-        self.run_sel = QtGui.QPushButton("Run-dir")
+        self.run_sel = create_button("Run-dir", "rundir")
         self.run_sel.setToolTip('Select a Run directory')
         self.run_sel.clicked.connect(self._sel_run)
         hbox.addWidget(self.run_sel)
@@ -268,7 +274,7 @@ class RunDataWidget(QtWidgets.QFrame):
         self.tid = self.tid_sel.value()
         self.det_info = self.rundir.detector_info(
             tuple(self.rundir.detector_sources)[0])
-        self.pulse_sel.setMaximum(self.det_info['frames_per_train'])
+        self.pulse_sel.setMaximum(self.det_info['frames_per_train'] - 1)
         self._read_train = True
 
     @Slot(bool)
@@ -282,7 +288,7 @@ class RunDataWidget(QtWidgets.QFrame):
     def _read_rundir(self, rfolder):
         """Read a selected run directory."""
         self.line.setText(rfolder)
-        log.info('Opening run directory {}'.format(rfolder))
+        self.main_widget.log.info('Opening run directory {}'.format(rfolder))
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         self.rundir = kd.RunDirectory(rfolder)
         self.min_tid = self.rundir.train_ids[0]
@@ -294,8 +300,10 @@ class RunDataWidget(QtWidgets.QFrame):
         """Get the image of selected train."""
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         if self._read_train:
-            log.info('Reading train #: {}'.format(self.tid))
-            _, data = self.rundir.train_from_id(self.tid)
+            self.main_widget.log.info('Reading train #: {}'.format(self.tid))
+            _, data = self.rundir.train_from_id(self.tid, 
+                                                devices=[('*DET*',
+                                                          'image.data')])
             img = kd.stack_detector_data(data, 'image.data')
             self._img = np.clip(img, 0, None)
             self._read_train = False
@@ -312,6 +320,7 @@ class RunDataWidget(QtWidgets.QFrame):
 class GeometryWidget(QtWidgets.QFrame):
     """Define a Hbox containing a QLineEdit with a Label."""
 
+    draw_img_signal = Signal()
     def __init__(self, main_widget, content):
         """Create nested widgets to select and save geometry files.
 
@@ -326,149 +335,106 @@ class GeometryWidget(QtWidgets.QFrame):
         self.main_widget = main_widget
 
         self.detector_combobox = QtGui.QComboBox()
-        self.detector_combobox.addItem('AGIPD')
-        self.detector_combobox.addItem('LPD')
+        for det in Defaults.detectors:
+            self.detector_combobox.addItem(det)
+        self.detector_combobox.currentIndexChanged.connect(self._update_quadpos)
         self.detector_combobox.setCurrentIndex(0)
         label1 = QtGui.QLabel('Geometry File:')
-        label1.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.file_sel = QtGui.QPushButton("Load")
+        label1.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        self.file_sel = create_button('Load', 'load')
+        self.file_sel.setToolTip('Load/Set Detector Geometry')
         self.file_sel.clicked.connect(self._load)
-        self.apply_btn = QtGui.QPushButton('Apply')
+        self.apply_btn = create_button('Apply', 'draw')
         self.apply_btn.setToolTip('Assemble Data')
-        self.save_btn = QtGui.QPushButton('Save')
+        self.apply_btn.clicked.connect(self._create_gemetry_obj)
+        self.save_btn = create_button('Save', 'save')
         self.save_btn.setToolTip('Save geometry')
+        self.save_btn.clicked.connect(self._save_geometry_obj)
         self.save_btn.setEnabled(False)
+        hbox.addWidget(self.file_sel)
         hbox.addWidget(self.apply_btn)
         hbox.addWidget(self.save_btn)
         label2 = QtGui.QLabel('Detector:')
-        label2.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        label2.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         hbox.addWidget(label2)
         hbox.addWidget(self.detector_combobox)
         hbox.addWidget(label1)
         self._geom_file_sel = QtGui.QLineEdit(content)
         self._geom_file_sel.setMaximumHeight(22)
-        self._geom_file_sel.setAlignment(QtCore.Qt.AlignRight |
+        self._geom_file_sel.setAlignment(QtCore.Qt.AlignLeft |
                                          QtCore.Qt.AlignVCenter)
         hbox.addWidget(self._geom_file_sel,5)
-
+        self.header = main_widget.header
 
         vlayout = QtWidgets.QVBoxLayout(self)
         vlayout.addLayout(hbox)
         info = QtGui.QLabel(
-            'Click on Quadrant to select; '
-            'CTRL+arrow-keys to move them; '
-            'Click "Assemble" to apply set changes')
+            'Click "Apply Button" to draw image; '
+            'Click on Quadrant to select then '
+            'CTRL+arrow-keys to move them; ')
         info.setToolTip('Click into the Image to select a Quadrant')
         vlayout.addWidget(info)
+        # Window for selecting geometry file and quad_pos
+        self._geom_window = DetectorHelper(self, self.header, content)
+        self._geom_window.filename_set_signal.connect(self._set_text)
+        self._geom_window.header_set_signal.connect(self._set_header)
+
+    def _update_quadpos(self):
+        """Update the quad posistions"""
+        self._geom_window.quad_pos = None
+        self._geom_window.update_quad_table()
+        self._geom_window.setWindowTitle('{} Geometry'.format(self.det))
 
     def _load(self):
         """Open a dialog box to select a file."""
-        DetectorHelper.load(self, self.det)
+        self._geom_window.show()
+
+    def _save_geometry_obj(self):
+        """Save the loaded geometry to file."""
+        file_format = Defaults.file_formats[self.det][0]
+        out_format = Defaults.file_formats[self.det][-1]
+        file_type = '{} file format (*.{})'.format(file_format, out_format)
+        fname, _ = QtGui.QFileDialog.getSaveFileName(self,
+                                                     'Save geometry file',
+                                                     'geo_assembled.{}'.format(
+                                                         out_format),
+                                                     file_type)
+        if fname:
+            self.main_widget.log.info(' Saving output to {}'.format(fname))
+            try:
+                os.remove(fname)
+            except (FileNotFoundError, PermissionError):
+                pass
+            write_geometry(self.geom, fname, self.header)
+            txt  = ' Geometry information saved to {}'.format(fname)
+            self.main_widget.log.info(txt)
+            warning(txt, title='Info')
+
+    def _set_header(self):
+        self.header = self._geom_window.header
 
     @property
-    def value(self):
+    def geom_file(self):
         """Return the text of the QLinEdit element."""
         return self._geom_file_sel.text()
 
     def activate(self):
         """Change the content of buttons and QLineEdit elements."""
         self.save_btn.setEnabled(True)
+
     @property
     def det(self):
         """Set Detector from combobox."""
         return self.detector_combobox.currentText()
 
+    def _set_text(self):
+        self._geom_file_sel.setText(self._geom_window.fname)
 
-class DetectorHelper(QtGui.QDialog):
-    """Setup widgets for quad. positions and geometry file selection."""
-
-    def __init__(self, parent, det='LPD'):
-        """Create a table element for quad selection and file selection.
-
-        Parameters:
-            window (QtGui.QMainWindow) : window object where widgets are
-                                        going to be displayed
-            parent (GeometryFileSelecter): main widget dealing with geometry
-                                            selection
-        Keywords:
-            det (str) : Name to the detector (default LPD)
-        """
-        super().__init__()
-        self.setWindowTitle('{} Geometry'.format(det))
-        self.setFixedSize(240, 220)
-        self.parent = parent
-        self.det = det
-        self.quad_table = QtGui.QTableWidget(4, 2)
-        self.quad_table.setToolTip('Set the Quad-Pos in mm')
-        self.quad_table.setHorizontalHeaderLabels(['Quad X-Pos', 'Quad Y-Pos'])
-        self.quad_table.setVerticalHeaderLabels(['1', '2', '3', '4'])
-        for n, quad_pos in enumerate(Defaults.fallback_quad_pos[det]):
-            self.quad_table.setItem(
-                n, 0, QtGui.QTableWidgetItem(str(quad_pos[0])))
-            self.quad_table.setItem(
-                n, 1, QtGui.QTableWidgetItem(str(quad_pos[1])))
-        self.quad_table.move(0, 0)
-
-        file_sel = QtGui.QPushButton('Select Geometry File')
-        file_sel.setToolTip(
-            'Select a Geometry File in xfel (hdf5) format.')
-        file_sel.clicked.connect(self._get_files)
-
-        ok_btn = QtGui.QPushButton('Ok')
-        ok_btn.clicked.connect(self._apply)
-        cancel_btn = QtGui.QPushButton('Cancel')
-        cancel_btn.clicked.connect(self.cancel)
-        hbox = QtWidgets.QHBoxLayout()
-        hbox.addWidget(ok_btn)
-        hbox.addWidget(cancel_btn)
-
-        layout = QtWidgets.QVBoxLayout()
-        layout.addWidget(self.quad_table)
-        layout.addWidget(file_sel)
-        layout.addLayout(hbox)
-        self.setLayout(layout)
-        self.show()
-
-    @classmethod
-    def load(cls, parent, det):
-        """Handels loading the right configuration for a given detector."""
-        if det == 'AGIPD':
-            parent.quad_pos = None
-            fname = cls.file_dialog(parent, Defaults.file_formats[det])
-            parent.line.setText(fname)
-        else:
-            return cls(parent, det)
-
-    def _get_files(self):
-        fname = self.file_dialog(self.parent, Defaults.file_formats[det])
-        self.parent.line.setText(fname)
-
-    @staticmethod
-    def file_dialog(parent, file_format):
-        """File-selection dialogue to get the geometry file."""
-        f_type = '{} file format ({})'.format(*file_format)
-        fname, _ = QtGui.QFileDialog.getOpenFileName(parent,
-                                                     'Load geometry file',
-                                                     '.',
-                                                     f_type)
-        # Put the filename into the geometry file field of the main gui
-        return fname
-
-    def _apply(self):
-        """Read quad. pos and update the detectors fallback positions."""
-        quad_pos = [[None, None] for i in range(self.quad_table.rowCount())]
-        for i, j in product(
-                range(self.quad_table.rowCount()),
-                range(self.quad_table.columnCount())):
-            table_element = self.quad_table.item(i, j)
-            try:
-                quad_pos[i][j] = float(table_element.text())
-            except ValueError:
-                _warning('Table Elements must be Float')
-                return
-        Defaults.fallback_quad_pos[self.det] = quad_pos
-        if not self.parent.value:
-            _warning('You must Select a Geometry File')
+    def _create_gemetry_obj(self):
+        """Create the karabo_data geometry object."""
+        if self.det != 'AGIPD' and not self.geom_file:
+            warning('Click the load button to load a geometry file')
             return
-        self.destroy()
-
+        quad_pos = self._geom_window.quad_pos
+        self.geom = read_geometry(self.det, self.geom_file, quad_pos)
+        self.draw_img_signal.emit()

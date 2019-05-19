@@ -46,9 +46,9 @@ class DefaultGeometryConfig:
              'OrRd']
 
     # Default file formats for certain detectors
-    file_formats = {
-                    'AGIPD': ('CFEL', '*.geom'),
-                    'LPD': ('XFEL', '*.h5')
+    file_formats = { #Det     file_type, input, output
+                    'AGIPD':  ('CFEL',  'geom', 'geom'),
+                    'LPD':    ('XFEL',  'h5',    'csv')
                    }
 
     @classmethod

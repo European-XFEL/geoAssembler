@@ -1,7 +1,6 @@
 """Qt Version of the detector geometry calibration."""
 
 from collections import namedtuple
-from itertools import product
 import logging
 import os
 
@@ -12,29 +11,19 @@ from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
 from .qt_subwidgets import GeometryWidget, RunDataWidget, FitObjectWidget
+from .qt_objects import QLogger, warning
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..gui_utils import (read_geometry, write_geometry)
+from ..gui_utils import (create_button, get_icon, read_geometry, write_geometry)
 
 
-log = logging.getLogger(__name__)
 Slot = QtCore.pyqtSlot
 
 
-def _warning(txt, title="Warning"):
-    """Inform user about missing information."""
-    msg_box = QtWidgets.QMessageBox()
-    msg_box.setIcon(QtWidgets.QMessageBox.Information)
-    msg_box.setText(txt)
-    msg_box.setWindowTitle(title)
-    msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
-    msg_box.exec_()
-
-
-
-class QtMainWidget:
+class QtMainWidget(QtGui.QMainWindow):
     """Qt-Version of the Calibration Class."""
-
+    log = logging.getLogger(__name__)
+    log.setLevel(logging.DEBUG)
     def __init__(self, run_dir=None, geofile=None, levels=None, header=None):
         """Display detector data and arrange panels.
 
@@ -50,21 +39,23 @@ class QtMainWidget:
         self.geofile = geofile
         self.levels = levels or [None, None]
         self.raw_data = None
+        self.rect = None
         self.header = header or ''
-        # not used for ci-testing
-
+        self.quad = -1  # The selected quadrants (-1 none selected)
+        self.is_displayed = False
+        main_icon, _ = get_icon('main_icon_64x64.png')
+        super().__init__()
+        q_logger = QLogger(self)
+        self.log.addHandler(q_logger)
         # Interpret image data as row-major instead of col-major
         pg.setConfigOptions(imageAxisOrder='row-major')
+        main_widget = QtGui.QWidget(self)
+        self.setCentralWidget(main_widget)
 
         # Create new image view
         self.imv = pg.ImageView()
-
-        self.quad = 0  # The selected quadrants
-        self.selected_circle = None  # Default fit-method to create the rings
+        self.log.info('Creating main window')
         # Circle Points by Quadrant
-        self.circles = {}
-        self.bottom_buttons = {}
-        self.bottom_select = None
         for action, keys in ((self._move_left, ('left', 'H')),
                              (self._move_up, ('up', 'K')),
                              (self._move_down, ('down', 'J')),
@@ -75,38 +66,36 @@ class QtMainWidget:
                 shortcut.activated.connect(action)
 
         # Add widgets to the layout in their proper positions
-        self.window = QtGui.QWidget()
-        self.window.showMaximized()
-        self.window.setWindowTitle('GeoAssembler Gui')
-        self.layout = QtGui.QGridLayout()
+        self.showMaximized()
+        self.setWindowTitle('GeoAssembler')
+        self.setWindowIcon(main_icon)
+        self.layout = QtGui.QGridLayout(self)
 
         # circle manipulation other input dialogs go to the top
         self.fit_widget = FitObjectWidget(self)
-        self.geom_selector = GeometryWidget(self, geofile)
+        self.geom_selector = GeometryWidget(self, self.geofile)
+        self.geom_selector.draw_img_signal.connect(self._draw)
         self.run_selector = RunDataWidget(run_dir, self)
         self.layout.addWidget(self.geom_selector,  0, 0, 1, 9)
         # plot goes into the centre on right side, spanning 10 rows
         self.layout.addWidget(self.imv,  1, 0, 30, 10)
-        # These buttons are on the top
-        self.apply_btn = self.geom_selector.apply_btn
-        self.apply_btn.clicked.connect(self._apply)
-        self.save_btn = self.geom_selector.save_btn
-        self.save_btn.clicked.connect(self._save_geom)
-        self.load_geom_btn = self.geom_selector.file_sel
         # buttons go to the bottom
         gbox = QtGui.QGridLayout()
-        self.quit_btn = QtGui.QPushButton('Quit')
-        self.quit_btn.clicked.connect(self._destroy)
-        gbox.addWidget(self.run_selector, 0, 0, 1, 15)
-        gbox.addWidget(self.quit_btn, 1, 0, 1, 1)
-        gbox.addWidget(self.fit_widget, 1, 1, 1, 1)
-        self.layout.addLayout(gbox, 31, 0, 1, 10)
-        self.fit_widget.draw_signal.connect(self._draw_roi)
-        self.fit_widget.delete_signal.connect(self._clear_roi)
+        quit_btn = create_button('Quit', 'quit')
+        log_btn = create_button('Log', 'log')
 
+        log_btn.clicked.connect(q_logger.win.show)
+        log_btn.setToolTip('Show Log Entries')
+        quit_btn.clicked.connect(QtCore.QCoreApplication.quit)
+        gbox.addWidget(self.run_selector, 0, 0, 1, 15)
+        gbox.addWidget(quit_btn, 1, 0, 1, 1)
+        gbox.addWidget(log_btn, 1, 1, 1, 1)
+        gbox.addWidget(self.fit_widget, 1, 2, 1, 1)
+        self.layout.addLayout(gbox, 31, 0, 1, 10)
+        self.fit_widget.draw_roi_signal.connect(self._draw_roi)
+        self.fit_widget.delete_roi_signal.connect(self._clear_roi)
         pg.LabelItem(justify='right')
-        self.window.setLayout(self.layout)
-        self.is_displayed = False
+        main_widget.setLayout(self.layout)
 
     @property
     def run_selector_btn(self):
@@ -128,24 +117,31 @@ class QtMainWidget:
     def det(self):
         return self.geom_selector.det
 
-    def _apply(self):
+    @property
+    def run_dir(self):
+        return self.run_selector.rundir
+
+    @property
+    def geom_file(self):
+        return self.geom_selector.geom_file
+
+    @property
+    def geom_obj(self):
+        return self.geom_selector.geom
+
+    def _draw(self):
         """Read the geometry file and position all modules."""
-        if self.run_selector.rundir is None:
-            _warning('Click the Run-dir button to select a run directory')
+        if self.run_dir is None:
+            warning('Click the Run-dir button to select a run directory')
+            self.log.error(' No data to assemble loaded ... ')
             return
-        if self.det != 'AGIPD' and not self.geom_selector.value:
-            _warning('Click the load button to load a geometry file')
-            return
-        log.info(' Starting to assemble ... ')
-        quad_pos = Defaults.fallback_quad_pos[self.det]
-        self.geom_file = self.geom_selector.value
-        self.geom = read_geometry(self.det, self.geom_selector.value, quad_pos)
+        self.log.info(' Starting to assemble ... ')
         self.raw_data = self.run_selector.get()
-        data, self.centre = self.geom.position_all_modules(self.raw_data)
+        data, self.centre = self.geom_obj.position_all_modules(self.raw_data)
         self.canvas = np.full(np.array(data.shape) + Defaults.canvas_margin,
                               np.nan)
 
-        self.data, _ = self.geom.position_all_modules(self.raw_data,
+        self.data, _ = self.geom_obj.position_all_modules(self.raw_data,
                                           canvas=self.canvas.shape)
         # Display the data and assign each frame a time value from 1.0 to 3.0
         if not self.is_displayed:
@@ -172,36 +168,16 @@ class QtMainWidget:
         imageItem = self.imv.getImageItem()
         self.levels = tuple(imageItem.levels)
         self.quad = -1
-
-    def _save_geom(self):
-        """Save the adapted geometry to a file in cfel output format."""
-        file_format = Defaults.file_formats[self.det]
-        file_type = 'file format (*.{})'.format(*file_format)
-        fname, _ = QtGui.QFileDialog.getSaveFileName(self.geom_selector,
-                                                     'Save geometry file',
-                                                     'geo_assembled.{}'.format(
-                                                         file_format[-1]),
-                                                     file_type)
-        if fname:
-            log.info(' Saving output to {}'.format(fname))
-            try:
-                os.remove(fname)
-            except (FileNotFoundError, PermissionError):
-                pass
-            self.data, self.centre = self.geom.position_all_modules(
-                self.raw_data)
-            write_geometry(self.geom, fname, self.header)
-            _warning('Geometry information saved to {}'.format(fname), 
-                     title='Info')
+        self.fit_widget._add_roi_btn.setEnabled(True)
 
     def _move(self, d):
         """Move the quadrant."""
         quad = self.quad
         if quad <= 0:
             return
-        self.geom.move_quad(quad, np.array(Defaults.direction[d]))
+        self.geom_obj.move_quad(quad, np.array(Defaults.direction[d]))
         self.data, self.centre =\
-            self.geom.position_all_modules(self.raw_data,
+            self.geom_obj.position_all_modules(self.raw_data,
                                canvas=self.canvas.shape)
         self._draw_rect(quad)
         self.imv.getImageItem().updateImage(self.data)
@@ -215,10 +191,6 @@ class QtMainWidget:
         """Delete all helper objects."""
         for num in self.rois:
             self.image.removeItem(self.rois[num])
-
-    def _destroy(self):
-        """Destroy the window and exit."""
-        QtCore.QCoreApplication.quit()
 
     def _get_quadrant(self, y, x):
         """Return the quadrant for a given set of coordinates."""
@@ -240,7 +212,7 @@ class QtMainWidget:
             pass
         self.quad = quad
         P, dx, dy =\
-            self.geom.get_quad_corners(quad,
+            self.geom_obj.get_quad_corners(quad,
                                        np.array(self.data.shape, dtype='i')//2)
         pen = QtGui.QPen(QtCore.Qt.red, 0.002)
         self.rect = pg.RectROI(pos=P,
@@ -251,7 +223,7 @@ class QtMainWidget:
                                invertible=False)
         self.rect.handleSize = 0
         self.imv.getView().addItem(self.rect)
-        [self.rect.removeHandle(handle)
+        _ = [self.rect.removeHandle(handle)
          for handle in self.rect.getHandles()]
 
     def _click(self, event):
