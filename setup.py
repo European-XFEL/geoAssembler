@@ -29,8 +29,6 @@ def find_version(*parts):
 def find_files(directory):
     return glob.glob(osp.join(directory, '*'))
 
-print(find_packages())
-
 setup(name="geoAssembler",
       version=find_version("geoAssembler", "__init__.py"),
       author="European XFEL GmbH",
