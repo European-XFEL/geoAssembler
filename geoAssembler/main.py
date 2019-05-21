@@ -6,7 +6,7 @@ import logging
 import os
 
 from pyqtgraph import QtGui
-from . import QtMainWidget
+from geoAssembler import QtMainWidget
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 log = logging.getLogger(__name__)

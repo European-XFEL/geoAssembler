@@ -1,10 +1,11 @@
 
 """Definition of additionla qt helper objects."""
-
 from itertools import product
 import logging
+from os import path as op
 
 import pyqtgraph as pg
+from PyQt5 import uic
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
 from ..defaults import DefaultGeometryConfig as Defaults
@@ -73,130 +74,110 @@ class DetectorHelper(QtGui.QDialog):
     filename_set_signal = QtCore.pyqtSignal()
     header_set_signal = QtCore.pyqtSignal()
 
-    def __init__(self, parent, header='', fname=''):
+    def __init__(self, det, header_text, parent=None):
         """Create a table element for quad selection and file selection.
 
         Parameters:
-            parent (GeometryFileSelecter): main widget dealing with geometry
-                                           selection
+            det (str): the detector (AGIPD or LPD)
+
         Keywords
-            header (str) :  Additional informations added to the geometry file
-                            (affects CFEL format only, Default '')
+            header_text (str) : Additional informations added to the geometry
+                                file  (affects CFEL format only, Default '')
 
             fname (str) :  file name of the geometry file (Default '')
         """
-        super().__init__()
-        self.setFixedSize(260, 240)
-        self.parent = parent
-        self.header = header
-        self.quad_pos = None
-        self.setWindowTitle('{} Geometry'.format(self.det))
-        self.quad_table = QtGui.QTableWidget(4, 2)
-        self.quad_table.setToolTip('Set the Quadrant Posistions')
-        self.quad_table.setHorizontalHeaderLabels(['Quad X-Pos', 'Quad Y-Pos'])
-        self.quad_table.setVerticalHeaderLabels(['1', '2', '3', '4'])
-        self.update_quad_table()
-        file_sel = create_button('Load Geometry', 'load')
-        file_sel.setToolTip('Select a Geometry File.')
-        file_sel.clicked.connect(self._get_files)
+        super().__init__(parent)
 
-        header_btn = create_button('Set header', 'quads')
-        header_btn.setToolTip(
-            'Add additional infromation to the Geometry File')
-        header_btn.clicked.connect(self._set_header)
+        ui_file = op.join(op.dirname(__file__), 'editor/load_detector.ui')
+        uic.loadUi(ui_file, self)
 
-        ok_btn = create_button('Ok', 'ok')
-        ok_btn.clicked.connect(self._apply)
-        cancel_btn = create_button('Cancel', 'cancel')
-        cancel_btn.clicked.connect(self.close)
-        hbox1 = QtWidgets.QHBoxLayout()
-        hbox1.addWidget(file_sel)
-        hbox1.addWidget(header_btn)
-        hbox2 = QtWidgets.QHBoxLayout()
-        hbox2.addWidget(ok_btn)
-        hbox2.addWidget(cancel_btn)
+        self.setWindowTitle('{} Geometry'.format(det))
 
-        layout = QtWidgets.QVBoxLayout()
-        layout.addWidget(self.quad_table)
-        layout.addLayout(hbox1)
-        layout.addLayout(hbox2)
-        self.setLayout(layout)
-        self.fname = fname
+        self._det = det
+        self._header_text = header_text
+        self._quad_pos = None
+
+        self.populate_table()
+
+        self.bt_load_geometry.clicked.connect(self._get_files)
+        self.bt_set_header.clicked.connect(self._set_header)
+        self.bt_ok.clicked.connect(self._apply)
+        self.bt_cancel.clicked.connect(self.close)
+
+    def set_detector(self, det):
+        """Sets a new detector"""
+        self._det = det
+        self._quad_pos = None
+        self.populate_table()
 
     def _get_files(self):
         """Read the geometry filename of from the dialog."""
-        self.fname = self.file_dialog()
-        if len(self.fname):
-            self.filename_set_signal.emit()
-
-    def update_quad_table(self):
-        """Update the Qudrant table."""
-        quad_pos = self.quad_pos or Defaults.fallback_quad_pos[self.det]
-        for n, quad_pos in enumerate(quad_pos):
-            self.quad_table.setItem(
-                n, 0, QtGui.QTableWidgetItem(str(quad_pos[0])))
-            self.quad_table.setItem(
-                n, 1, QtGui.QTableWidgetItem(str(quad_pos[1])))
-        self.quad_table.move(0, 0)
-
-    @property
-    def det(self):
-        """Get the selected detector from the parent widget."""
-        return self.parent.det
-
-    def file_dialog(self):
-        """File-selection dialogue to get the geometry file."""
-        file_format = Defaults.file_formats[self.det]
+        file_format = Defaults.file_formats[self._det]
         f_type = '{} file format (*.{})'.format(*file_format)
-        fname, _ = QtGui.QFileDialog.getOpenFileName(self,
-                                                     'Load geometry file',
-                                                     '.',
-                                                     f_type)
-        # Put the filename into the geometry file field of the main gui
-        return fname
+        filename, _ = QtGui.QFileDialog.getOpenFileName(self,
+                                                        'Load geometry file',
+                                                        '.',
+                                                        f_type)
+
+        if filename is not None:
+            self.filename = filename
+
+    def populate_table(self):
+        """Update the Qudrant table."""
+        quad_pos = self._quad_pos or Defaults.fallback_quad_pos[self._det]
+        for n, quad_pos in enumerate(quad_pos):
+            self.tb_quadrants.setItem(
+                n, 0, QtGui.QTableWidgetItem(str(quad_pos[0])))
+            self.tb_quadrants.setItem(
+                n, 1, QtGui.QTableWidgetItem(str(quad_pos[1])))
+        self.tb_quadrants.move(0, 0)
 
     def _apply(self):
         """Read quad. pos and update the detectors fallback positions."""
-        quad_pos = [[None, None] for i in range(self.quad_table.rowCount())]
+        quad_pos = [[None, None] for _ in range(self.tb_quadrants.rowCount())]
         for i, j in product(
-                range(self.quad_table.rowCount()),
-                range(self.quad_table.columnCount())):
-            table_element = self.quad_table.item(i, j)
+                range(self.tb_quadrants.rowCount()),
+                range(self.tb_quadrants.columnCount())):
+            table_element = self.tb_quadrants.item(i, j)
             try:
                 quad_pos[i][j] = float(table_element.text())
             except ValueError:
                 warning('Table Elements must be Float')
                 return
-        if not self.fname and self.det != 'AGIPD':
+        if not self.filename and self._det != 'AGIPD':
             warning('You must Select a Geometry File')
             return
-        self.quad_pos = quad_pos
+        self._quad_pos = quad_pos
         self.close()
 
     def _set_header(self):
         """Set the header of a geometry file."""
-        self.header_win = QtGui.QDialog(self)
-        self.header_win.setFixedSize(260, 240)
-        self.header_win.setWindowTitle('Set Header')
+        header_win = QtGui.QDialog(self)
+        header_win.setFixedSize(260, 240)
+        header_win.setWindowTitle('Set Header')
 
-        self._header_textbox = QtGui.QPlainTextEdit()
-        self._header_textbox.insertPlainText(self.header)
-        self._header_textbox.move(20, 20)
-        self._header_textbox.resize(280, 280)
+        header_textbox = QtGui.QPlainTextEdit(header_win)
+        header_textbox.insertPlainText(self._header_text)
+        header_textbox.move(20, 20)
+        header_textbox.resize(280, 280)
 
         ok_btn = create_button('Ok', 'ok')
         ok_btn.clicked.connect(self._over_write_header)
+
         cancel_btn = create_button('Cancel', 'cancel')
-        cancel_btn.clicked.connect(self.header_win.close)
+        cancel_btn.clicked.connect(header_win.close)
+
         hbox = QtWidgets.QHBoxLayout()
         hbox.addWidget(ok_btn)
         hbox.addWidget(cancel_btn)
 
         layout = QtWidgets.QVBoxLayout()
-        layout.addWidget(self._header_textbox)
+        layout.addWidget(header_textbox)
         layout.addLayout(hbox)
-        self.header_win.setLayout(layout)
-        self.header_win.show()
+        header_win.setLayout(layout)
+
+        if header_win.exec_() == QtGui.QDialog.Accepted:
+            self.header_text = header_textbox.toPlainText()
 
     def _over_write_header(self):
         """Overwrite the default header."""

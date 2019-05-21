@@ -1,21 +1,20 @@
 """Qt Version of the detector geometry calibration."""
 
-from collections import namedtuple
 import logging
-import os
+from os import path as op
 
-import karabo_data as kd
 import numpy as np
 import pyqtgraph as pg
+from PyQt5 import uic
+from PyQt5.QtWidgets import QHBoxLayout
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
-from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
+from pyqtgraph.Qt import QtCore, QtGui
 
 from .qt_subwidgets import GeometryWidget, RunDataWidget, FitObjectWidget
 from .qt_objects import QLogger, warning
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..gui_utils import (create_button, get_icon,
-                         read_geometry, write_geometry)
+from ..gui_utils import create_button, get_icon
 
 
 Slot = QtCore.pyqtSlot
@@ -39,21 +38,25 @@ class QtMainWidget(QtGui.QMainWindow):
             levels (tuple) : min/max values to be displayed (default: -1000)
             header (str)  : header for the geometry file
         """
+        super().__init__()
+
+        self.setWindowTitle('GeoAssembler')
+        self.setWindowIcon(get_icon('main_icon_64x64.png'))
+
+        # pyqtgraph config
+        pg.setConfigOptions(imageAxisOrder='row-major')
+        pg.LabelItem(justify='right')
+
         self.geofile = geofile
         self.levels = levels or [None, None]
+        self.header = header or ''
+
         self.raw_data = None
         self.rect = None
-        self.header = header or ''
         self.quad = -1  # The selected quadrants (-1 none selected)
         self.is_displayed = False
-        main_icon, _ = get_icon('main_icon_64x64.png')
-        super().__init__()
         q_logger = QLogger(self)
         self.log.addHandler(q_logger)
-        # Interpret image data as row-major instead of col-major
-        pg.setConfigOptions(imageAxisOrder='row-major')
-        main_widget = QtGui.QWidget(self)
-        self.setCentralWidget(main_widget)
 
         # Create new image view
         self.imv = pg.ImageView()
@@ -68,37 +71,33 @@ class QtMainWidget(QtGui.QMainWindow):
                                            self.imv)
                 shortcut.activated.connect(action)
 
-        # Add widgets to the layout in their proper positions
-        self.showMaximized()
-        self.setWindowTitle('GeoAssembler')
-        self.setWindowIcon(main_icon)
-        self.layout = QtGui.QGridLayout(self)
-
         # circle manipulation other input dialogs go to the top
-        self.fit_widget = FitObjectWidget(self)
+        self.fit_widget = FitObjectWidget(self, None)
+
         self.geom_selector = GeometryWidget(self, self.geofile)
         self.geom_selector.draw_img_signal.connect(self._draw)
-        self.run_selector = RunDataWidget(run_dir, self)
-        self.layout.addWidget(self.geom_selector,  0, 0, 1, 9)
-        # plot goes into the centre on right side, spanning 10 rows
-        self.layout.addWidget(self.imv,  1, 0, 30, 10)
-        # buttons go to the bottom
-        gbox = QtGui.QGridLayout()
-        quit_btn = create_button('Quit', 'quit')
-        log_btn = create_button('Log', 'log')
 
-        log_btn.clicked.connect(q_logger.win.show)
-        log_btn.setToolTip('Show Log Entries')
-        quit_btn.clicked.connect(QtCore.QCoreApplication.quit)
-        gbox.addWidget(self.run_selector, 0, 0, 1, 15)
-        gbox.addWidget(quit_btn, 1, 0, 1, 1)
-        gbox.addWidget(log_btn, 1, 1, 1, 1)
-        gbox.addWidget(self.fit_widget, 1, 2, 1, 1)
-        self.layout.addLayout(gbox, 31, 0, 1, 10)
+        self.run_selector = RunDataWidget(run_dir, self)
+
         self.fit_widget.draw_roi_signal.connect(self._draw_roi)
         self.fit_widget.delete_roi_signal.connect(self._clear_roi)
-        pg.LabelItem(justify='right')
-        main_widget.setLayout(self.layout)
+
+        main_widget = QtGui.QWidget(self)
+        self.setCentralWidget(main_widget)
+
+        layout = QtGui.QGridLayout(main_widget)
+        layout.addWidget(self.geom_selector,  0, 0)
+        layout.addWidget(self.imv,  1, 0)
+        layout.addWidget(self.run_selector, 2, 0)
+        layout.addWidget(self.fit_widget, 3, 0)
+
+        # So the main plot stretches forever
+        layout.setRowStretch(1, 30)
+
+        main_widget.setLayout(layout)
+
+        # Add widgets to the layout in their proper positions
+        self.showMaximized()
 
     # Some properties coming up
     @property
