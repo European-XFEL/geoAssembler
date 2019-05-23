@@ -163,7 +163,7 @@ class DetectorHelper(QtGui.QDialog):
         header_textbox.resize(280, 280)
 
         ok_btn = create_button('Ok', 'ok')
-        ok_btn.clicked.connect(self._over_write_header)
+        ok_btn.clicked.connect(header_win.accept)
 
         cancel_btn = create_button('Cancel', 'cancel')
         cancel_btn.clicked.connect(header_win.close)
@@ -179,12 +179,7 @@ class DetectorHelper(QtGui.QDialog):
 
         if header_win.exec_() == QtGui.QDialog.Accepted:
             self.header_text = header_textbox.toPlainText()
-
-    def _over_write_header(self):
-        """Overwrite the default header."""
-        self.header = self._header_textbox.toPlainText()
-        self.header_set_signal.emit()
-        self.header_win.close()
+            self.header_set_signal.emit()
 
 
 class QLogger(logging.Handler):

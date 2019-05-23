@@ -331,7 +331,7 @@ class GeometryWidget(QtWidgets.QFrame):
 
     @pyqtSlot()
     def _set_header(self):
-        self.header = self._geom_window.header
+        self.header = self._geom_window.header_text
 
     @pyqtSlot()
     def _set_geom(self):
