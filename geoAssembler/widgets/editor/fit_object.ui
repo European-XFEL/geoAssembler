@@ -38,7 +38,7 @@
            </widget>
           </item>
           <item row="0" column="1">
-           <widget class="QComboBox" name="bt_roi_type">
+           <widget class="QComboBox" name="cb_roi_type">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -90,6 +90,15 @@
           <item row="1" column="1">
            <widget class="QSpinBox" name="sb_roi_size">
             <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="accelerated">
+             <bool>true</bool>
+            </property>
+            <property name="keyboardTracking">
+             <bool>true</bool>
+            </property>
+            <property name="showGroupSeparator" stdset="0">
              <bool>false</bool>
             </property>
             <property name="maximum">

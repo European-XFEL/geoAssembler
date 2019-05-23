@@ -174,7 +174,7 @@ class QtMainWidget(QtGui.QMainWindow):
         imageItem = self.imv.getImageItem()
         self.levels = tuple(imageItem.levels)
         self.quad = -1
-        self.fit_widget._add_roi_btn.setEnabled(True)
+        self.fit_widget.bt_add_roi.setEnabled(True)
 
     def _move(self, d):
         """Move the quadrant."""

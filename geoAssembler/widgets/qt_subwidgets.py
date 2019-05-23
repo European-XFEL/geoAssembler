@@ -57,7 +57,7 @@ class FitObjectWidget(QtWidgets.QFrame):
         roi.sigRegionChangeFinished.connect(self._set_size)
         self.current_roi = len(self.rois) + 1
         self.rois[self.current_roi] = roi
-        self._updatesb_roi_size(roi)
+        self._update_spin_box(roi)
         self._set_colors()
         self._update_combo_box()
         self.draw_roi_signal.emit()
@@ -95,10 +95,10 @@ class FitObjectWidget(QtWidgets.QFrame):
             # Roi is empty, do nothing
             return
         self.current_roi = num
-        self._updatesb_roi_size(self.rois[num])
+        self._update_spin_box(self.rois[num])
         self._set_colors()
 
-    def _updatesb_roi_size(self, roi):
+    def _update_spin_box(self, roi):
         """Add properties for a new circle."""
         self.sb_roi_size.setEnabled(True)
         size = int(roi.size()[0])
@@ -196,13 +196,13 @@ class RunDataWidget(QtWidgets.QFrame):
         self._sel_method = None
         self._read_train = True
 
-    def activatesb_roi_sizees(self):
+    def activate_spin_boxes(self):
         """Set min/max sizes of the spinbox according to trainId's and imgs."""
         self.sb_train_id.setMinimum(self.min_tid)
         self.sb_train_id.setMaximum(self.max_tid)
         self.sb_train_id.setValue(self.min_tid)
         self.sb_train_id.setEnabled(True)
-        self.sb_self.rb_pulse_id.setEnabled(True)
+        self.sb_pulse_id.setEnabled(True)
         for sel in (self.PULSE_SEL, self.PULSE_MEAN, self.PULSE_SUM):
             sel.button.setEnabled(True)
         self.PULSE_SEL.button.setChecked(True)
@@ -214,9 +214,9 @@ class RunDataWidget(QtWidgets.QFrame):
             sel.button.setChecked(False)
         btn_prop.button.setChecked(True)
         if btn_prop.num == 1:
-            self.sb_self.rb_pulse_id.setEnabled(True)
+            self.sb_pulse_id.setEnabled(True)
         else:
-            self.sb_self.rb_pulse_id.setEnabled(False)
+            self.sb_pulse_id.setEnabled(False)
         # Get the self.rb_pulse selection method
         self._sel_method = btn_prop.method
 
@@ -225,7 +225,7 @@ class RunDataWidget(QtWidgets.QFrame):
         self.tid = self.sb_train_id.value()
         self.det_info = self.rundir.detector_info(
             tuple(self.rundir.detector_sources)[0])
-        self.sb_self.rb_pulse_id.setMaximum(self.det_info['frames_per_train'] - 1)
+        self.sb_pulse_id.setMaximum(self.det_info['frames_per_train'] - 1)
         self._read_train = True
 
     @Slot(bool)
@@ -244,7 +244,7 @@ class RunDataWidget(QtWidgets.QFrame):
         self.rundir = kd.RunDirectory(rfolder)
         self.min_tid = self.rundir.train_ids[0]
         self.max_tid = self.rundir.train_ids[-1]
-        self.activatesb_roi_sizees()
+        self.activate_spin_boxes()
         QtGui.QApplication.restoreOverrideCursor()
 
     def get(self):
@@ -260,7 +260,7 @@ class RunDataWidget(QtWidgets.QFrame):
             self._read_train = False
         if self._sel_method is None:
             # Read the selected train number
-            self.rb_pulse_num = self.sb_self.rb_pulse_id.value()
+            self.rb_pulse_num = self.sb_pulse_id.value()
             raw_data = self._img[self.rb_pulse_num]
         else:
             raw_data = self._sel_method(self._img, axis=0)
@@ -342,6 +342,10 @@ class GeometryWidget(QtWidgets.QFrame):
     def geom_file(self):
         """Return the text of the QLinEdit element."""
         return self.le_geometry_file.text()
+
+    def activate(self):
+        """Change the content of buttons and QLineEdit elements."""
+        self.bt_save.setEnabled(True)
 
     @property
     def det(self):
