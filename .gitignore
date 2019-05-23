@@ -2,6 +2,7 @@ __pycache__
 *.pyc
 .ipynb_checkpoints
 *.png
+!geoAssembler/icons
 !docs/.screenshot.png
 *cache
 *.csv
