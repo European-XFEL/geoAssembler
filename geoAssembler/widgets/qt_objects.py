@@ -95,7 +95,7 @@ class DetectorHelper(QtGui.QDialog):
 
         self._det = det
         self._header_text = header_text
-        self._quad_pos = None
+        self.quad_pos = None
 
         self.populate_table()
 
@@ -107,7 +107,7 @@ class DetectorHelper(QtGui.QDialog):
     def set_detector(self, det):
         """Sets a new detector"""
         self._det = det
-        self._quad_pos = None
+        self.quad_pos = None
         self.populate_table()
 
     def _get_files(self):
@@ -119,12 +119,13 @@ class DetectorHelper(QtGui.QDialog):
                                                         '.',
                                                         f_type)
 
-        if filename is not None:
+        if filename is not None and filename:
             self.filename = filename
+            self.filename_set_signal.emit()
 
     def populate_table(self):
         """Update the Qudrant table."""
-        quad_pos = self._quad_pos or Defaults.fallback_quad_pos[self._det]
+        quad_pos = self.quad_pos or Defaults.fallback_quad_pos[self._det]
         for n, quad_pos in enumerate(quad_pos):
             self.tb_quadrants.setItem(
                 n, 0, QtGui.QTableWidgetItem(str(quad_pos[0])))
@@ -147,7 +148,7 @@ class DetectorHelper(QtGui.QDialog):
         if not self.filename and self._det != 'AGIPD':
             warning('You must Select a Geometry File')
             return
-        self._quad_pos = quad_pos
+        self.quad_pos = quad_pos
         self.close()
 
     def _set_header(self):
