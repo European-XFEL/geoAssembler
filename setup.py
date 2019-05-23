@@ -49,7 +49,7 @@ setup(name="geoAssembler",
               'geoAssembler = geoAssembler.main:main'
           ]},
       dependency_links=[
-          'git+https://github.com/European-XFEL/karabo_data.git'],
+          'https://github.com/European-XFEL/karabo_data/tarball/master#egg=karabo-data-999.0.0'],
       install_requires=[
           'cfelpyutils',
           'karabo-data',
