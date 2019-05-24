@@ -167,7 +167,8 @@ class RunDataWidget(QtWidgets.QFrame):
     PULSE_SEL.num = 1
     PULSE_MEAN.num = 2
     PULSE_SUM.num = 3
-
+    
+    draw_img_signal = Signal()
     def __init__(self, run_dir, main_widget, parent=None):
         """Create a btn for run-dir select and 2 spin boxes for train, self.rb_pulse.
 
@@ -217,6 +218,8 @@ class RunDataWidget(QtWidgets.QFrame):
         # Apply no selection method (sum, mean) to select self.rb_pulses by default
         self._sel_method = None
         self._read_train = True
+
+        self.sb_pulse_id.valueChanged.connect(self.draw_img_signal.emit)
 
     def activate_spin_boxes(self):
         """Set min/max sizes of the spinbox according to trainId's and imgs."""
@@ -277,7 +280,15 @@ class RunDataWidget(QtWidgets.QFrame):
             _, data = self.rundir.train_from_id(self.tid,
                                                 devices=[('*DET*',
                                                           'image.data')])
-            img = kd.stack_detector_data(data, 'image.data')
+            try:
+                img = kd.stack_detector_data(data, 'image.data')
+            except ValueError:
+                QtGui.QApplication.restoreOverrideCursor()
+                self.main_widget.log.error('Bad tain, skipping')
+                raise ValueError('Bad train')
+            # Probaply raw data with gain dimension - take the data dim
+            if len(img.shape) == 5:
+                img = img[:, 0,:] # TODO: confirm if first gain dim is data
             self._img = np.clip(img, 0, None)
             self._read_train = False
         if self._sel_method is None:
@@ -348,7 +359,7 @@ class GeometryWidget(QtWidgets.QFrame):
                 os.remove(fname)
             except (FileNotFoundError, PermissionError):
                 pass
-            write_geometry(self.geom, fname, self.header)
+            write_geometry(self.geom, fname, self.header, self.main_widget.log)
             txt = ' Geometry information saved to {}'.format(fname)
             self.main_widget.log.info(txt)
             warning(txt, title='Info')

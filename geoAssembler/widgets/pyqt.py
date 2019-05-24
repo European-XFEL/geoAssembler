@@ -78,6 +78,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.geom_selector.draw_img_signal.connect(self._draw)
 
         self.run_selector = RunDataWidget(run_dir, self)
+        self.run_selector.draw_img_signal.connect(self._draw)
 
         self.fit_widget.draw_roi_signal.connect(self._draw_roi)
         self.fit_widget.delete_roi_signal.connect(self._clear_roi)
@@ -144,7 +145,11 @@ class QtMainWidget(QtGui.QMainWindow):
             self.log.error(' No data to assemble loaded ... ')
             return
         self.log.info(' Starting to assemble ... ')
-        self.raw_data = self.run_selector.get()
+        try:
+            self.raw_data = self.run_selector.get()
+        except ValueError:
+            warning('No data in trainId, select a different trainId')
+            return
         data, self.centre = self.geom_obj.position_all_modules(self.raw_data)
         self.canvas = np.full(np.array(data.shape) + Defaults.canvas_margin,
                               np.nan)
