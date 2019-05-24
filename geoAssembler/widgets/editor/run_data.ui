@@ -47,7 +47,10 @@
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="label_2">
+      <widget class="QRadioButton" name="rb_pulse">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select a Single Pulse&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string>Pulse#:</string>
        </property>
@@ -58,17 +61,16 @@
        <property name="enabled">
         <bool>false</bool>
        </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QRadioButton" name="rb_pulse">
-       <property name="text">
-        <string>Pulse#</string>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select Specific Pulse&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QRadioButton" name="rb_sum">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apply Sum over all Pulses&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string>Sum</string>
        </property>
@@ -76,6 +78,9 @@
      </item>
      <item>
       <widget class="QRadioButton" name="rb_mean">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apply Average over all Pulses&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string>Mean</string>
        </property>

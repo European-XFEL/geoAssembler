@@ -65,7 +65,11 @@
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="cb_detectors"/>
+        <widget class="QComboBox" name="cb_detectors">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select Detector&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
        </item>
        <item>
         <widget class="QLabel" name="label_2">
