@@ -5,6 +5,7 @@ import os
 
 import h5py
 from karabo_data.geometry2 import (AGIPD_1MGeometry,
+                                   DSSC_Geometry,
                                    LPD_1MGeometry, GeometryFragment)
 import numpy as np
 import pandas as pd
@@ -40,8 +41,6 @@ class GeometryAssembler:
 
     filename = None
     unit = None
-    asic_gap = None
-    panel_gap = None
     frag_ss_pixels = None
     frag_fs_pixels = None
     pixel_size = None
@@ -195,8 +194,6 @@ class AGIPDGeometry(GeometryAssembler):
         """
         GeometryAssembler.__init__(self, kd_geom)
         self.unit = 2e-4
-        self.asic_gap = 2
-        self.panel_gap = 29
         self.pixel_size = 2e-4  # 2e-4 metres == 0.2 mm
         self.frag_ss_pixels = 64
         self.frag_fs_pixels = 128
@@ -237,6 +234,62 @@ class AGIPDGeometry(GeometryAssembler):
                             columns=['X', 'Y'])
 
 
+class DSSCGeometry(GeometryAssembler):
+    """Detector layout for DSSC."""
+
+    def __init__(self, kd_geom, filename):
+        """Set the properties for DSSC detector.
+
+        Paramerters:
+            kd_geom (DSSCGeometry) : karabo_data geometry objet
+            filename (str) : path to the hdf5 geometry description
+        """
+        GeometryAssembler.__init__(self, kd_geom)
+        self.filename = filename
+        self.pixel_size = 236e-6
+        self.unit = 1e-3
+        self.frag_ss_pixels = 128
+        self.frag_fs_pixels = 256
+        self.detector_name = 'DSSC'
+        self._pixel_shape = np.array([1., 1.5/np.sqrt(3)])
+
+    @classmethod
+    def from_h5_file_and_quad_positions(cls, geom_file, quad_pos=None):
+        """Create geometry from geometry file or quad positions."""
+        quad_pos = quad_pos or Defaults.fallback_quad_pos[self.detector_name]
+        kd_geom = DSSC_Geometry.from_h5_file_and_quad_positions(geom_file,
+                                                                 quad_pos)
+        return cls(kd_geom, geom_file)
+
+    @property
+    def quad_pos(self):
+        """Get the quadrant positions from the geometry object."""
+        quad_pos = np.zeros((4, 2))
+        for q in range(1, 5):
+            # Getting the offset for one tile (4th module, 16th tile)
+            # is sufficient
+            quad_pos[q-1] = self._get_offsets(q, 4, 2)
+        return pd.DataFrame(quad_pos,
+                            columns=['Y', 'X'],
+                            index=['q{}'.format(i) for i in range(1, 5)])
+
+    def _get_offsets(self, quad, module, asic):
+        """Get the panel and asic offsets."""
+        px_conv = self.pixel_size / self.unit
+        nmod = (quad-1) * 2 + module
+        frag = self.modules[nmod-1][asic-1]
+        cr_pos = (frag.corner_pos +
+                  (frag.ss_vec * self.frag_ss_pixels) +
+                  (frag.fs_vec * self.frag_fs_pixels))[:2]
+        with h5py.File(self.filename, 'r') as f:
+            mod_grp = f['Q{}/M{}'.format(quad, module)]
+            mod_offset = mod_grp['Position'][:]
+            tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
+            cr_pos *= px_conv
+        return cr_pos - (mod_offset + tile_offset)
+
+
+
 class LPDGeometry(GeometryAssembler):
     """Detector layout for LPD."""
 
@@ -249,13 +302,11 @@ class LPDGeometry(GeometryAssembler):
         """
         GeometryAssembler.__init__(self, kd_geom)
         self.filename = filename
-        self.asic_gap = 4
-        self.panel_gap = 4
         self.unit = 1e-3
         self.pixel_size = 5e-4  # 5e-4 metres == 0.5 mm
         self.frag_ss_pixels = 32
         self.frag_fs_pixels = 128
-        self.detector_name = 'AGIPD'
+        self.detector_name = 'LPD'
 
     @classmethod
     def from_h5_file_and_quad_positions(cls, geom_file, quad_pos=None):
