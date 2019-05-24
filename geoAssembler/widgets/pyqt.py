@@ -26,7 +26,7 @@ class QtMainWidget(QtGui.QMainWindow):
     log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
 
-    def __init__(self, run_dir=None, geofile=None, levels=None, header=None):
+    def __init__(self, app, run_dir=None, geofile=None, levels=None, header=None):
         """Display detector data and arrange panels.
 
         Keywords:
@@ -81,6 +81,8 @@ class QtMainWidget(QtGui.QMainWindow):
 
         self.fit_widget.draw_roi_signal.connect(self._draw_roi)
         self.fit_widget.delete_roi_signal.connect(self._clear_roi)
+        self.fit_widget.quit_signal.connect(app.quit)
+        self.fit_widget.show_log_signal.connect(q_logger.show)
 
         main_widget = QtGui.QWidget(self)
         self.setCentralWidget(main_widget)

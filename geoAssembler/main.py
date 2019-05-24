@@ -94,8 +94,8 @@ def create_nb(rundir=None, geofile=None, clen=None, energy=None, levels=None,
 def create_calibrate_gui(*args, **kwargs):
     """Create a QtGui Application and return an instance of CalibrateQt."""
     app = QtGui.QApplication([])
-    calib = QtMainWidget(*args, **kwargs)
-    calib.show()
+    calib = QtMainWidget(app, *args, **kwargs)
+    #calib.show()
     app.exec_()
     app.closeAllWindows()
     return calib

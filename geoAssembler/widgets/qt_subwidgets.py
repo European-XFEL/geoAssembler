@@ -27,6 +27,8 @@ class FitObjectWidget(QtWidgets.QFrame):
 
     draw_roi_signal = Signal()
     delete_roi_signal = Signal()
+    quit_signal = Signal()
+    show_log_signal = Signal()
 
     def __init__(self, main_widget, parent=None):
         """Add a spin box with a label to set radii.
@@ -37,6 +39,7 @@ class FitObjectWidget(QtWidgets.QFrame):
         super().__init__(parent)
         ui_file = op.join(op.dirname(__file__), 'editor/fit_object.ui')
         uic.loadUi(ui_file, self)
+        print(ui_file)
 
         self.main_widget = main_widget
 
@@ -44,11 +47,20 @@ class FitObjectWidget(QtWidgets.QFrame):
         self.sb_roi_size.valueChanged.connect(self._update_roi)
         self.cb_roi_number.currentIndexChanged.connect(self._get_roi)
         self.bt_add_roi.clicked.connect(self._draw)
+        self.bt_add_roi.setIcon(get_icon('rois.png'))
+        self.bt_add_roi.setEnabled(False)
         self.bt_clear_roi.clicked.connect(self._clear)
+        self.bt_clear_roi.setIcon(get_icon('clear-all.png'))
+        self.bt_clear_roi.setEnabled(False)
+        self.bt_quit.clicked.connect(self.quit_signal.emit)
+        self.bt_show_log.clicked.connect(self.show_log_signal.emit)
+        self.bt_quit.setIcon(get_icon('exit.png'))
+        self.bt_show_log.setIcon(get_icon('log.png'))
 
         self.rois = {}
         self.current_roi = None
-
+        self.size = 690
+        self.pen_size = 0.002
     def _draw(self):
         """Draw helper Objects (roi)."""
         if self.main_widget.quad == 0 or len(self.rois) > 9:
@@ -65,9 +77,13 @@ class FitObjectWidget(QtWidgets.QFrame):
     def _set_colors(self):
         """Set the colors of all roi."""
         for n, roi in self.rois.items():
-            roi.setPen(QtGui.QPen(QtCore.Qt.gray, 0.002))
+            pen = QtGui.QPen(QtCore.Qt.gray, 0.002)
+            pen.setWidthF(0.002)
+            roi.setPen(pen)
         roi = self.rois[self.current_roi]
-        roi.setPen(QtGui.QPen(QtCore.Qt.red, 0.002))
+        pen = QtGui.QPen(QtCore.Qt.red, 0.002)
+        pen.setWidthF(0.002)
+        roi.setPen(pen)
 
     def _get_roi_type(self):
         """Return the correct roi type."""
@@ -75,9 +91,9 @@ class FitObjectWidget(QtWidgets.QFrame):
         shape = self.main_widget.canvas.shape
         y, x = int(round(shape[0]/2, 0)), int(round(shape[1]/2, 0))
         if roi_txt == 'circle':
-            return CircleROI(pos=(x-x//2, y-x//2), size=x//1)
+            return CircleROI(pos=(x-x//2, y-x//2), size=self.size)
         elif roi_txt == 'rectangle':
-            return SquareROI(pos=(x-x//2, y-x//2), size=x//1)
+            return SquareROI(pos=(x-x//2, y-x//2), size=self.size)
 
     def _update_combo_box(self):
         """Add a new roi selection to the combo-box."""
@@ -115,7 +131,12 @@ class FitObjectWidget(QtWidgets.QFrame):
         new_pos = (centre[0] - size//2,
                    centre[1] - size//2)
         roi.setPos(new_pos)
+        pen_size = 0.002 * self.size/size
+        pen = QtGui.QPen(QtCore.Qt.red, pen_size)
+
+        pen.setWidthF(pen_size)
         roi.setSize((size, size))
+        roi.setPen(pen)
 
     def _set_size(self):
         """Update spin_box if ROI is changed by hand."""
@@ -168,6 +189,7 @@ class RunDataWidget(QtWidgets.QFrame):
 
         # Creat an hbox with a title, a field to add a filename and a button
         self.bt_select_run_dir.clicked.connect(self._sel_run)
+        self.bt_select_run_dir.setIcon(get_icon('open.png'))
         self.sb_train_id.valueChanged.connect(self._update)
 
         self.rb_pulse.setChecked(False)
@@ -289,15 +311,17 @@ class GeometryWidget(QtWidgets.QFrame):
             self._update_quadpos)
         self.cb_detectors.setCurrentIndex(0)
         self.le_geometry_file.setText(content)
-
         self._geom_window = DetectorHelper(
-            self.det, self.header)
+            self.det, content, self.header)
         self._geom_window.filename_set_signal.connect(self._set_geom)
         self._geom_window.header_set_signal.connect(self._set_header)
 
         self.bt_load.clicked.connect(self._load)
         self.bt_apply.clicked.connect(self._create_gemetry_obj)
+        self.bt_apply.setIcon(get_icon('system-run.png'))
+        self.bt_load.setIcon(get_icon('file.png'))
         self.bt_save.clicked.connect(self._save_geometry_obj)
+        self.bt_save.setIcon(get_icon('save.png'))
 
     def _update_quadpos(self):
         """Update the quad posistions."""
@@ -331,7 +355,7 @@ class GeometryWidget(QtWidgets.QFrame):
 
     @pyqtSlot()
     def _set_header(self):
-        self.header = self._geom_window.header
+        self.header = self._geom_window.header_text
 
     @pyqtSlot()
     def _set_geom(self):

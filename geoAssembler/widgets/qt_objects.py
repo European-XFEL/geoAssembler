@@ -9,7 +9,7 @@ from PyQt5 import uic
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..gui_utils import create_button
+from ..gui_utils import create_button, get_icon
 
 
 def warning(txt, title="Warning"):
@@ -74,7 +74,7 @@ class DetectorHelper(QtGui.QDialog):
     filename_set_signal = QtCore.pyqtSignal()
     header_set_signal = QtCore.pyqtSignal()
 
-    def __init__(self, det, header_text, parent=None):
+    def __init__(self, det, fname, header_text, parent=None):
         """Create a table element for quad selection and file selection.
 
         Parameters:
@@ -95,14 +95,19 @@ class DetectorHelper(QtGui.QDialog):
 
         self._det = det
         self._header_text = header_text
+        self.filename = fname
         self.quad_pos = None
 
         self.populate_table()
 
         self.bt_load_geometry.clicked.connect(self._get_files)
+        self.bt_load_geometry.setIcon(get_icon('file.png'))
         self.bt_set_header.clicked.connect(self._set_header)
+        self.bt_set_header.setIcon(get_icon('quads.png'))
         self.bt_ok.clicked.connect(self._apply)
+        self.bt_ok.setIcon(get_icon('gtk-ok.png'))
         self.bt_cancel.clicked.connect(self.close)
+        self.bt_cancel.setIcon(get_icon('gtk-cancel.png'))
 
     def set_detector(self, det):
         """Sets a new detector"""
@@ -121,7 +126,7 @@ class DetectorHelper(QtGui.QDialog):
 
         if filename is not None and filename:
             self.filename = filename
-            self.filename_set_signal.emit()
+            #self.filename_set_signal.emit()
 
     def populate_table(self):
         """Update the Qudrant table."""
@@ -149,6 +154,7 @@ class DetectorHelper(QtGui.QDialog):
             warning('You must Select a Geometry File')
             return
         self.quad_pos = quad_pos
+        self.filename_set_signal.emit()
         self.close()
 
     def _set_header(self):
@@ -163,7 +169,7 @@ class DetectorHelper(QtGui.QDialog):
         header_textbox.resize(280, 280)
 
         ok_btn = create_button('Ok', 'ok')
-        ok_btn.clicked.connect(self._over_write_header)
+        ok_btn.clicked.connect(header_win.accept)
 
         cancel_btn = create_button('Cancel', 'cancel')
         cancel_btn.clicked.connect(header_win.close)
@@ -179,12 +185,7 @@ class DetectorHelper(QtGui.QDialog):
 
         if header_win.exec_() == QtGui.QDialog.Accepted:
             self.header_text = header_textbox.toPlainText()
-
-    def _over_write_header(self):
-        """Overwrite the default header."""
-        self.header = self._header_textbox.toPlainText()
-        self.header_set_signal.emit()
-        self.header_win.close()
+            self.header_set_signal.emit()
 
 
 class QLogger(logging.Handler):
@@ -207,6 +208,10 @@ class QLogger(logging.Handler):
         ok_btn.clicked.connect(lambda: self.win.close())
         layout.addWidget(ok_btn, 11, 0, 1, 1)
         self.win.setLayout(layout)
+
+    def show(self):
+        """Show the log window."""
+        self.win.show()
 
     def emit(self, record):
         """Overload emit signal to write into text widget."""
