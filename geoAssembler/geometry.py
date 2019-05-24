@@ -236,6 +236,7 @@ class AGIPDGeometry(GeometryAssembler):
 
 class DSSCGeometry(GeometryAssembler):
     """Detector layout for DSSC."""
+    detector_name = 'DSSC'
 
     def __init__(self, kd_geom, filename):
         """Set the properties for DSSC detector.
@@ -250,13 +251,12 @@ class DSSCGeometry(GeometryAssembler):
         self.unit = 1e-3
         self.frag_ss_pixels = 128
         self.frag_fs_pixels = 256
-        self.detector_name = 'DSSC'
         self._pixel_shape = np.array([1., 1.5/np.sqrt(3)])
 
     @classmethod
     def from_h5_file_and_quad_positions(cls, geom_file, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
-        quad_pos = quad_pos or Defaults.fallback_quad_pos[self.detector_name]
+        quad_pos = quad_pos or Defaults.fallback_quad_pos[cls.detector_name]
         kd_geom = DSSC_Geometry.from_h5_file_and_quad_positions(geom_file,
                                                                  quad_pos)
         return cls(kd_geom, geom_file)
@@ -266,21 +266,27 @@ class DSSCGeometry(GeometryAssembler):
         """Get the quadrant positions from the geometry object."""
         quad_pos = np.zeros((4, 2))
         for q in range(1, 5):
-            # Getting the offset for one tile (4th module, 16th tile)
+            # Getting the offset for one tile (4th module, 2nd tile)
             # is sufficient
-            quad_pos[q-1] = self._get_offsets(q, 4, 2)
+            quad_pos[q-1] = self._get_offsets(q, 1, 1)
         return pd.DataFrame(quad_pos,
                             columns=['Y', 'X'],
                             index=['q{}'.format(i) for i in range(1, 5)])
 
     def _get_offsets(self, quad, module, asic):
         """Get the panel and asic offsets."""
+        quads_x_orientation = [-1, -1, 1, 1]
+        #quads_y_orientation = [1, 1, -1, -1]
+        x_orient = quads_x_orientation[quad - 1]
+        #y_orient = quads_y_orientation[quad - 1]
         px_conv = self.pixel_size / self.unit
-        nmod = (quad-1) * 2 + module
+        nmod = (quad-1) * 4 + module
         frag = self.modules[nmod-1][asic-1]
-        cr_pos = (frag.corner_pos +
-                  (frag.ss_vec * self.frag_ss_pixels) +
-                  (frag.fs_vec * self.frag_fs_pixels))[:2]
+        if x_orient == 1:
+            cr_pos = (frag.corner_pos + (frag.fs_vec * self.frag_fs_pixels))[:2]
+        else:
+            cr_pos = (frag.corner_pos + (frag.ss_vec * self.frag_ss_pixels))[:2]
+
         with h5py.File(self.filename, 'r') as f:
             mod_grp = f['Q{}/M{}'.format(quad, module)]
             mod_offset = mod_grp['Position'][:]
@@ -292,6 +298,7 @@ class DSSCGeometry(GeometryAssembler):
 
 class LPDGeometry(GeometryAssembler):
     """Detector layout for LPD."""
+    detector_name = 'LPD'
 
     def __init__(self, kd_geom, filename):
         """Set the properties for LPD detector.
@@ -306,12 +313,11 @@ class LPDGeometry(GeometryAssembler):
         self.pixel_size = 5e-4  # 5e-4 metres == 0.5 mm
         self.frag_ss_pixels = 32
         self.frag_fs_pixels = 128
-        self.detector_name = 'LPD'
 
     @classmethod
     def from_h5_file_and_quad_positions(cls, geom_file, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
-        quad_pos = quad_pos or Defaults.fallback_quad_pos[self.detector_name]
+        quad_pos = quad_pos or Defaults.fallback_quad_pos[cls.detector_name]
         kd_geom = LPD_1MGeometry.from_h5_file_and_quad_positions(geom_file,
                                                                  quad_pos)
         return cls(kd_geom, geom_file)
