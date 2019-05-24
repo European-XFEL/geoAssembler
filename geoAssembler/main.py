@@ -6,7 +6,7 @@ import logging
 import os
 
 from pyqtgraph import QtGui
-from . import QtMainWidget
+from geoAssembler import QtMainWidget
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 log = logging.getLogger(__name__)
@@ -94,8 +94,8 @@ def create_nb(rundir=None, geofile=None, clen=None, energy=None, levels=None,
 def create_calibrate_gui(*args, **kwargs):
     """Create a QtGui Application and return an instance of CalibrateQt."""
     app = QtGui.QApplication([])
-    calib = QtMainWidget(*args, **kwargs)
-    calib.show()
+    calib = QtMainWidget(app, *args, **kwargs)
+    #calib.show()
     app.exec_()
     app.closeAllWindows()
     return calib
@@ -142,7 +142,7 @@ def main(argv=None):
     else:
         if args.test:
             from tempfile import TemporaryDirectory
-            from .tests.utils import create_test_directory
+            from geoAssembler.tests.utils import create_test_directory
             with TemporaryDirectory() as td:
                 log.info('Creating temp data in {}...'.format(td))
                 create_test_directory(td, det=args.det)

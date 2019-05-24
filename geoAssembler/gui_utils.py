@@ -8,6 +8,7 @@ import os
 from pyqtgraph.Qt import (QtCore, QtGui)
 from .defaults import DefaultGeometryConfig as Defaults
 
+
 def read_geometry(detector, filename, quad_pos=None):
     """Create the correct geometry class for a given detector.
 
@@ -36,6 +37,7 @@ def read_geometry(detector, filename, quad_pos=None):
         from .geometry import LPDGeometry
         return LPDGeometry.from_h5_file_and_quad_positions(filename, quad_pos)
 
+
 def write_geometry(geom, filename, header=''):
     """Write the correct geometry description.
 
@@ -51,13 +53,14 @@ def write_geometry(geom, filename, header=''):
     else:
         raise NotImplementedError('Detector Class not available')
 
-def get_icon(file_name, size=16):
+
+def get_icon(file_name):
     """Load icon from file."""
     parent_dir = os.path.dirname(__file__)
     icon_path = os.path.join(parent_dir, 'icons')
     icon = QtGui.QIcon(os.path.join(icon_path, file_name))
-    qsize = QtCore.QSize(size, size)
-    return icon, qsize
+    return icon
+
 
 def create_button(label, icon_type):
     """Create a button and set an icon to it."""
@@ -79,8 +82,10 @@ def create_button(label, icon_type):
                    'square': ('square.png', 16)
                    }
 
+    icon_name, size = icon_types[icon_type]
+
     button = QtGui.QPushButton(label)
-    icon, qsize = get_icon(*icon_types[icon_type])
-    button.setIcon(icon)
-    button.setIconSize(qsize)
+    button.setIcon(get_icon(icon_name))
+    button.setIconSize(QtCore.QSize(size, size))
+
     return button

@@ -3,6 +3,7 @@ __pycache__
 .ipynb_checkpoints
 !geoAssembler/icons/
 *.png
+!geoAssembler/icons/*.png
 !docs/.screenshot.png
 *cache
 *.csv
