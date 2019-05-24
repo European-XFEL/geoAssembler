@@ -1,8 +1,6 @@
 
 """Methods and Classes that handle different detectors and their defaults."""
 
-import os
-
 INC = 1
 
 class DefaultGeometryConfig:
