@@ -55,7 +55,7 @@ def write_geometry(geom, filename, header, logger):
         geom.write_crystfel_geom(filename, header=header)
     elif isinstance(geom, LPDGeometry) or isinstance(geom, DSSCGeometry):
         geom.write_quad_pos(filename)
-        logger.info(f'Quadpos {geom.quad_pos}')
+        logger.info('Quadpos {}'.format(geom.quad_pos))
     else:
         raise NotImplementedError('Detector Class not available')
 
