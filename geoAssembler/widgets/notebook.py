@@ -8,7 +8,9 @@ import numpy as np
 from ipywidgets import widgets, Layout
 from IPython.display import display
 from matplotlib import pyplot as plt, cm
-import matplotlib.patches as patches
+from matplotlib import transforms
+from matplotlib.patches import Rectangle
+from matplotlib.pyplot import Circle
 
 
 from ..defaults import DefaultGeometryConfig as Defaults
@@ -16,6 +18,50 @@ from .nb_tabs import CalibTab, MaterialTab
 from ..gui_utils import read_geometry
 
 log = logging.getLogger(__name__)
+
+class CircleROI(Circle):
+
+    def __init__(self, centre, radius, ax):
+        super().__init__(centre[::-1], radius, 
+                         facecolor='none', edgecolor='r', lw=1)
+
+    def set_size(self, radius):
+        self.set_radius(radius)
+    
+    @property
+    def size(self):
+        return self.get_radius()
+
+    def set_angle(self, angle):
+        """This is just a fake method don't do anything."""
+        return
+
+class SquareROI(Rectangle):
+
+    def __init__(self, centre, size, ax, angle=0):
+        ts = ax.transData
+        self.size = size
+        c = centre[::-1]
+        coords = ts.transform(c)
+        tr = transforms.Affine2D().rotate_deg_around(coords[0], coords[1], angle)
+        t= ts + tr
+        #Rotated rectangle patch
+        super().__init__(c, size, size,
+                         facecolor='none', edgecolor='r', lw=1, transform=t)
+        y = self.get_y() - size/2
+        x = self.get_x() - size/2
+        self.set_y(y)
+        self.set_x(x)
+
+    def set_size(self, size):
+        dx = size - self.size
+        x = self.get_x() - dx/2
+        y = self.get_y() - dx/2
+        self.set_y(y)
+        self.set_x(x)
+        self.set_width(size)
+        self.set_height(size)
+        self.size = self.get_width()
 
 
 class MainWidget:
@@ -50,7 +96,7 @@ class MainWidget:
         self.raw_data = np.clip(raw_data, self.vmin, self.vmax)
         self.figsize = figsize or (8, 8)
         self.bg = bg or 'w'
-        self.circles = {}
+        self.rois = {}
         self.quad = None
         self.cmap = cm.get_cmap(Defaults.cmaps[0])
         try:
@@ -80,15 +126,21 @@ class MainWidget:
         """Return the centre of the image (beam)."""
         return self.geom.position_all_modules(self.raw_data)[1]
 
-    def _draw_circle(self, r, num):
-        """Draw circel of radius r and add it to the circle collection."""
-        centre = self.geom.position_all_modules(self.raw_data,
-                                                canvas=self.canvas.shape)[1]
-        self.circles[num] = plt.Circle(centre[::-1], r,
-                                       facecolor='none', edgecolor='r', lw=1)
-        self.ax.add_artist(self.circles[num])
+    def draw_circle(self, r, num, angle=0):
+        """Draw circel of radius r and add it to the rois collection."""
+        _, centre = self.geom.position_all_modules(self.raw_data,
+                                                canvas=self.canvas.shape)
+        self.rois[num] = CircleROI(centre, r, self.ax)
+        self.ax.add_artist(self.rois[num])
 
-    def _draw_rect(self, pos):
+    def draw_square(self, size, num, angle=0):
+        """Draw a square of size 'size' and add it to the rois collection."""
+        _, centre = self.geom.position_all_modules(self.raw_data,
+                                                canvas=self.canvas.shape)
+        self.rois[num] = SquareROI(centre, size, self.ax, angle=angle)
+        self.ax.add_patch(self.rois[num])
+
+    def draw_quad_bound(self, pos):
         """Draw a rectangle around around a given quadrant."""
         try:
             # Remove the old one first if there is any
@@ -103,12 +155,8 @@ class MainWidget:
                 {1: 2, 2: 1, 3: 4, 4: 3}[pos],
                 np.array(self.data.shape, dtype='i')//2)
 
-        self.rect = patches.Rectangle(P,
-                                      dx,
-                                      dy,
-                                      linewidth=1.5,
-                                      edgecolor='r',
-                                      facecolor='none')
+        self.rect = Rectangle(P, dx, dy, linewidth=1.5, edgecolor='r',
+                              facecolor='none')
         self.ax.add_patch(self.rect)
         self.update_plot(plot_range=None)
 

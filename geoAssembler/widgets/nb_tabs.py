@@ -15,6 +15,7 @@ import pyFAI.calibrant
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from scipy import constants
 
+from traitlets import HasTraits, Integer, observe
 from .. import calibrants
 
 
@@ -38,100 +39,135 @@ class CalibTab(widgets.VBox):
                                           value='None',
                                           description='Quadrant',
                                           disabled=False)
-        self.circ_btn = widgets.Button(description='Add circle',
+        self.roi_btn = widgets.Button(description='Add ',
                                        disabled=False,
                                        button_style='',
                                        icon='',
-                                       tooltip='Add Helper Circle',
+                                       tooltip='Add Helper',
                                        layout=Layout(width='100px',
                                                      height='30px'))
-        self.clr_btn = widgets.Button(description='Clear Circle',
+        self.clr_btn = widgets.Button(description='Clear Helper',
                                       tooltip='Remove All Circles',
                                       disabled=False,
                                       button_style='',
                                       icon='',
                                       layout=Layout(width='100px',
                                                     height='30px'))
+        self.roi_type = widgets.Dropdown(options=['Circle', 'Square'],
+                                         value='Circle',
+                                         description='Type:',
+                                         disabled=False,
+                                         layout=Layout(width='170px',
+                                                       height='30px'))
 
-        self.circ_btn.on_click(self._add_circle)
-        self.clr_btn.on_click(self._clear_circles)
+        self.roi_btn.on_click(self._add_roi)
+        self.clr_btn.on_click(self._clear_rois)
         self.buttons = [self.selection]
-        self.circle = None
+        self.current_roi = None
+        self.roi_func = self.parent.draw_circle
         self.row1 = widgets.HBox([self.selection])
-        self.row2 = widgets.HBox([self.circ_btn, self.clr_btn])
+        self.row2 = widgets.HBox([self.roi_type, self.roi_btn, self.clr_btn])
+        self.roi_type.observe(self._set_roi_type, names='value')
         self.selection.observe(self._set_quad)
-        super(CalibTab, self).__init__([self.row1, self.row2])
+        super().__init__([self.row1, self.row2])
 
-    def _clear_circles(self, *args):
+    @observe('num')
+    def _set_roi_type(self, prop):
+        """Set the roi type."""
+        roi_funcs = {'square': self.parent.draw_square,
+                     'circle': self.parent.draw_circle}
+        self.roi_func = roi_funcs[prop['new'].lower()]
+
+    def _clear_rois(self, *args):
         """Delete all circles from the image."""
-        for n, circle in self.parent.circles.items():
-            circle.remove()
-        self.parent.circles = {}
-        self.row2 = widgets.HBox([self.circ_btn, self.clr_btn])
+        for n, roi in self.parent.rois.items():
+            roi.remove()
+        self.parent.rois = {}
+        self.row2 = widgets.HBox([self.roi_type, self.roi_btn, self.clr_btn])
         self.children = [self.row1, self.row2]
 
-    def _add_circle(self, *args):
+    def _add_roi(self, *args):
         """Add a circel to the image."""
-        num = len(self.parent.circles)
+        num = len(self.parent.rois)
         if num >= 10:  # Draw only 10 circles at max
             return
-        r = 350
-        for circ in self.parent.circles.values():
-            circ.set_edgecolor('gray')
-        self.parent._draw_circle(r, num)
-        self.circle = num
-        self.circ_drn = widgets.Dropdown(options=list(self.parent.circles.keys()),
+        size = 350
+        for roi in self.parent.rois.values():
+            roi.set_edgecolor('gray')
+        self.roi_func(size, num)
+        self.current_roi = num
+        self.roi_drn = widgets.Dropdown(options=list(self.parent.rois.keys()),
                                          value=num,
                                          disabled=False,
                                          description='Sel.:',
                                          layout=Layout(width='150px',
                                                        height='30px'))
 
-        self.set_r = widgets.BoundedFloatText(value=350,
+        self.sp_size = widgets.BoundedFloatText(value=350,
                                               min=0,
                                               max=10000,
                                               step=1,
                                               disabled=False,
-                                              description='Radius')
-        self.circ_drn.observe(self._sel_circle)
-        self.set_r.observe(self._set_radius)
-        self.row2 = widgets.HBox([self.circ_btn, self.clr_btn,
-                                  self.circ_drn, self.set_r])
+                                              description='Size',
+                                              layout=Layout(width='200px',
+                                                            height='30px'))
+        self.sp_angle = widgets.BoundedFloatText(value=0,
+                                                 min=0,
+                                                 max=360,
+                                                 step=0.01,
+                                                 disabled=False,
+                                                 description='Angel',
+                                                 layout=Layout(width='200px',
+                                                               height='30px'))
+
+        self.roi_btn.observe(self._sel_roi)
+        self.sp_size.observe(self._set_size)
+        self.sp_angle.observe(self._set_angle, names='value')
+        self.row2 = widgets.HBox([self.roi_type, self.roi_btn, self.clr_btn,
+                                  self.roi_drn, self.sp_size, self.sp_angle])
         self.children = [self.row1, self.row2]
 
-    def _set_radius(self, selection):
-        """Set the circle radius."""
+
+    def _set_angle(self, prop):
+        """Set the angle of the roi."""
+        angle = prop['new']
+        roi = self.parent.rois[self.current_roi]
+        roi.remove()
+        self.roi_func(roi.size, self.current_roi, angle=angle)
+
+    def _set_size(self, selection):
+        """Set the roi size."""
         if selection['new'] and selection['old']:
             try:
-                r = int(selection['new'])
+                size = int(selection['new'])
             except TypeError:
                 return
         else:
             return
-        circle = self.parent.circles[self.circle]
-        circle.set_radius(r)
+        roi = self.parent.rois[self.current_roi]
+        roi.set_size(size)
 
-    def _sel_circle(self, selection):
+    def _sel_roi(self, selection):
         """Select-helper circles."""
         if not isinstance(selection['new'], int):
             return
-        self.circle = int(selection['new'])
-        r = int(self.parent.circles[self.circle].get_radius())
-        for num, circ in self.parent.circles.items():
-            if num != self.circle:
-                circ.set_edgecolor('gray')
+        self.current_roi = int(selection['new'])
+        size = int(self.parent.rois[self.current_roi].get_size())
+        for num, roi in self.parent.rois.items():
+            if num != self.current_roi:
+                roi.set_edgecolor('gray')
             else:
-                circ.set_edgecolor('r')
-        self.set_r = widgets.BoundedFloatText(value=r,
+                roi.set_edgecolor('r')
+        self.set_size = widgets.BoundedFloatText(value=size,
                                               min=0,
                                               max=10000,
                                               step=1,
                                               disabled=False,
                                               continuous_update=True,
-                                              description='Radius')
-        self.set_r.observe(self._set_radius)
-        self.row2 = widgets.HBox([self.circ_btn, self.clr_btn,
-                                  self.circ_drn, self.set_r])
+                                              description='Size')
+        self.set_size.observe(self._set_size)
+        self.row2 = widgets.HBox([self.roi_type, self.roi_btn, self.clr_btn,
+                                  self.roi_drn, self.set_size])
         self.children = [self.row1, self.row2]
 
     def _move_quadrants(self, pos):
@@ -158,7 +194,7 @@ class CalibTab(widgets.VBox):
         else:
             pos = np.array((0, sign))
         self.parent.geom.move_quad(self.parent.quad, pos)
-        self.parent._draw_rect(
+        self.parent.draw_quad_bound(
             {0: None, 1: 2, 2: 1, 3: 4, 4: 3}[self.parent.quad])
         self.parent.update_plot(None)
 
@@ -206,7 +242,7 @@ class CalibTab(widgets.VBox):
             self._update_navi(pos)
             self.parent.quad = None
             return
-        self.parent._draw_rect(prop['new']['index'])
+        self.parent.draw_quad_bound(prop['new']['index'])
         if pos != self.parent.quad:
             self._update_navi(pos)
         self.parent.quad = pos
@@ -233,7 +269,7 @@ class MaterialTab(widgets.VBox):
         self.pxsize = 0.2 / 1000  # [mm] Standard detector pixel size
         self.cdist = 0.2  # [m] Standard probe distance
         # Get all calibrants defined in pyFAI
-        self.calibrants = [self.calibrant] + calibrants.calibrants
+        self.calibrants = [self.calibrant] + calibrants #.calibrants
         # Calibrant selection
         self.calib_btn = widgets.Dropdown(options=self.calibrants,
                                           value='None',
