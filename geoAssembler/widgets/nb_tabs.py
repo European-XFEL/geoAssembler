@@ -116,7 +116,7 @@ class CalibTab(widgets.VBox):
                                                  max=360,
                                                  step=0.01,
                                                  disabled=False,
-                                                 description='Angel',
+                                                 description='Angle',
                                                  layout=Layout(width='200px',
                                                                height='30px'))
 
