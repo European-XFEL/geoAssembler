@@ -269,7 +269,11 @@ class MaterialTab(widgets.VBox):
         self.pxsize = 0.2 / 1000  # [mm] Standard detector pixel size
         self.cdist = 0.2  # [m] Standard probe distance
         # Get all calibrants defined in pyFAI
-        self.calibrants = [self.calibrant] + calibrants #.calibrants
+        try:
+           calibs = calibrants.calibrants
+        except AttributeError:
+           calibs = calibrants        
+        self.calibrants = [self.calibrant] + calibs #.calibrants
         # Calibrant selection
         self.calib_btn = widgets.Dropdown(options=self.calibrants,
                                           value='None',
