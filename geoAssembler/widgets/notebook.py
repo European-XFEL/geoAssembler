@@ -10,7 +10,6 @@ from IPython.display import display
 from matplotlib import pyplot as plt, cm
 from matplotlib import transforms
 from matplotlib.patches import Ellipse, Rectangle
-#from matplotlib.pyplot import Circle
 
 
 from ..defaults import DefaultGeometryConfig as Defaults
@@ -20,17 +19,39 @@ from ..gui_utils import read_geometry
 log = logging.getLogger(__name__)
 
 class CircleROI(Ellipse):
+    """Circular ROI that supporting different aspect ratios."""
 
-    def __init__(self, centre, size, ax, aspect, angle=0):
-        a = size * aspect
-        b = size
+    def __init__(self, centre, diameter, ax, aspect, angle=0):
+        """Create an circle on top of an image with a given aspect ratio.
+
+        Parameters
+        -----------
+        centre : float
+        Centre of the circle
+
+        diameter : float
+        Diameter of the circle
+
+        ax : ax object
+        Axes object that holding the plotting information
+
+        aspect: float
+        Aspect ratio (width / height)
+
+        angle : float
+        Rotation of the Objection
+        """
+
+        a = diameter * aspect
+        b = diameter
         self.aspect = aspect
         super().__init__(centre[::-1], a, b,
                          facecolor='none', edgecolor='r', lw=1)
 
-    def set_size(self, radius):
-        self.width = radius * self.aspect
-        self.height = radius
+    def set_size(self, diameter):
+        """Increase/Decrease the diameter of the circle."""
+        self.width = diameter * self.aspect
+        self.height = diameter
         self.stale = True
 
     def set_angle(self, angle):
@@ -38,8 +59,29 @@ class CircleROI(Ellipse):
         return
 
 class SquareROI(Rectangle):
+    """Circular ROI that supporting different aspect ratios."""
 
     def __init__(self, centre, size, ax, aspect, angle=0):
+        """Create an square on top of an image with a given aspect ratio.
+
+        Parameters
+        -----------
+        centre : float
+        Centre point of the square
+
+        size : float
+        size of the square
+
+        ax : ax object
+        Axes object that holding the plotting information
+
+        aspect: float
+        Aspect ratio (width / height)
+
+        angle : float
+        Rotation of the Objection
+        """
+
         ts = ax.transData
         self.size = size
         self.centre = centre[::-1]
@@ -57,6 +99,7 @@ class SquareROI(Rectangle):
         self.set_x(x)
 
     def set_size(self, size):
+        """Increase/Decrease the size of the squre."""
         w = self.get_width()
         h = self.get_height()
         self.set_width(size * self.aspect)
@@ -69,6 +112,7 @@ class SquareROI(Rectangle):
         self.stale = True
 
     def set_angle(self, angle):
+        """Rotate the square by a given angle."""
         ts = self.ax.transData
         coords = ts.transform(self.centre)
         tr = transforms.Affine2D().rotate_deg_around(coords[0], coords[1], angle)
@@ -180,8 +224,7 @@ class MainWidget:
             # If none then no new rectangle should be drawn
             return
         P, dx, dy =\
-            self.geom.get_quad_corners(
-                {1: 1, 2: 2, 3: 3, 4: 4}[pos],
+            self.geom.get_quad_corners(pos,
                 np.array(self.data.shape, dtype='i')//2)
 
         self.rect = Rectangle(P, dx, dy, linewidth=1.5, edgecolor='r',
