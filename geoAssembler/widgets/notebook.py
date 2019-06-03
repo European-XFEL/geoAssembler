@@ -287,6 +287,10 @@ class MainWidget:
             self.im.set_cmap(cmap)
         except ValueError:
             return
+    
+    @property
+    def quad_pos(self):
+        return self.geom.quad_po
 
     def update_plot(self, plot_range=(None, None),
                     cmap=Defaults.cmaps[0], **kwargs):
