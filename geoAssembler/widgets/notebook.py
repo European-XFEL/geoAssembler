@@ -21,9 +21,9 @@ log = logging.getLogger(__name__)
 
 class CircleROI(Ellipse):
 
-    def __init__(self, centre, radius, ax, aspect, angle=0):
-        a = radius * aspect
-        b = radius
+    def __init__(self, centre, size, ax, aspect, angle=0):
+        a = size * aspect
+        b = size
         self.aspect = aspect
         super().__init__(centre[::-1], a, b,
                          facecolor='none', edgecolor='r', lw=1)
@@ -32,11 +32,6 @@ class CircleROI(Ellipse):
         self.width = radius * self.aspect
         self.height = radius
         self.stale = True
-        #self.set_radius(radius)
-
-    @property
-    def size(self):
-        return self.get_radius()
 
     def set_angle(self, angle):
         """This is just a fake method don't do anything."""
@@ -47,54 +42,78 @@ class SquareROI(Rectangle):
     def __init__(self, centre, size, ax, aspect, angle=0):
         ts = ax.transData
         self.size = size
-        c = centre[::-1]
+        self.centre = centre[::-1]
         self.aspect = aspect
-        coords = ts.transform(c)
+        coords = ts.transform(self.centre)
         tr = transforms.Affine2D().rotate_deg_around(coords[0], coords[1], angle)
         t= ts + tr
         self.ax = ax
         #Rotated rectangle patch
-        super().__init__(c, size, size * aspect,
+        super().__init__(self.centre, size*self.aspect, size,
                          facecolor='none', edgecolor='r', lw=1, transform=t)
-        y = self.get_y() - size/2 #* aspect
-        x = self.get_x() - size/2
+        y = self.get_y() - size/2
+        x = self.get_x() - size/2 * aspect
         self.set_y(y)
         self.set_x(x)
 
     def set_size(self, size):
-        dx = size - self.size
-        x = self.get_x() - dx/2
-        y = self.get_y() - dx/2 #* self.aspect
-        self.set_y(y)
-        self.set_x(x)
-        self.set_width(size)
+        w = self.get_width()
+        h = self.get_height()
+        self.set_width(size * self.aspect)
         self.set_height(size)
-        self.size = self.get_width()
+        dw = self.get_width() - w
+        dh = self.get_height() - h
 
+        self.set_y(self.get_y() - dh/2)
+        self.set_x(self.get_x() - dw/2)
+        self.stale = True
+
+    def set_angle(self, angle):
+        ts = self.ax.transData
+        coords = ts.transform(self.centre)
+        tr = transforms.Affine2D().rotate_deg_around(coords[0], coords[1], angle)
+        t = ts + tr
+        self.set_transform(t)
 
 class MainWidget:
     """Ipython Widget version of the Calibration Class."""
 
     def __init__(self, raw_data, geometry=None, det='AGIPD', vmin=None,
-                 vmax=None, figsize=None, bg=None, aspect='auto',**kwargs):
+                 vmax=None, figsize=None, bg=None, aspect=1, **kwargs):
         """Display detector data and arrange panels.
 
         Parameters:
             raw_data (3d-array)  : Data array, containing detector image
                                    (nmodules, y, x)
         Keywords:
-            geometry (str/AGIPD_1MGeometry)  : The geometry file can either be
-                                               an AGIPD_1MGeometry object or
-                                               the filename to the geometry
-                                               file in CFEL fromat
-            det (str) : detector to be used (if geometry is None)
-            vmin (int) : minimal value in the data array (default: -1000)
-                          anything below this value will be clipped
-            vmax (int) : maximum value in the data array (default: 5000)
-                          anything above this value will be clipped
-            figsize (tuple): size of the figure
-            bg (str) : background color of the image
-            kwargs : additional keyword arguments that are parsed to matplotlib
+            geometry : None/Karabo_DataGeometry2 object
+            The geometry file can either be an AGIPD_1MGeometry object or
+            the filename to the geometry file in CFEL fromat
+
+            det : str
+
+            detector to be used (if geometry is None)
+            vmin : int
+
+            minimal value in the data array (default: -1000) anything below
+            this value will be clipped 
+            vmax : int
+
+            maximum value in the data array (default: 5000) anything above this
+            value will be clipped
+
+            figsize : tuple
+            size of the figure
+
+            bg : str
+            background color of the image
+
+            aspect (str, int) :
+            aspect ratio width/height of the plot
+
+            kwargs :
+            additional keyword arguments that are parsed to matplotlibs imshow
+            function
         """
         self.data = raw_data
         Defaults.check_detector(det)
@@ -135,18 +154,19 @@ class MainWidget:
         """Return the centre of the image (beam)."""
         return self.geom.position_all_modules(self.raw_data)[1]
 
-    def draw_circle(self, r, num, angle=0):
+    def draw_roi(self, roi_type, size, num, angle=0):
         """Draw circel of radius r and add it to the rois collection."""
         _, centre = self.geom.position_all_modules(self.raw_data,
                                                 canvas=self.canvas.shape)
-        self.rois[num] = CircleROI(centre, r, self.ax, self.aspect)
-        self.ax.add_artist(self.rois[num])
+        if roi_type.lower() == 'circle':
+            self.rois[num] = CircleROI(centre, size,
+                                       self.ax, self.aspect,
+                                       angle=angle)
+        else:
+            self.rois[num] = SquareROI(centre, size,
+                                       self.ax, self.aspect,
+                                       angle=angle)
 
-    def draw_square(self, size, num, angle=0):
-        """Draw a square of size 'size' and add it to the rois collection."""
-        _, centre = self.geom.position_all_modules(self.raw_data,
-                                                canvas=self.canvas.shape)
-        self.rois[num] = SquareROI(centre, size, self.ax, self.aspect, angle=angle)
         self.ax.add_patch(self.rois[num])
 
     def draw_quad_bound(self, pos):
@@ -269,5 +289,4 @@ class MainWidget:
 
             cbar_ticks = np.linspace(plot_range[0], plot_range[-1], 6)
             self.cbar.set_ticks(cbar_ticks)
-            self.ax.invert_xaxis()
             self.ax.set_aspect(self.aspect)

@@ -47,43 +47,41 @@ class CalibTab(widgets.VBox):
                                        layout=Layout(width='100px',
                                                      height='30px'))
         self.clr_btn = widgets.Button(description='Clear Helper',
-                                      tooltip='Remove All Circles',
+                                      tooltip='Remove All Rois',
                                       disabled=False,
                                       button_style='',
                                       icon='',
                                       layout=Layout(width='100px',
                                                     height='30px'))
-        self.roi_type = widgets.Dropdown(options=['Circle', 'Square'],
-                                         value='Circle',
-                                         description='Type:',
-                                         disabled=False,
-                                         layout=Layout(width='170px',
-                                                       height='30px'))
+        self.roi_type_dn = widgets.Dropdown(options=['Circle', 'Square'],
+                                            value='Circle',
+                                            description='Type:',
+                                            disabled=False,
+                                            layout=Layout(width='170px',
+                                                          height='30px'))
 
         self.roi_btn.on_click(self._add_roi)
         self.clr_btn.on_click(self._clear_rois)
         self.buttons = [self.selection]
         self.current_roi = None
-        self.roi_func = self.parent.draw_circle
+        self.roi_type = 'circle'
         self.row1 = widgets.HBox([self.selection])
-        self.row2 = widgets.HBox([self.roi_type, self.roi_btn, self.clr_btn])
-        self.roi_type.observe(self._set_roi_type, names='value')
+        self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn])
+        self.roi_type_dn.observe(self._set_roi_type, names='value')
         self.selection.observe(self._set_quad)
         super().__init__([self.row1, self.row2])
 
     @observe('num')
     def _set_roi_type(self, prop):
         """Set the roi type."""
-        roi_funcs = {'square': self.parent.draw_square,
-                     'circle': self.parent.draw_circle}
-        self.roi_func = roi_funcs[prop['new'].lower()]
+        self.roi_type = prop['new'].lower()
 
     def _clear_rois(self, *args):
         """Delete all circles from the image."""
         for n, roi in self.parent.rois.items():
             roi.remove()
         self.parent.rois = {}
-        self.row2 = widgets.HBox([self.roi_type, self.roi_btn, self.clr_btn])
+        self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn])
         self.children = [self.row1, self.row2]
 
     def _add_roi(self, *args):
@@ -94,7 +92,7 @@ class CalibTab(widgets.VBox):
         size = 350
         for roi in self.parent.rois.values():
             roi.set_edgecolor('gray')
-        self.roi_func(size, num)
+        self.parent.draw_roi(self.roi_type, size, num)
         self.current_roi = num
         self.roi_drn = widgets.Dropdown(options=list(self.parent.rois.keys()),
                                          value=num,
@@ -123,7 +121,7 @@ class CalibTab(widgets.VBox):
         self.roi_btn.observe(self._sel_roi)
         self.sp_size.observe(self._set_size)
         self.sp_angle.observe(self._set_angle, names='value')
-        self.row2 = widgets.HBox([self.roi_type, self.roi_btn, self.clr_btn,
+        self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn,
                                   self.roi_drn, self.sp_size, self.sp_angle])
         self.children = [self.row1, self.row2]
 
@@ -132,8 +130,7 @@ class CalibTab(widgets.VBox):
         """Set the angle of the roi."""
         angle = prop['new']
         roi = self.parent.rois[self.current_roi]
-        roi.remove()
-        self.roi_func(roi.size, self.current_roi, angle=angle)
+        roi.set_angle(angle)
 
     def _set_size(self, selection):
         """Set the roi size."""
@@ -166,7 +163,7 @@ class CalibTab(widgets.VBox):
                                               continuous_update=True,
                                               description='Size')
         self.set_size.observe(self._set_size)
-        self.row2 = widgets.HBox([self.roi_type, self.roi_btn, self.clr_btn,
+        self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn,
                                   self.roi_drn, self.set_size])
         self.children = [self.row1, self.row2]
 
@@ -271,7 +268,7 @@ class MaterialTab(widgets.VBox):
         try:
            calibs = calibrants.calibrants
         except AttributeError:
-           calibs = calibrants        
+           calibs = calibrants
         self.calibrants = [self.calibrant] + calibs #.calibrants
         # Calibrant selection
         self.calib_btn = widgets.Dropdown(options=self.calibrants,
