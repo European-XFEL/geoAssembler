@@ -290,7 +290,7 @@ class MainWidget:
     
     @property
     def quad_pos(self):
-        return self.geom.quad_po
+        return self.geom.quad_pos
 
     def update_plot(self, plot_range=(None, None),
                     cmap=Defaults.cmaps[0], **kwargs):
