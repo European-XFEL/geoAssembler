@@ -9,8 +9,8 @@ from ipywidgets import widgets, Layout
 from IPython.display import display
 from matplotlib import pyplot as plt, cm
 from matplotlib import transforms
-from matplotlib.patches import Rectangle
-from matplotlib.pyplot import Circle
+from matplotlib.patches import Ellipse, Rectangle
+#from matplotlib.pyplot import Circle
 
 
 from ..defaults import DefaultGeometryConfig as Defaults
@@ -19,15 +19,21 @@ from ..gui_utils import read_geometry
 
 log = logging.getLogger(__name__)
 
-class CircleROI(Circle):
+class CircleROI(Ellipse):
 
-    def __init__(self, centre, radius, ax):
-        super().__init__(centre[::-1], radius, 
+    def __init__(self, centre, radius, ax, aspect, angle=0):
+        a = radius * aspect
+        b = radius
+        self.aspect = aspect
+        super().__init__(centre[::-1], a, b,
                          facecolor='none', edgecolor='r', lw=1)
 
     def set_size(self, radius):
-        self.set_radius(radius)
-    
+        self.width = radius * self.aspect
+        self.height = radius
+        self.stale = True
+        #self.set_radius(radius)
+
     @property
     def size(self):
         return self.get_radius()
@@ -38,17 +44,19 @@ class CircleROI(Circle):
 
 class SquareROI(Rectangle):
 
-    def __init__(self, centre, size, ax, angle=0):
+    def __init__(self, centre, size, ax, aspect, angle=0):
         ts = ax.transData
         self.size = size
         c = centre[::-1]
+        self.aspect = aspect
         coords = ts.transform(c)
         tr = transforms.Affine2D().rotate_deg_around(coords[0], coords[1], angle)
         t= ts + tr
+        self.ax = ax
         #Rotated rectangle patch
-        super().__init__(c, size, size,
+        super().__init__(c, size, size * aspect,
                          facecolor='none', edgecolor='r', lw=1, transform=t)
-        y = self.get_y() - size/2
+        y = self.get_y() - size/2 #* aspect
         x = self.get_x() - size/2
         self.set_y(y)
         self.set_x(x)
@@ -56,7 +64,7 @@ class SquareROI(Rectangle):
     def set_size(self, size):
         dx = size - self.size
         x = self.get_x() - dx/2
-        y = self.get_y() - dx/2
+        y = self.get_y() - dx/2 #* self.aspect
         self.set_y(y)
         self.set_x(x)
         self.set_width(size)
@@ -68,7 +76,7 @@ class MainWidget:
     """Ipython Widget version of the Calibration Class."""
 
     def __init__(self, raw_data, geometry=None, det='AGIPD', vmin=None,
-                 vmax=None, figsize=None, bg=None, **kwargs):
+                 vmax=None, figsize=None, bg=None, aspect='auto',**kwargs):
         """Display detector data and arrange panels.
 
         Parameters:
@@ -91,6 +99,7 @@ class MainWidget:
         self.data = raw_data
         Defaults.check_detector(det)
         self.im = None
+        self.aspect = aspect
         self.vmin = vmin or np.nanmin(self.data)
         self.vmax = vmax or np.nanmax(self.data)
         self.raw_data = np.clip(raw_data, self.vmin, self.vmax)
@@ -130,14 +139,14 @@ class MainWidget:
         """Draw circel of radius r and add it to the rois collection."""
         _, centre = self.geom.position_all_modules(self.raw_data,
                                                 canvas=self.canvas.shape)
-        self.rois[num] = CircleROI(centre, r, self.ax)
+        self.rois[num] = CircleROI(centre, r, self.ax, self.aspect)
         self.ax.add_artist(self.rois[num])
 
     def draw_square(self, size, num, angle=0):
         """Draw a square of size 'size' and add it to the rois collection."""
         _, centre = self.geom.position_all_modules(self.raw_data,
                                                 canvas=self.canvas.shape)
-        self.rois[num] = SquareROI(centre, size, self.ax, angle=angle)
+        self.rois[num] = SquareROI(centre, size, self.ax, self.aspect, angle=angle)
         self.ax.add_patch(self.rois[num])
 
     def draw_quad_bound(self, pos):
@@ -152,7 +161,7 @@ class MainWidget:
             return
         P, dx, dy =\
             self.geom.get_quad_corners(
-                {1: 2, 2: 1, 3: 4, 4: 3}[pos],
+                {1: 1, 2: 2, 3: 3, 4: 4}[pos],
                 np.array(self.data.shape, dtype='i')//2)
 
         self.rect = Rectangle(P, dx, dy, linewidth=1.5, edgecolor='r',
@@ -237,10 +246,10 @@ class MainWidget:
         else:
             self.fig = plt.figure(figsize=self.figsize,
                                   clear=True, facecolor=self.bg)
-            self.ax = self.fig.add_subplot(111)
+            self.ax = self.fig.add_subplot(111, aspect=self.aspect)
             self.im = self.ax.imshow(
                 self.data, vmin=plot_range[0], vmax=plot_range[1],
-                cmap=self.cmap, **kwargs)
+                cmap=self.cmap, origin='lower', **kwargs)
             self.ax.set_xticks([]), self.ax.set_yticks([])
             h1 = self.ax.hlines(cy, cx-20, cx+20, colors='r', linewidths=1)
             h2 = self.ax.vlines(cx, cy-20, cy+20, colors='r', linewidths=1)
@@ -260,3 +269,5 @@ class MainWidget:
 
             cbar_ticks = np.linspace(plot_range[0], plot_range[-1], 6)
             self.cbar.set_ticks(cbar_ticks)
+            self.ax.invert_xaxis()
+            self.ax.set_aspect(self.aspect)
