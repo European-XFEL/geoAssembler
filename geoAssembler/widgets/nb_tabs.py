@@ -188,14 +188,13 @@ class CalibTab(widgets.VBox):
         else:
             return
 
-        sign = np.sign(po - pn)
+        sign = np.sign(pn - po)
         if d == 'h':
             pos = np.array((sign, 0))
         else:
             pos = np.array((0, sign))
         self.parent.geom.move_quad(self.parent.quad, pos)
-        self.parent.draw_quad_bound(
-            {0: None, 1: 2, 2: 1, 3: 4, 4: 3}[self.parent.quad])
+        self.parent.draw_quad_bound(self.parent.quad)
         self.parent.update_plot(None)
 
     def _update_navi(self, pos):
@@ -233,12 +232,12 @@ class CalibTab(widgets.VBox):
         self.counts += 1
         if (self.counts % 5 != 1):
             return
-        pos = {0: None, 1: 2, 2: 1, 3: 4, 4: 3}[prop['new']['index']]
+        pos = prop['new']['index']
         try:
             self.parent.rect.remove()
         except (AttributeError, ValueError):
             pass
-        if pos is None:
+        if pos == 0:
             self._update_navi(pos)
             self.parent.quad = None
             return
@@ -406,7 +405,7 @@ class MaterialTab(widgets.VBox):
         cmp.set_under('w', alpha=0)
         if self.img is None:
             self.img = self.parent.ax.imshow(
-                img, cmap=cmp, alpha=1-self.alpha, vmin=self.clim[0], vmax=self.clim[1])
+                img, cmap=cmp, alpha=1-self.alpha, vmin=self.clim[0], vmax=self.clim[1], origin='lower')
         else:
             self.img.set_array(img)
             self.img.set_alpha(1-self.alpha)
