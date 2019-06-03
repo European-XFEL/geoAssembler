@@ -36,7 +36,7 @@ class DefaultGeometryConfig:
     quad2index = {
                   'AGIPD' : {1: 12, 2: 8, 3: 4, 4: 0},
                   'LPD' : {1: 12, 2: 8, 3: 4, 4: 0},
-                  'DSSC' : {1: 0, 2: 4, 3: 8, 4: 12},
+                  'DSSC' : {1: 12, 2: 8, 3: 4, 4: 0},
                 }
 
     canvas_margin = 300  # pixel, used as margin on each side of detector quadrants
