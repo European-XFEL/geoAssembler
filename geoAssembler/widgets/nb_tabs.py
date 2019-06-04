@@ -14,8 +14,7 @@ from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from scipy import constants
 
 from traitlets import HasTraits, Integer, observe
-from .. import calibrants
-
+from ..calibrants import calibrants, celldir
 
 log = logging.getLogger(__name__)
 
@@ -248,11 +247,7 @@ class MaterialTab(widgets.VBox):
         self.pxsize = 0.2 / 1000  # [mm] Standard detector pixel size
         self.cdist = 0.2  # [m] Standard probe distance
         # Get all calibrants defined in pyFAI
-        try:
-           calibs = calibrants.calibrants
-        except AttributeError:
-           calibs = calibrants
-        self.calibrants = [self.calibrant] + calibs #.calibrants
+        self.calibrants = [self.calibrant] + calibrants
         # Calibrant selection
         self.calib_btn = widgets.Dropdown(options=self.calibrants,
                                           value='None',
@@ -313,14 +308,14 @@ class MaterialTab(widgets.VBox):
         self.row2 = widgets.HBox(
             [self.val_slider, self.alpha_slider, self.aply_btn, self.clr_btn])
         # Connect all methods to the buttons
-        self.val_slider.observe(self._set_clim)
-        self.alpha_slider.observe(self._set_alpha)
+        self.val_slider.observe(self._set_clim, names='value')
+        self.alpha_slider.observe(self._set_alpha, names='value')
         self.clr_btn.on_click(self._clear_overlay)
         self.aply_btn.on_click(self._draw_overlay)
-        self.calib_btn.observe(self._set_calibrant)
-        self.pxsize_btn.observe(self._set_pxsize)
-        self.energy_btn.observe(self._set_wavelength)
-        self.dist_btn.observe(self._set_cdist)
+        self.calib_btn.observe(self._set_calibrant, names='value')
+        self.pxsize_btn.observe(self._set_pxsize, names='value')
+        self.energy_btn.observe(self._set_wavelength, names='value')
+        self.dist_btn.observe(self._set_cdist, names='value')
         super(widgets.VBox, self).__init__([self.row1, self.row2])
 
     @staticmethod
@@ -365,18 +360,19 @@ class MaterialTab(widgets.VBox):
             cal = pyFAI.calibrant.get_calibrant(self.calibrant)
             cal.set_wavelength(self.wave_length)
         except KeyError:
-            cal_file = os.path.join(calibrants.celldir, self.calibrant+'.D')
+            cal_file = os.path.join(celldir, self.calibrant+'.D')
             cal = pyFAI.calibrant.Calibrant(cal_file,
                                             wavelength=self.wave_length)
         data, centre = self.parent.geom.position_all_modules(self.parent.raw_data,
                                                              canvas=self.parent.canvas.shape)
-        det = pyFAI.detectors.Detector(self.pxsize, self.pxsize)
+        det = pyFAI.detectors.Detector(self.pxsize * self.parent.aspect,
+                                       self.pxsize)
         det.shape = data.shape
         det.max_shape = det.shape
-        cy, cx = centre
+        cx, cy = centre
         ai = AzimuthalIntegrator(dist=self.cdist,
-                                 poni1=cy*self.pxsize,
-                                 poni2=cx*self.pxsize,
+                                 poni1=cx*self.pxsize*self.parent.aspect,
+                                 poni2=cy*self.pxsize,
                                  wavelength=self.wave_length,
                                  detector=det)
         img = cal.fake_calibration_image(ai)
@@ -384,8 +380,12 @@ class MaterialTab(widgets.VBox):
         cmp.set_bad('w', alpha=0)
         cmp.set_under('w', alpha=0)
         if self.img is None:
-            self.img = self.parent.ax.imshow(
-                img, cmap=cmp, alpha=1-self.alpha, vmin=self.clim[0], vmax=self.clim[1], origin='lower')
+            self.img = self.parent.ax.imshow(img, cmap=cmp,
+                                             alpha=1-self.alpha,
+                                             vmin=self.clim[0],
+                                             vmax=self.clim[1],
+                                             origin='lower')
+            self.parent.ax.set_aspect(self.parent.aspect)
         else:
             self.img.set_array(img)
             self.img.set_alpha(1-self.alpha)
