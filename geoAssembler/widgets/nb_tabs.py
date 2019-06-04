@@ -7,9 +7,7 @@ import numpy as np
 
 
 from ipywidgets import widgets, Layout
-#from IPython.display import display
 from matplotlib import cm
-#import matplotlib.patches as patches
 import pyFAI
 import pyFAI.calibrant
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
@@ -22,9 +20,8 @@ from .. import calibrants
 log = logging.getLogger(__name__)
 
 
-class CalibTab(widgets.VBox):
-    """Calibration-tab of type ipython widget vbox."""
-
+class RoiTab(widgets.VBox):
+    """Tab for geometry calibration with ROI's."""
     def __init__(self, parent):
         """Add tab to calibrate geometry to the main widget.
 
@@ -32,7 +29,7 @@ class CalibTab(widgets.VBox):
            parent : CalibrateNb object
         """
         self.parent = parent
-        self.title = 'Calibration'
+        self.title = 'Fit Objects'
         self.counts = 0
 
         self.selection = widgets.Dropdown(options=['None', '1', '2', '3', '4'],
@@ -68,7 +65,7 @@ class CalibTab(widgets.VBox):
         self.row1 = widgets.HBox([self.selection])
         self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn])
         self.roi_type_dn.observe(self._set_roi_type, names='value')
-        self.selection.observe(self._set_quad)
+        self.selection.observe(self._set_quad, names='value')
         super().__init__([self.row1, self.row2])
 
     @observe('num')
@@ -77,7 +74,7 @@ class CalibTab(widgets.VBox):
         self.roi_type = prop['new'].lower()
 
     def _clear_rois(self, *args):
-        """Delete all circles from the image."""
+        """Delete all rois from the image."""
         for n, roi in self.parent.rois.items():
             roi.remove()
         self.parent.rois = {}
@@ -85,7 +82,7 @@ class CalibTab(widgets.VBox):
         self.children = [self.row1, self.row2]
 
     def _add_roi(self, *args):
-        """Add a circel to the image."""
+        """Add a roi to the image."""
         num = len(self.parent.rois)
         if num >= 10:  # Draw only 10 circles at max
             return
@@ -118,8 +115,8 @@ class CalibTab(widgets.VBox):
                                                  layout=Layout(width='200px',
                                                                height='30px'))
 
-        self.roi_btn.observe(self._sel_roi)
-        self.sp_size.observe(self._set_size)
+        self.roi_btn.observe(self._sel_roi, names='value')
+        self.sp_size.observe(self._set_size, names='value')
         self.sp_angle.observe(self._set_angle, names='value')
         self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn,
                                   self.roi_drn, self.sp_size, self.sp_angle])
@@ -134,13 +131,11 @@ class CalibTab(widgets.VBox):
 
     def _set_size(self, selection):
         """Set the roi size."""
-        if selection['new'] and selection['old']:
-            try:
-                size = int(selection['new'])
-            except TypeError:
-                return
-        else:
+        try:
+            size = int(selection['new'])
+        except TypeError:
             return
+
         roi = self.parent.rois[self.current_roi]
         roi.set_size(size)
 
@@ -162,29 +157,16 @@ class CalibTab(widgets.VBox):
                                               disabled=False,
                                               continuous_update=True,
                                               description='Size')
-        self.set_size.observe(self._set_size)
+        self.set_size.observe(self._set_size, names='value')
         self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn,
                                   self.roi_drn, self.set_size])
         self.children = [self.row1, self.row2]
 
     def _move_quadrants(self, pos):
         """Shift a quadrant."""
-        if pos['new'] and pos['old']:
-            d = pos['owner'].description.lower()[0]
-            if isinstance(pos['new'], dict):
-                pn = int(pos['new']['value'])
-            else:
-                pn = int(pos['new'])
-            if isinstance(pos['old'], dict):
-                po = int(pos['old']['value'])
-            else:
-                try:
-                    po = int(pos['old'])
-                except TypeError:
-                    po = 0
-        else:
-            return
-
+        d = pos['owner'].description.lower()[0]
+        pn = int(pos['new'])
+        po = int(pos['old'])
         sign = np.sign(pn - po)
         if d == 'h':
             pos = np.array((sign, 0))
@@ -210,8 +192,8 @@ class CalibTab(widgets.VBox):
                                           disabled=False,
                                           continuous_update=True,
                                           description='Vert.')
-        posx_sel.observe(self._move_quadrants)
-        posy_sel.observe(self._move_quadrants)
+        posx_sel.observe(self._move_quadrants, names='value')
+        posy_sel.observe(self._move_quadrants, names='value')
 
         if pos is None:
             self.buttons = [self.buttons[0]]
@@ -226,19 +208,20 @@ class CalibTab(widgets.VBox):
 
     def _set_quad(self, prop):
         """Select a quadrant."""
-        self.counts += 1
-        if (self.counts % 5 != 1):
-            return
-        pos = prop['new']['index']
+        try:
+            pos = int(prop['new'])
+        except ValueError:
+            pos = 0
         try:
             self.parent.rect.remove()
         except (AttributeError, ValueError):
             pass
+
         if pos == 0:
-            self._update_navi(pos)
+            self._update_navi(None)
             self.parent.quad = None
             return
-        self.parent.draw_quad_bound(prop['new']['index'])
+        self.parent.draw_quad_bound(pos)
         if pos != self.parent.quad:
             self._update_navi(pos)
         self.parent.quad = pos
