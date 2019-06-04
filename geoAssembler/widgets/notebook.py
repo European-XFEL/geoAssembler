@@ -13,7 +13,7 @@ from matplotlib.patches import Ellipse, Rectangle
 
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from .nb_tabs import CalibTab, MaterialTab
+from .nb_tabs import RoiTab, MaterialTab
 from ..gui_utils import read_geometry
 
 log = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 class CircleROI(Ellipse):
     """Circular ROI that supporting different aspect ratios."""
 
-    def __init__(self, centre, diameter, ax, aspect, angle=0):
+    def __init__(self, centre, diameter, ax, aspect, **kwargs):
         """Create an circle on top of an image with a given aspect ratio.
 
         Parameters
@@ -37,9 +37,6 @@ class CircleROI(Ellipse):
 
         aspect: float
         Aspect ratio (width / height)
-
-        angle : float
-        Rotation of the Objection
         """
 
         a = diameter * aspect
@@ -79,7 +76,7 @@ class SquareROI(Rectangle):
         Aspect ratio (width / height)
 
         angle : float
-        Rotation of the Objection
+        Rotation of the object
         """
 
         ts = ax.transData
@@ -235,7 +232,7 @@ class MainWidget:
     def _add_tabs(self):
         """Add panel tabs."""
         self.tabs = widgets.Tab()
-        self.tabs.children = (CalibTab(self), MaterialTab(self))
+        self.tabs.children = (RoiTab(self), MaterialTab(self))
         for i, tab in enumerate(self.tabs.children):
             self.tabs.set_title(i, tab.title)
 
@@ -287,15 +284,14 @@ class MainWidget:
             self.im.set_cmap(cmap)
         except ValueError:
             return
-    
+
     @property
     def quad_pos(self):
-        return self.geom.quad_po
+        return self.geom.quad_pos
 
     def update_plot(self, plot_range=(None, None),
                     cmap=Defaults.cmaps[0], **kwargs):
         """Update the plotted image."""
-        # Update the image first
         self.data, cnt = self.geom.position_all_modules(self.raw_data,
                                                         self.canvas.shape)
         cy, cx = cnt
