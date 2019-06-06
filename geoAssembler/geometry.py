@@ -64,13 +64,17 @@ class GeometryAssembler:
         """Return inspect method of kd_geom object."""
         return self.kd_geom.inspect()
 
-    def move_quad(self, quad, inc):
+    def move_quad(self, quad, inc, frontview):
         """Move the whole quad in a given direction.
 
         Parameters:
             quad (int): Quandrant number that is to be moved
             inc (collection): increment of the direction to be moved
+        Keywords:
+            frontview (bool) : view with or into (default) the beam
         """
+        if frontview:
+            quad = {1:4, 2:3, 3:2, 4:1}[quad]
         pos = Defaults.quad2index[self.detector_name][quad]
         if len(inc) == 2:
             inc = np.array(list(inc)+[0])
@@ -79,13 +83,17 @@ class GeometryAssembler:
         kd_geom_cls = type(self.kd_geom)
         self.kd_geom = kd_geom_cls(new_modules)
 
-    def get_quad_corners(self, quad, centre):
+    def get_quad_corners(self, quad, centre, frontview=False):
         """Get the bounding box of a quad.
 
         Parameters:
             quad (int): quadrant number
             centre (tuple): y, x coordinates of the detector centre
+        Keywords:
+            frontview (bool) : view with or into (default) the beam
         """
+        if frontview:
+            quad = {1:4, 2:3, 3:2, 4:1}[quad]
         pos = Defaults.quad2index[self.detector_name][quad]
         X = []
         Y = []

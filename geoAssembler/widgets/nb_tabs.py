@@ -169,9 +169,12 @@ class RoiTab(widgets.VBox):
         sign = np.sign(pn - po)
         if d == 'h':
             pos = np.array((sign, 0))
+            if self.parent.frontview:
+                pos = -pos
         else:
             pos = np.array((0, sign))
-        self.parent.geom.move_quad(self.parent.quad, pos)
+        self.parent.geom.move_quad(self.parent.quad, pos,
+                                   frontview=self.parent.frontview)
         self.parent.draw_quad_bound(self.parent.quad)
         self.parent.update_plot(None)
 

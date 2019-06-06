@@ -120,7 +120,8 @@ class MainWidget:
     """Ipython Widget version of the Calibration Class."""
 
     def __init__(self, raw_data, geometry=None, det='AGIPD', vmin=None,
-                 vmax=None, figsize=None, bg=None, aspect=1, **kwargs):
+                 vmax=None, figsize=None, bg=None, aspect=1, frontview=False, 
+                 **kwargs):
         """Display detector data and arrange panels.
 
         Parameters:
@@ -152,6 +153,10 @@ class MainWidget:
             aspect (str, int) :
             aspect ratio width/height of the plot
 
+            frontview (bool):
+            if false (default) then view is plotted as if you were looking into
+            the beam
+
             kwargs :
             additional keyword arguments that are parsed to matplotlibs imshow
             function
@@ -167,6 +172,7 @@ class MainWidget:
         self.bg = bg or 'w'
         self.rois = {}
         self.quad = None
+        self.frontview = frontview
         self.cmap = cm.get_cmap(Defaults.cmaps[0])
         try:
             self.cmap.set_bad(self.bg)
@@ -222,7 +228,8 @@ class MainWidget:
             return
         P, dx, dy =\
             self.geom.get_quad_corners(pos,
-                np.array(self.data.shape, dtype='i')//2)
+                np.array(self.data.shape, dtype='i')//2,
+                frontview=self.frontview)
 
         self.rect = Rectangle(P, dx, dy, linewidth=1.5, edgecolor='r',
                               facecolor='none')
@@ -333,3 +340,5 @@ class MainWidget:
             cbar_ticks = np.linspace(plot_range[0], plot_range[-1], 6)
             self.cbar.set_ticks(cbar_ticks)
             self.ax.set_aspect(self.aspect)
+            if self.frontview:
+                self.ax.invert_xaxis()
