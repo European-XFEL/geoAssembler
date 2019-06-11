@@ -20,6 +20,10 @@ log = logging.getLogger(__name__)
 
 class CircleROI(Ellipse):
     """Circular ROI that supporting different aspect ratios."""
+    type = 'circle'
+
+    def __str__(self):
+        return "Circle(%i)"%self.width
 
     def __init__(self, centre, diameter, ax, aspect, **kwargs):
         """Create an circle on top of an image with a given aspect ratio.
@@ -57,9 +61,13 @@ class CircleROI(Ellipse):
 
     def get_size(self):
         return self.width
+
 class SquareROI(Rectangle):
     """Circular ROI that supporting different aspect ratios."""
+    type = 'square'
 
+    def __str__(self):
+        return "Square(%i)"%self.get_width()
     def __init__(self, centre, size, ax, aspect, angle=0):
         """Create an square on top of an image with a given aspect ratio.
 
@@ -207,7 +215,7 @@ class MainWidget:
         return self.geom.position_all_modules(self.raw_data)[1]
 
     def draw_roi(self, roi_type, size, num, angle=0):
-        """Draw circel of radius r and add it to the rois collection."""
+        """Draw helper object and add it to the rois collection."""
         _, centre = self.geom.position_all_modules(self.raw_data,
                                                 canvas=self.canvas.shape)
         if roi_type.lower() == 'circle':

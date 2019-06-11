@@ -14,7 +14,6 @@ from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from scipy import constants
 
 from ..calibrants import calibrants, celldir
-from .notebook import SquareROI
 log = logging.getLogger(__name__)
 
 
@@ -90,7 +89,7 @@ class RoiTab(widgets.VBox):
         sb_size.observe(self._set_size, names='value')
         spin_boxes = [sb_size]
 
-        if isinstance(self.parent.rois[self.current_roi], SquareROI):
+        if self.parent.rois[self.current_roi].type == 'square':
             sb_angle = widgets.BoundedFloatText(value=0,
                                             min=0,
                                             max=360,
@@ -104,7 +103,10 @@ class RoiTab(widgets.VBox):
             spin_boxes.append(sb_angle)
         return spin_boxes
 
-
+    @property
+    def _roi_rpr(self):
+        """Get the str of all rois."""
+        return ['{}:{}'.format(num, str(roi)) for (num, roi) in self.parent.rois.items()]
     def _add_roi(self, *args):
         """Add a roi to the image."""
         num = len(self.parent.rois)
@@ -115,14 +117,14 @@ class RoiTab(widgets.VBox):
             roi.set_edgecolor('gray')
         self.parent.draw_roi(self.roi_type, size, num)
         self.current_roi = num
-        self.roi_drn = widgets.Dropdown(options=list(self.parent.rois.keys()),
-                                        value=num,
+        rois = self._roi_rpr
+        self.roi_drn = widgets.Dropdown(options=rois,
+                                        value=rois[num],
                                         disabled=False,
                                         description='Sel.:',
-                                        layout=Layout(width='150px',
+                                        layout=Layout(width='220px',
                                                       height='30px'))
         self.roi_drn.observe(self._sel_roi, names='value')
-
         self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn,
                                   self.roi_drn] + self._create_spin_boxes(350))
         self.children = [self.row1, self.row2]
@@ -143,10 +145,23 @@ class RoiTab(widgets.VBox):
 
         roi = self.parent.rois[self.current_roi]
         roi.set_size(size)
+        rois = self._roi_rpr
+        self.roi_drn = widgets.Dropdown(options=rois,
+                                        value=rois[self.current_roi],
+                                        disabled=False,
+                                        description='Sel.:',
+                                        layout=Layout(width='220px',
+                                                      height='30px'))
+        self.roi_drn.observe(self._sel_roi, names='value')
+        self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn,
+                                  self.roi_drn] + self._create_spin_boxes(size))
+        self.children = [self.row1, self.row2]
+
+
 
     def _sel_roi(self, selection):
         """Select-helper circles."""
-        self.current_roi = int(selection['new'])
+        self.current_roi = int(selection['new'].split(':')[0])
         size = int(self.parent.rois[self.current_roi].get_size())
         for num, roi in self.parent.rois.items():
             if num != self.current_roi:
