@@ -55,6 +55,8 @@ class CircleROI(Ellipse):
         """This is just a fake method don't do anything."""
         return
 
+    def get_size(self):
+        return self.width
 class SquareROI(Rectangle):
     """Circular ROI that supporting different aspect ratios."""
 
@@ -107,6 +109,9 @@ class SquareROI(Rectangle):
         self.set_y(self.get_y() - dh/2)
         self.set_x(self.get_x() - dw/2)
         self.stale = True
+
+    def get_size(self):
+        return self.get_width()
 
     def set_angle(self, angle):
         """Rotate the square by a given angle."""
