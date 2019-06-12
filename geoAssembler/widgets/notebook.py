@@ -59,6 +59,10 @@ class CircleROI(Ellipse):
         """This is just a fake method don't do anything."""
         return
 
+    def get_angle(self):
+        """This has no effect, and always returns 0"""
+        return 0
+
     def get_size(self):
         return self.width
 
@@ -97,6 +101,7 @@ class SquareROI(Rectangle):
         tr = transforms.Affine2D().rotate_deg_around(coords[0], coords[1], angle)
         t= ts + tr
         self.ax = ax
+        self._angle = angle
         #Rotated rectangle patch
         super().__init__(self.centre, size*self.aspect, size,
                          facecolor='none', edgecolor='r', lw=1, transform=t)
@@ -128,6 +133,10 @@ class SquareROI(Rectangle):
         tr = transforms.Affine2D().rotate_deg_around(coords[0], coords[1], angle)
         t = ts + tr
         self.set_transform(t)
+        self._angle = angle
+
+    def get_angle(self):
+        return self._angle
 
 class MainWidget:
     """Ipython Widget version of the Calibration Class."""
