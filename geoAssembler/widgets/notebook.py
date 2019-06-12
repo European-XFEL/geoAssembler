@@ -241,8 +241,7 @@ class MainWidget:
             return
         P, dx, dy =\
             self.geom.get_quad_corners(pos,
-                np.array(self.data.shape, dtype='i')//2,
-                frontview=self.frontview)
+                np.array(self.data.shape, dtype='i')//2)
 
         self.rect = Rectangle(P, dx, dy, linewidth=1.5, edgecolor='r',
                               facecolor='none')
