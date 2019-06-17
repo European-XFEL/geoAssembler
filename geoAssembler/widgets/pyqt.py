@@ -80,8 +80,8 @@ class QtMainWidget(QtGui.QMainWindow):
         self.run_selector = RunDataWidget(run_dir, self)
         self.run_selector.draw_img_signal.connect(self._draw)
 
-        self.fit_widget.draw_roi_signal.connect(self._draw_roi)
-        self.fit_widget.delete_roi_signal.connect(self._clear_roi)
+        self.fit_widget.draw_shape_signal.connect(self._draw_shape)
+        self.fit_widget.delete_shape_signal.connect(self._clear_shape)
         self.fit_widget.quit_signal.connect(app.quit)
         self.fit_widget.show_log_signal.connect(q_logger.show)
 
@@ -104,14 +104,14 @@ class QtMainWidget(QtGui.QMainWindow):
 
     # Some properties coming up
     @property
-    def rois(self):
-        """Get all rois from fit widget."""
-        return self.fit_widget.rois
+    def shapes(self):
+        """Get all shapes from fit widget."""
+        return self.fit_widget.shapes
 
     @property
-    def current_roi(self):
-        """Get currently selected roi from fit widget."""
-        return self.fit_widget.rois[self.fit_widget.current_roi]
+    def current_shape(self):
+        """Get currently selected shape from fit widget."""
+        return self.fit_widget.shapes[self.fit_widget.current_shape]
 
     @property
     def image(self):
@@ -181,7 +181,7 @@ class QtMainWidget(QtGui.QMainWindow):
         imageItem = self.imv.getImageItem()
         self.levels = tuple(imageItem.levels)
         self.quad = -1
-        self.fit_widget.bt_add_roi.setEnabled(True)
+        self.fit_widget.bt_add_shape.setEnabled(True)
 
     def _move(self, d):
         """Move the quadrant."""
@@ -195,14 +195,14 @@ class QtMainWidget(QtGui.QMainWindow):
         self._draw_rect(quad)
         self.imv.getImageItem().updateImage(self.data)
 
-    def _draw_roi(self):
+    def _draw_shape(self):
         """Add a fit object to the image."""
-        self.image.addItem(self.current_roi)
+        self.image.addItem(self.current_shape)
 
-    def _clear_roi(self):
+    def _clear_shape(self):
         """Delete all helper objects."""
-        for num in self.rois:
-            self.image.removeItem(self.rois[num])
+        for num in self.shapes:
+            self.image.removeItem(self.shapes[num])
 
     def _get_quadrant(self, y, x):
         """Return the quadrant for a given set of coordinates."""

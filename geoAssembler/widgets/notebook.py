@@ -13,13 +13,13 @@ from matplotlib.patches import Ellipse, Rectangle
 
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from .nb_tabs import RoiTab, MaterialTab
+from .nb_tabs import ShapeTab, MaterialTab
 from ..gui_utils import read_geometry
 
 log = logging.getLogger(__name__)
 
-class CircleROI(Ellipse):
-    """Circular ROI that supporting different aspect ratios."""
+class CircleShape(Ellipse):
+    """Circular Shape that supporting different aspect ratios."""
     type = 'circle'
 
     def __str__(self):
@@ -66,8 +66,8 @@ class CircleROI(Ellipse):
     def get_size(self):
         return self.width
 
-class SquareROI(Rectangle):
-    """Circular ROI that supporting different aspect ratios."""
+class SquareShape(Rectangle):
+    """Circular Shape that supporting different aspect ratios."""
     type = 'square'
 
     def __str__(self):
@@ -192,7 +192,7 @@ class MainWidget:
         self.raw_data = np.clip(raw_data, self.vmin, self.vmax)
         self.figsize = figsize or (8, 8)
         self.bg = bg or 'w'
-        self.rois = {}
+        self.shapes = {}
         self.quad = None
         self.frontview = frontview
         self.cmap = cm.get_cmap(Defaults.cmaps[0])
@@ -223,20 +223,20 @@ class MainWidget:
         """Return the centre of the image (beam)."""
         return self.geom.position_all_modules(self.raw_data)[1]
 
-    def draw_roi(self, roi_type, size, num, angle=0):
-        """Draw helper object and add it to the rois collection."""
+    def draw_shape(self, shape_type, size, num, angle=0):
+        """Draw helper object and add it to the shapess collection."""
         _, centre = self.geom.position_all_modules(self.raw_data,
                                                 canvas=self.canvas.shape)
-        if roi_type.lower() == 'circle':
-            self.rois[num] = CircleROI(centre, size,
+        if shape_type.lower() == 'circle':
+            self.shapes[num] = CircleShape(centre, size,
                                        self.ax, self.aspect,
                                        angle=angle)
         else:
-            self.rois[num] = SquareROI(centre, size,
+            self.shapes[num] = SquareShape(centre, size,
                                        self.ax, self.aspect,
                                        angle=angle)
 
-        self.ax.add_patch(self.rois[num])
+        self.ax.add_patch(self.shapes[num])
 
     def draw_quad_bound(self, pos):
         """Draw a rectangle around around a given quadrant."""
@@ -260,7 +260,7 @@ class MainWidget:
     def _add_tabs(self):
         """Add panel tabs."""
         self.tabs = widgets.Tab()
-        self.tabs.children = (RoiTab(self), MaterialTab(self))
+        self.tabs.children = (ShapeTab(self), MaterialTab(self))
         for i, tab in enumerate(self.tabs.children):
             self.tabs.set_title(i, tab.title)
 

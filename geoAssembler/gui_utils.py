@@ -82,7 +82,7 @@ def create_button(label, icon_type):
                    'ok': ('gtk-ok.png', 16),
                    'quit': ('exit.png', 16),
                    'quads': ('quads.png', 16),
-                   'rois': ('rois.png', 16),
+                   'shapes': ('shapes.png', 16),
                    'rundir': ('open.png', 16),
                    'save': ('save.png', 16),
                    'square': ('square.png', 16)

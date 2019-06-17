@@ -17,8 +17,8 @@ from ..calibrants import calibrants, celldir
 log = logging.getLogger(__name__)
 
 
-class RoiTab(widgets.VBox):
-    """Tab for geometry calibration with ROI's."""
+class ShapeTab(widgets.VBox):
+    """Tab for geometry calibration with Shapes."""
     def __init__(self, parent):
         """Add tab to calibrate geometry to the main widget.
 
@@ -33,7 +33,7 @@ class RoiTab(widgets.VBox):
                                           value='None',
                                           description='Quadrant',
                                           disabled=False)
-        self.roi_btn = widgets.Button(description='Add ',
+        self.shape_btn = widgets.Button(description='Add ',
                                        disabled=False,
                                        button_style='',
                                        icon='',
@@ -41,44 +41,44 @@ class RoiTab(widgets.VBox):
                                        layout=Layout(width='50px',
                                                      height='30px'))
         self.clr_btn = widgets.Button(description='Clear',
-                                      tooltip='Remove All Rois',
+                                      tooltip='Remove All Shapes',
                                       disabled=False,
                                       button_style='',
                                       icon='',
                                       layout=Layout(width='50px',
                                                     height='30px'))
-        self.roi_type_dn = widgets.Dropdown(options=['Circle', 'Square'],
+        self.shape_type_dn = widgets.Dropdown(options=['Circle', 'Square'],
                                             value='Circle',
                                             description='Type:',
                                             disabled=False,
                                             layout=Layout(width='170px',
                                                           height='30px'))
 
-        self.roi_btn.on_click(self._add_roi)
-        self.clr_btn.on_click(self._clear_rois)
+        self.shape_btn.on_click(self._add_shape)
+        self.clr_btn.on_click(self._clear_shapes)
         self.buttons = [self.selection]
-        self.current_roi = None
-        self.roi_type = 'circle'
+        self.current_shape = None
+        self.shape_type = 'circle'
         self.row1 = widgets.HBox([self.selection])
-        self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn])
-        self.roi_type_dn.observe(self._set_roi_type, names='value')
+        self.row2 = widgets.HBox([self.shape_type_dn, self.shape_btn, self.clr_btn])
+        self.shape_type_dn.observe(self._set_shape_type, names='value')
         self.selection.observe(self._set_quad, names='value')
         super().__init__([self.row1, self.row2])
 
-    def _set_roi_type(self, prop):
-        """Set the roi type."""
-        self.roi_type = prop['new'].lower()
+    def _set_shape_type(self, prop):
+        """Set the shape type."""
+        self.shape_type = prop['new'].lower()
 
-    def _clear_rois(self, *args):
-        """Delete all rois from the image."""
-        for n, roi in self.parent.rois.items():
-            roi.remove()
-        self.parent.rois = {}
-        self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn])
+    def _clear_shapes(self, *args):
+        """Delete all shapes from the image."""
+        for n, shape in self.parent.shapes.items():
+            shape.remove()
+        self.parent.shapes = {}
+        self.row2 = widgets.HBox([self.shape_type_dn, self.shape_btn, self.clr_btn])
         self.children = [self.row1, self.row2]
     def _create_spin_boxes(self, size, angle):
-        """Create  spin boxes for roi size and angle."""
-        if self.parent.rois[self.current_roi].type == 'circle':
+        """Create  spin boxes for shape size and angle."""
+        if self.parent.shapes[self.current_shape].type == 'circle':
             disabled = True
         else:
             disabled = False
@@ -104,88 +104,90 @@ class RoiTab(widgets.VBox):
         return [sb_size, sb_angle]
 
     @property
-    def _roi_rpr(self):
-        """Get the str of all rois."""
-        return ['{}:{}'.format(num, str(roi)) for (num, roi) in self.parent.rois.items()]
-    def _add_roi(self, *args):
-        """Add a roi to the image."""
-        num = len(self.parent.rois)
+    def _shape_rpr(self):
+        """Get the str of all shapes."""
+        return ['{}:{}'.format(num, str(shape)) for (num, shape)
+                in self.parent.shapes.items()]
+
+    def _add_shape(self, *args):
+        """Add a shape to the image."""
+        num = len(self.parent.shapes)
         if num >= 10:  # Draw only 10 circles at max
             return
         size = 350
-        for roi in self.parent.rois.values():
-            roi.set_edgecolor('gray')
-        self.parent.draw_roi(self.roi_type, size, num)
-        self.current_roi = num
-        rois = self._roi_rpr
-        self.roi_drn = widgets.Dropdown(options=rois,
-                                        value=rois[num],
+        for shape in self.parent.shapes.values():
+            shape.set_edgecolor('gray')
+        self.parent.draw_shape(self.shape_type, size, num)
+        self.current_shape = num
+        shapes = self._shape_rpr
+        self.shape_drn = widgets.Dropdown(options=shapes,
+                                        value=shapes[num],
                                         disabled=False,
                                         description='Sel.:',
                                         layout=Layout(width='220px',
                                                       height='30px'))
-        self.roi_drn.observe(self._sel_roi, names='value')
-        self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn,
-                                  self.roi_drn] + self._create_spin_boxes(350, 0))
+        self.shape_drn.observe(self._sel_shape, names='value')
+        self.row2 = widgets.HBox([self.shape_type_dn, self.shape_btn, self.clr_btn,
+                                  self.shape_drn] + self._create_spin_boxes(350, 0))
         self.children = [self.row1, self.row2]
 
 
     def _set_angle(self, prop):
-        """Set the angle of the roi."""
+        """Set the angle of the shape."""
         angle = prop['new']
-        roi = self.parent.rois[self.current_roi]
-        roi.set_angle(angle)
-        size = roi.get_size()
-        rois = self._roi_rpr
-        self.roi_drn = widgets.Dropdown(options=rois,
-                                        value=rois[self.current_roi],
+        shape = self.parent.shapes[self.current_shape]
+        shape.set_angle(angle)
+        size = shape.get_size()
+        shapes = self._shape_rpr
+        self.shape_drn = widgets.Dropdown(options=shapes,
+                                        value=shapes[self.current_shape],
                                         disabled=False,
                                         description='Sel.:',
                                         layout=Layout(width='220px',
                                                       height='30px'))
 
-        self.roi_drn.observe(self._sel_roi, names='value')
-        self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn,
-                                  self.roi_drn] + self._create_spin_boxes(size, angle))
+        self.shape_drn.observe(self._sel_shape, names='value')
+        self.row2 = widgets.HBox([self.shape_type_dn, self.shape_btn, self.clr_btn,
+                                  self.shape_drn] + self._create_spin_boxes(size, angle))
         self.children = [self.row1, self.row2]
 
 
     def _set_size(self, selection):
-        """Set the roi size."""
+        """Set the shape size."""
         try:
             size = int(selection['new'])
         except TypeError:
             return
 
-        roi = self.parent.rois[self.current_roi]
-        roi.set_size(size)
-        angle = roi.get_angle()
-        rois = self._roi_rpr
-        self.roi_drn = widgets.Dropdown(options=rois,
-                                        value=rois[self.current_roi],
+        shape = self.parent.shapes[self.current_shape]
+        shape.set_size(size)
+        angle = shape.get_angle()
+        shapes = self._shape_rpr
+        self.shape_drn = widgets.Dropdown(options=shapes,
+                                        value=shapes[self.current_shape],
                                         disabled=False,
                                         description='Sel.:',
                                         layout=Layout(width='220px',
                                                       height='30px'))
-        self.roi_drn.observe(self._sel_roi, names='value')
-        self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn,
-                                  self.roi_drn] + self._create_spin_boxes(size, angle))
+        self.shape_drn.observe(self._sel_shape, names='value')
+        self.row2 = widgets.HBox([self.shape_type_dn, self.shape_btn, self.clr_btn,
+                                  self.shape_drn] + self._create_spin_boxes(size, angle))
         self.children = [self.row1, self.row2]
 
 
 
-    def _sel_roi(self, selection):
+    def _sel_shape(self, selection):
         """Select-helper circles."""
-        self.current_roi = int(selection['new'].split(':')[0])
-        size = int(self.parent.rois[self.current_roi].get_size())
-        angle = int(self.parent.rois[self.current_roi].get_angle())
-        for num, roi in self.parent.rois.items():
-            if num != self.current_roi:
-                roi.set_edgecolor('gray')
+        self.current_shape = int(selection['new'].split(':')[0])
+        size = int(self.parent.shapes[self.current_shape].get_size())
+        angle = int(self.parent.shapes[self.current_shape].get_angle())
+        for num, shape in self.parent.shapes.items():
+            if num != self.current_shape:
+                shape.set_edgecolor('gray')
             else:
-                roi.set_edgecolor('r')
-        self.row2 = widgets.HBox([self.roi_type_dn, self.roi_btn, self.clr_btn,
-                                  self.roi_drn]+self._create_spin_boxes(size, angle))
+                shape.set_edgecolor('r')
+        self.row2 = widgets.HBox([self.shape_type_dn, self.shape_btn, self.clr_btn,
+                                  self.shape_drn]+self._create_spin_boxes(size, angle))
         self.children = [self.row1, self.row2]
 
     def _move_quadrants(self, pos):
