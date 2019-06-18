@@ -29,14 +29,19 @@ class QtMainWidget(QtGui.QMainWindow):
     def __init__(self, app, run_dir=None, geofile=None, levels=None, header=None):
         """Display detector data and arrange panels.
 
-        Keywords:
-            run_dir (str-object)  : Directory that contains the run data
-            geofile (str/AGIPD_1MGeometry)  : The geometry file can either be
-                                               an AGIPD_1MGeometry object or
-                                               the filename to the geometry
-                                               file in CFEL fromat
-            levels (tuple) : min/max values to be displayed (default: -1000)
-            header (str)  : header for the geometry file
+        Parameters:
+            run_dir : (str)
+            Directory that contains the run data
+
+            geofile : (str) 
+            The geometry that holding the geometric information on detector
+            assembeling
+
+            levels : (tuple)
+            min/max values to be displayed (default: -1000)
+
+            header : (str)
+            header for the geometry file
         """
         super().__init__()
 

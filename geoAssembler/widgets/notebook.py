@@ -31,7 +31,7 @@ class CircleShape(Ellipse):
         Parameters
         -----------
         centre : float
-        Centre of the circle
+        Centre of the circle (y, x)
 
         diameter : float
         Diameter of the circle
@@ -72,13 +72,14 @@ class SquareShape(Rectangle):
 
     def __str__(self):
         return "Square(%i)"%self.get_width()
+
     def __init__(self, centre, size, ax, aspect, angle=0):
         """Create an square on top of an image with a given aspect ratio.
 
         Parameters
         -----------
         centre : float
-        Centre point of the square
+        Centre point of the square (y, x)
 
         size : float
         size of the square
@@ -155,14 +156,13 @@ class MainWidget:
             the filename to the geometry file in CFEL fromat
 
             det : str
-
             detector to be used (if geometry is None)
+
             vmin : int
-
             minimal value in the data array (default: -1000) anything below
-            this value will be clipped 
-            vmax : int
+            this value will be clipped
 
+            vmax : int
             maximum value in the data array (default: 5000) anything above this
             value will be clipped
 
@@ -175,7 +175,7 @@ class MainWidget:
             aspect (str, int) :
             aspect ratio width/height of the plot
 
-            frontview (bool):
+            frontview (bool) :
             if false (default) then view is plotted as if you were looking into
             the beam
 
