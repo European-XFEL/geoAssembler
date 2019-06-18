@@ -282,7 +282,7 @@ class DSSCGeometry(GeometryAssembler):
         px_conv = self.pixel_size / self.unit
         nmod = (quad-1) * 4 + module
         frag = self.modules[nmod-1][asic-1]
-        if x_orient == 1:
+        if x_orient == -1:
             cr_pos = (frag.corner_pos + (frag.fs_vec * self.frag_fs_pixels))[:2]
         else:
             cr_pos = (frag.corner_pos + (frag.ss_vec * self.frag_ss_pixels))[:2]
