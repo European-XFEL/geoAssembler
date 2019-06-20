@@ -54,6 +54,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.levels = levels or [None, None]
 
         self.raw_data = None
+        self.canvas = None
         self.rect = None
         self.quad = -1  # The selected quadrants (-1 none selected)
         self.is_displayed = False
@@ -86,7 +87,6 @@ class QtMainWidget(QtGui.QMainWindow):
         self.fit_widget.delete_shape_signal.connect(self._clear_shape)
         self.fit_widget.quit_signal.connect(app.quit)
         self.fit_widget.show_log_signal.connect(q_logger.show)
-
         main_widget = QtGui.QWidget(self)
         self.setCentralWidget(main_widget)
 
@@ -103,6 +103,8 @@ class QtMainWidget(QtGui.QMainWindow):
 
         # Add widgets to the layout in their proper positions
         self.showMaximized()
+
+        self.frontview = False
 
     # Some properties coming up
     @property
@@ -152,27 +154,36 @@ class QtMainWidget(QtGui.QMainWindow):
         except ValueError:
             warning('No data in trainId, select a different trainId')
             return
-        data, self.centre = self.geom_obj.position_all_modules(self.raw_data)
-        self.canvas = np.full(np.array(data.shape) + Defaults.canvas_margin,
-                              np.nan)
+        if self.fit_widget.cb_front_view.isChecked():
+            self.frontview = True
+            self._flip_lr = -1
+        else:
+            self._flip_lr = 1
+        if self.canvas is None:
+            data, self.centre = self.geom_obj.position_all_modules(self.raw_data)
+            self.canvas = np.full(np.array(data.shape) + Defaults.canvas_margin,
+                                  np.nan)
 
         self.data, _ = self.geom_obj.position_all_modules(self.raw_data,
                                                           canvas=self.canvas.shape)
         # Display the data and assign each frame a time value from 1.0 to 3.0
+        self._draw_rect(None)
         if not self.is_displayed:
             xvals = np.linspace(1., 3., self.canvas.shape[0])
             try:
-                self.imv.setImage(np.clip(self.data[::-1], *self.levels),
+                self.imv.setImage(np.clip(self.data[::-1, ::self._flip_lr],
+                                  *self.levels),
                                   levels=self.levels, xvals=xvals)
             except ValueError:
-                self.imv.setImage(self.data[::-1],
+                self.imv.setImage(self.data[::-1, ::self._flip_lr],
                                   levels=None, xvals=xvals)
             self.is_displayed = True
 
         else:
             imageItem = self.imv.getImageItem()
             self.levels = tuple(imageItem.levels)
-            self.imv.setImage(np.clip(self.data[::-1], *self.levels),
+            self.imv.setImage(np.clip(self.data[::-1, ::self._flip_lr],
+                              *self.levels),
                               levels=self.levels,
                               xvals=np.linspace(1., 3., self.canvas.shape[0]))
 
@@ -190,12 +201,13 @@ class QtMainWidget(QtGui.QMainWindow):
         quad = self.quad
         if quad <= 0:
             return
-        self.geom_obj.move_quad(quad, np.array(Defaults.direction[d]))
+        inc = np.array(Defaults.direction[d])*np.array([self._flip_lr, 1])
+        self.geom_obj.move_quad(quad, inc)
         self.data, self.centre =\
             self.geom_obj.position_all_modules(self.raw_data,
                                                canvas=self.canvas.shape)
         self._draw_rect(quad)
-        self.imv.getImageItem().updateImage(self.data[::-1])
+        self.imv.getImageItem().updateImage(self.data[::-1, ::self._flip_lr])
 
     def _draw_shape(self):
         """Add a fit object to the image."""
@@ -208,12 +220,14 @@ class QtMainWidget(QtGui.QMainWindow):
 
     def _get_quadrant(self, x, y):
         """Return the quadrant for a given set of coordinates."""
-        y1, y2, y3 = 0, self.data.shape[-1]/2, self.data.shape[-1]
         x1, x2, x3 = 0, self.data.shape[-2]/2, self.data.shape[-2]
+        y1, y2, y3 = 0, self.data.shape[-1]/2, self.data.shape[-1]
+
         self.bounding_boxes = {1: (x2, x3, y1, y2),
                                2: (x1, x2, y1, y2),
                                3: (x1, x2, y2, y3),
                                4: (x2, x3, y2, y3)}
+
         for quadrant, bbox in self.bounding_boxes.items():
             if bbox[0] <= x < bbox[1] and bbox[2] <= y < bbox[3]:
                 return quadrant
@@ -224,13 +238,18 @@ class QtMainWidget(QtGui.QMainWindow):
             self.imv.getView().removeItem(self.rect)
         except AttributeError:
             pass
+        if quad is None:
+            return
         self.quad = quad
         P, dx, dy =\
             self.geom_obj.get_quad_corners(quad,
                                            np.array(self.data.shape, dtype='i')//2)
         pen = QtGui.QPen(QtCore.Qt.red, 0.002)
         Y, X = self.data.shape
-        P=(P[0], Y-P[1]-dy)
+        if self.frontview:
+            P = (X - P[0] - dx, Y-P[1] - dy)
+        else:
+            P = (P[0], Y - P[1] - dy)
         self.rect = pg.RectROI(pos=P,
                                size=(dx, dy),
                                movable=False,
@@ -251,6 +270,8 @@ class QtMainWidget(QtGui.QMainWindow):
         Y, X = self.data.shape
         pos = event.pos()
         x = int(pos.x())
+        if self.frontview:
+            x = X - x
         y = int(Y - pos.y())
         quad = self._get_quadrant(y, x)
         if quad is None:

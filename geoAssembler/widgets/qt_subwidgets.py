@@ -29,6 +29,7 @@ class FitObjectWidget(QtWidgets.QFrame):
     delete_shape_signal = Signal()
     quit_signal = Signal()
     show_log_signal = Signal()
+    front_view = Signal()
 
     def __init__(self, main_widget, parent=None):
         """Add a spin box with a label to set radii.
@@ -314,6 +315,7 @@ class GeometryWidget(QtWidgets.QFrame):
         uic.loadUi(ui_file, self)
 
         self.main_widget = main_widget
+        self.geom = None
 
         for det in Defaults.detectors:
             self.cb_detectors.addItem(det)
@@ -387,6 +389,7 @@ class GeometryWidget(QtWidgets.QFrame):
         if self.det != 'AGIPD' and not self.geom_file:
             warning('Click the load button to load a geometry file')
             return
-        quad_pos = self._geom_window.quad_pos
-        self.geom = read_geometry(self.det, self.geom_file, quad_pos)
+        if self.geom is None:
+            quad_pos = self._geom_window.quad_pos
+            self.geom = read_geometry(self.det, self.geom_file, quad_pos)
         self.draw_img_signal.emit()
