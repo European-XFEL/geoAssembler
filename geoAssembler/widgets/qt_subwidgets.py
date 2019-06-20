@@ -11,7 +11,7 @@ from PyQt5 import uic
 from PyQt5.QtCore import pyqtSlot
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
-from .qt_objects import (CircleROI, DetectorHelper, SquareROI, warning)
+from .qt_objects import (CircleShape, DetectorHelper, SquareShape, warning)
 
 from ..defaults import DefaultGeometryConfig as Defaults
 from ..gui_utils import (create_button, get_icon,
@@ -25,8 +25,8 @@ Signal = QtCore.pyqtSignal
 class FitObjectWidget(QtWidgets.QFrame):
     """Define a Hbox containing a Spinbox with a Label."""
 
-    draw_roi_signal = Signal()
-    delete_roi_signal = Signal()
+    draw_shape_signal = Signal()
+    delete_shape_signal = Signal()
     quit_signal = Signal()
     show_log_signal = Signal()
 
@@ -44,114 +44,115 @@ class FitObjectWidget(QtWidgets.QFrame):
         self.main_widget = main_widget
 
         # Add a spinbox with title 'Size'
-        self.sb_roi_size.valueChanged.connect(self._update_roi)
-        self.cb_roi_number.currentIndexChanged.connect(self._get_roi)
-        self.bt_add_roi.clicked.connect(self._draw)
-        self.bt_add_roi.setIcon(get_icon('rois.png'))
-        self.bt_add_roi.setEnabled(False)
-        self.bt_clear_roi.clicked.connect(self._clear)
-        self.bt_clear_roi.setIcon(get_icon('clear-all.png'))
-        self.bt_clear_roi.setEnabled(False)
+        self.sb_shape_size.valueChanged.connect(self._update_shape)
+        self.cb_shape_number.currentIndexChanged.connect(self._get_shape)
+        self.bt_add_shape.clicked.connect(self._draw)
+        self.bt_add_shape.setIcon(get_icon('shapes.png'))
+        self.bt_add_shape.setEnabled(False)
+        self.bt_clear_shape.clicked.connect(self._clear)
+        self.bt_clear_shape.setIcon(get_icon('clear-all.png'))
+        self.bt_clear_shape.setEnabled(False)
         self.bt_quit.clicked.connect(self.quit_signal.emit)
         self.bt_show_log.clicked.connect(self.show_log_signal.emit)
         self.bt_quit.setIcon(get_icon('exit.png'))
         self.bt_show_log.setIcon(get_icon('log.png'))
 
-        self.rois = {}
-        self.current_roi = None
+        self.shapes = {}
+        self.current_shape = None
         self.size = 690
         self.pen_size = 0.002
     def _draw(self):
-        """Draw helper Objects (roi)."""
-        if self.main_widget.quad == 0 or len(self.rois) > 9:
+        """Draw helper Objects (shape)."""
+        if self.main_widget.quad == 0 or len(self.shapes) > 9:
             return
-        roi = self._get_roi_type()
-        roi.sigRegionChangeFinished.connect(self._set_size)
-        self.current_roi = len(self.rois) + 1
-        self.rois[self.current_roi] = roi
-        self._update_spin_box(roi)
+        shape = self._get_shape_type()
+        shape.sigRegionChangeFinished.connect(self._set_size)
+        self.current_shape = len(self.shapes) + 1
+        self.shapes[self.current_shape] = shape
+        self._update_spin_box(shape)
         self._set_colors()
         self._update_combo_box()
-        self.draw_roi_signal.emit()
+        self.draw_shape_signal.emit()
 
     def _set_colors(self):
-        """Set the colors of all roi."""
-        for n, roi in self.rois.items():
+        """Set the colors of all shape."""
+        for n, shape in self.shapes.items():
             pen = QtGui.QPen(QtCore.Qt.gray, 0.002)
             pen.setWidthF(0.002)
-            roi.setPen(pen)
-        roi = self.rois[self.current_roi]
+            shape.setPen(pen)
+        shape = self.shapes[self.current_shape]
         pen = QtGui.QPen(QtCore.Qt.red, 0.002)
         pen.setWidthF(0.002)
-        roi.setPen(pen)
+        shape.setPen(pen)
 
-    def _get_roi_type(self):
-        """Return the correct roi type."""
-        roi_txt = self.cb_roi_type.currentText().lower()
+    def _get_shape_type(self):
+        """Return the correct shape type."""
+        shape_txt = self.cb_shape_type.currentText().lower()
         shape = self.main_widget.canvas.shape
         y, x = int(round(shape[0]/2, 0)), int(round(shape[1]/2, 0))
-        if roi_txt == 'circle':
-            return CircleROI(pos=(x-x//2, y-x//2), size=self.size)
-        elif roi_txt == 'rectangle':
-            return SquareROI(pos=(x-x//2, y-x//2), size=self.size)
+        if shape_txt == 'circle':
+            return CircleShape(pos=(x-x//2, y-x//2), size=self.size)
+        elif shape_txt == 'rectangle':
+            return SquareShape(pos=(x-x//2, y-x//2), size=self.size)
 
     def _update_combo_box(self):
-        """Add a new roi selection to the combo-box."""
-        self.cb_roi_number.addItem(str(self.current_roi))
-        self.cb_roi_number.setCurrentIndex(len(self.rois)-1)
-        self.cb_roi_number.setEnabled(True)
-        self.bt_clear_roi.setEnabled(True)
-        self.cb_roi_number.update()
+        """Add a new shape selection to the combo-box."""
+        self.cb_shape_number.addItem(str(self.current_shape))
+        self.cb_shape_number.setCurrentIndex(len(self.shapes)-1)
+        self.cb_shape_number.setEnabled(True)
+        self.bt_clear_shape.setEnabled(True)
+        self.cb_shape_number.update()
 
-    def _get_roi(self):
-        """Get the current roi form the roi combobox."""
+    def _get_shape(self):
+        """Get the current shape form the shape combobox."""
         try:
-            num = int(self.cb_roi_number.currentText())
+            num = int(self.cb_shape_number.currentText())
         except ValueError:
-            # Roi is empty, do nothing
+            # Shape is empty, do nothing
             return
-        self.current_roi = num
-        self._update_spin_box(self.rois[num])
+        self.current_shape = num
+        self._update_spin_box(self.shapes[num])
         self._set_colors()
 
-    def _update_spin_box(self, roi):
+    def _update_spin_box(self, shapes):
         """Add properties for a new circle."""
-        self.sb_roi_size.setEnabled(True)
-        size = int(roi.size()[0])
-        self.sb_roi_size.setValue(size)
+        self.sb_shape_size.setEnabled(True)
+        shape = self.shapes[self.current_shape]
+        size = int(shape.size()[0])
+        self.sb_shape_size.setValue(size)
 
-    def _update_roi(self):
+    def _update_shape(self):
         """Update the size and centre of circ. form button-click."""
         # Circles have only radii and
-        roi = self.rois[self.current_roi]
-        size = max(self.sb_roi_size.value(), 0.0001)
-        pos = roi.pos()
-        centre = (pos[0] + round(roi.size()[0], 0)//2,
-                  pos[1] + round(roi.size()[1], 0)//2)
+        shape = self.shapes[self.current_shape]
+        size = max(self.sb_shape_size.value(), 0.0001)
+        pos = shape.pos()
+        centre = (pos[0] + round(shape.size()[0], 0)//2,
+                  pos[1] + round(shape.size()[1], 0)//2)
         new_pos = (centre[0] - size//2,
                    centre[1] - size//2)
-        roi.setPos(new_pos)
+        shape.setPos(new_pos)
         pen_size = 0.002 * self.size/size
         pen = QtGui.QPen(QtCore.Qt.red, pen_size)
 
         pen.setWidthF(pen_size)
-        roi.setSize((size, size))
-        roi.setPen(pen)
+        shape.setSize((size, size))
+        shape.setPen(pen)
 
     def _set_size(self):
-        """Update spin_box if ROI is changed by hand."""
-        roi = self.rois[self.current_roi]
-        self.sb_roi_size.setValue(int(roi.size()[0]))
+        """Update spin_box if Shape is changed by hand."""
+        shape = self.shapes[self.current_shape]
+        self.sb_shape_size.setValue(int(shape.size()[0]))
 
     def _clear(self):
         """Delete all helper objects."""
-        self.delete_roi_signal.emit()
-        self.cb_roi_number.clear()
-        self.cb_roi_number.setEnabled(False)
-        self.bt_clear_roi.setEnabled(False)
-        self.sb_roi_size.setEnabled(False)
-        self.current_roi = None
-        self.rois = {}
+        self.delete_shape_signal.emit()
+        self.cb_shape_number.clear()
+        self.cb_shape_number.setEnabled(False)
+        self.bt_clear_shape.setEnabled(False)
+        self.sb_shape_size.setEnabled(False)
+        self.current_shape = None
+        self.shapes = {}
 
 
 class RunDataWidget(QtWidgets.QFrame):
@@ -167,7 +168,8 @@ class RunDataWidget(QtWidgets.QFrame):
     PULSE_SEL.num = 1
     PULSE_MEAN.num = 2
     PULSE_SUM.num = 3
-
+    
+    draw_img_signal = Signal()
     def __init__(self, run_dir, main_widget, parent=None):
         """Create a btn for run-dir select and 2 spin boxes for train, self.rb_pulse.
 
@@ -217,6 +219,8 @@ class RunDataWidget(QtWidgets.QFrame):
         # Apply no selection method (sum, mean) to select self.rb_pulses by default
         self._sel_method = None
         self._read_train = True
+
+        self.sb_pulse_id.valueChanged.connect(self.draw_img_signal.emit)
 
     def activate_spin_boxes(self):
         """Set min/max sizes of the spinbox according to trainId's and imgs."""
@@ -277,7 +281,15 @@ class RunDataWidget(QtWidgets.QFrame):
             _, data = self.rundir.train_from_id(self.tid,
                                                 devices=[('*DET*',
                                                           'image.data')])
-            img = kd.stack_detector_data(data, 'image.data')
+            try:
+                img = kd.stack_detector_data(data, 'image.data')
+            except ValueError:
+                QtGui.QApplication.restoreOverrideCursor()
+                self.main_widget.log.error('Bad tain, skipping')
+                raise ValueError('Bad train')
+            # Probaply raw data with gain dimension - take the data dim
+            if len(img.shape) == 5:
+                img = img[:, 0,:] # TODO: confirm if first gain dim is data
             self._img = np.clip(img, 0, None)
             self._read_train = False
         if self._sel_method is None:
@@ -348,7 +360,7 @@ class GeometryWidget(QtWidgets.QFrame):
                 os.remove(fname)
             except (FileNotFoundError, PermissionError):
                 pass
-            write_geometry(self.geom, fname, self.header)
+            write_geometry(self.geom, fname, self.header, self.main_widget.log)
             txt = ' Geometry information saved to {}'.format(fname)
             self.main_widget.log.info(txt)
             warning(txt, title='Info')

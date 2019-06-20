@@ -36,20 +36,26 @@ def read_geometry(detector, filename, quad_pos=None):
     elif detector == 'LPD':
         from .geometry import LPDGeometry
         return LPDGeometry.from_h5_file_and_quad_positions(filename, quad_pos)
+    elif detector == 'DSSC':
+        from .geometry import DSSCGeometry
+        return DSSCGeometry.from_h5_file_and_quad_positions(filename, quad_pos)
 
 
-def write_geometry(geom, filename, header=''):
+def write_geometry(geom, filename, header, logger):
     """Write the correct geometry description.
 
     Parameters:
         geom (GeometryAssembler): object holding the geometry information
         filename (str): Output filename
+        header (str): Additional infromation for a geometry header
+        logger (str): Logging object to display information
     """
-    from .geometry import AGIPDGeometry, LPDGeometry
+    from .geometry import AGIPDGeometry, DSSCGeometry, LPDGeometry
     if isinstance(geom, AGIPDGeometry):
         geom.write_crystfel_geom(filename, header=header)
-    elif isinstance(geom, LPDGeometry):
+    elif isinstance(geom, LPDGeometry) or isinstance(geom, DSSCGeometry):
         geom.write_quad_pos(filename)
+        logger.info('Quadpos {}'.format(geom.quad_pos))
     else:
         raise NotImplementedError('Detector Class not available')
 
@@ -76,7 +82,7 @@ def create_button(label, icon_type):
                    'ok': ('gtk-ok.png', 16),
                    'quit': ('exit.png', 16),
                    'quads': ('quads.png', 16),
-                   'rois': ('rois.png', 16),
+                   'shapes': ('shapes.png', 16),
                    'rundir': ('open.png', 16),
                    'save': ('save.png', 16),
                    'square': ('square.png', 16)

@@ -64,7 +64,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="cb_roi_type">
+             <widget class="QComboBox" name="cb_shape_type">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -98,7 +98,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QSpinBox" name="sb_roi_size">
+             <widget class="QSpinBox" name="sb_shape_size">
               <property name="enabled">
                <bool>false</bool>
               </property>
@@ -131,7 +131,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="cb_roi_number">
+             <widget class="QComboBox" name="cb_shape_number">
               <property name="enabled">
                <bool>false</bool>
               </property>
@@ -151,7 +151,7 @@
           <item row="0" column="3">
            <layout class="QHBoxLayout" name="horizontalLayout_5">
             <item>
-             <widget class="QPushButton" name="bt_add_roi">
+             <widget class="QPushButton" name="bt_add_shape">
               <property name="toolTip">
                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Draws the Defined Helper Type&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
@@ -161,7 +161,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="bt_clear_roi">
+             <widget class="QPushButton" name="bt_clear_shape">
               <property name="toolTip">
                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Remove all Fit Helper Objects&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
