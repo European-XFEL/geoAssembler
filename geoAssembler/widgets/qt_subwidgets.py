@@ -285,11 +285,11 @@ class RunDataWidget(QtWidgets.QFrame):
                 img = kd.stack_detector_data(data, 'image.data')
             except ValueError:
                 QtGui.QApplication.restoreOverrideCursor()
-                self.main_widget.log.error('Bad tain, skipping')
+                self.main_widget.log.error('Bad train, skipping')
                 raise ValueError('Bad train')
             # Probaply raw data with gain dimension - take the data dim
             if len(img.shape) == 5:
-                img = img[:, 0,:] # TODO: confirm if first gain dim is data
+                img = img[:, 0] # TODO: confirm if first gain dim is data
             self._img = np.clip(img, 0, None)
             self._read_train = False
         if self._sel_method is None:

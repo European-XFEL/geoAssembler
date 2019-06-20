@@ -5,7 +5,7 @@ import os
 
 import h5py
 from karabo_data.geometry2 import (AGIPD_1MGeometry,
-                                   DSSC_Geometry,
+                                   DSSC_1MGeometry,
                                    LPD_1MGeometry, GeometryFragment)
 import numpy as np
 import pandas as pd
@@ -257,7 +257,7 @@ class DSSCGeometry(GeometryAssembler):
     def from_h5_file_and_quad_positions(cls, geom_file, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
         quad_pos = quad_pos or Defaults.fallback_quad_pos[cls.detector_name]
-        kd_geom = DSSC_Geometry.from_h5_file_and_quad_positions(geom_file,
+        kd_geom = DSSC_1MGeometry.from_h5_file_and_quad_positions(geom_file,
                                                                  quad_pos)
         return cls(kd_geom, geom_file)
 

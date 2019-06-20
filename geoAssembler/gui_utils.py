@@ -53,7 +53,7 @@ def write_geometry(geom, filename, header, logger):
     from .geometry import AGIPDGeometry, DSSCGeometry, LPDGeometry
     if isinstance(geom, AGIPDGeometry):
         geom.write_crystfel_geom(filename, header=header)
-    elif isinstance(geom, LPDGeometry) or isinstance(geom, DSSCGeometry):
+    elif isinstance(geom, (LPDGeometry, DSSCGeometry)):
         geom.write_quad_pos(filename)
         logger.info('Quadpos {}'.format(geom.quad_pos))
     else:
