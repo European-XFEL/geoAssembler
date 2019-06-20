@@ -151,26 +151,42 @@ class GeometryAssembler:
                 out[..., y: y + h, x: x + w] = tile.transform(tile_data)
         return out, centre
 
-    def write_crystfel_geom(self, filename, header=''):
-        """Write the geometry to a crystfel geometry file.
+    def write_crystfel_geom(self, filename, *,
+                            data_path='/entry_1/instrument_1/detector_1/data',
+                            mask_path=None, dims=('frame', 'modno', 'ss', 'fs'),
+                            adu_per_ev=None, clen=None, photon_energy=None):
+        """Write this geometry to a CrystFEL format (.geom) geometry file.
 
-        Parameters:
-            filename (str): filename the geometry description is written
+        Parameters
+        ----------
 
-        Keywords:
-            header (str): specific header for a geometry file
+        filename : str
+            Filename of the geometry file to write.
+        data_path : str
+            Path to the group that contains the data array in the hdf5 file.
+            Default: ``'/entry_1/instrument_1/detector_1/data'``.
+        mask_path : str
+            Path to the group that contains the mask array in the hdf5 file.
+        dims : tuple
+            Dimensions of the data. Extra dimensions, except for the defaults,
+            should be added by their index, e.g.
+            ('frame', 'modno', 0, 'ss', 'fs') for raw data.
+            Default: ``('frame', 'modno', 'ss', 'fs')``.
+            Note: the dimensions must contain frame, modno, ss, fs.
+        adu_per_ev : float
+            ADU (analog digital units) per electron volt for the considered
+            detector.
+        clen : float
+            Distance between sample and detector in meters
+        photon_energy : float
+            Beam wave length in eV
         """
-        panel_chunks = []
-        for p, module in enumerate(self.modules):
-            for a, fragment in enumerate(module):
-                panel_chunks.append(fragment.to_crystfel_geom(p, a))
-
-        with open(filename, 'w') as f:
-            f.write(CRYSTFEL_HEADER_TEMPLATE.format(version=__version__,
-                                                    header=header))
-            for chunk in panel_chunks:
-                f.write(chunk)
-
+        return self.kd_geom.write_crystfel_geom(filename, data_path=data_path,
+                                                mask_path=mask_path,
+                                                dims=dims,
+                                                adu_per_ev=adu_per_ev,
+                                                clen=clen,
+                                                photon_energy=photon_energy)
     def write_quad_pos(self, filename):
         """Write current quadrant positions to csv file.
 

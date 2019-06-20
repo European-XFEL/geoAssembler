@@ -72,18 +72,14 @@ class DetectorHelper(QtGui.QDialog):
     """Setup widgets for quad. positions and geometry file selection."""
 
     filename_set_signal = QtCore.pyqtSignal()
-    header_set_signal = QtCore.pyqtSignal()
 
-    def __init__(self, det, fname, header_text, parent=None):
+    def __init__(self, det, fname, parent=None):
         """Create a table element for quad selection and file selection.
 
         Parameters:
             det (str): the detector (AGIPD or LPD)
 
         Keywords
-            header_text (str) : Additional informations added to the geometry
-                                file  (affects CFEL format only, Default '')
-
             fname (str) :  file name of the geometry file (Default '')
         """
         super().__init__(parent)
@@ -94,7 +90,6 @@ class DetectorHelper(QtGui.QDialog):
         self.setWindowTitle('{} Geometry'.format(det))
 
         self._det = det
-        self._header_text = header_text
         self.filename = fname
         self.quad_pos = None
 
@@ -102,8 +97,6 @@ class DetectorHelper(QtGui.QDialog):
 
         self.bt_load_geometry.clicked.connect(self._get_files)
         self.bt_load_geometry.setIcon(get_icon('file.png'))
-        self.bt_set_header.clicked.connect(self._set_header)
-        self.bt_set_header.setIcon(get_icon('quads.png'))
         self.bt_ok.clicked.connect(self._apply)
         self.bt_ok.setIcon(get_icon('gtk-ok.png'))
         self.bt_cancel.clicked.connect(self.close)
@@ -156,37 +149,6 @@ class DetectorHelper(QtGui.QDialog):
         self.quad_pos = quad_pos
         self.filename_set_signal.emit()
         self.close()
-
-    def _set_header(self):
-        """Set the header of a geometry file."""
-        header_win = QtGui.QDialog(self)
-        header_win.setFixedSize(260, 240)
-        header_win.setWindowTitle('Set Header')
-
-        header_textbox = QtGui.QPlainTextEdit(header_win)
-        header_textbox.insertPlainText(self._header_text)
-        header_textbox.move(20, 20)
-        header_textbox.resize(280, 280)
-
-        ok_btn = create_button('Ok', 'ok')
-        ok_btn.clicked.connect(header_win.accept)
-
-        cancel_btn = create_button('Cancel', 'cancel')
-        cancel_btn.clicked.connect(header_win.close)
-
-        hbox = QtWidgets.QHBoxLayout()
-        hbox.addWidget(ok_btn)
-        hbox.addWidget(cancel_btn)
-
-        layout = QtWidgets.QVBoxLayout()
-        layout.addWidget(header_textbox)
-        layout.addLayout(hbox)
-        header_win.setLayout(layout)
-
-        if header_win.exec_() == QtGui.QDialog.Accepted:
-            self.header_text = header_textbox.toPlainText()
-            self.header_set_signal.emit()
-
 
 class QLogger(logging.Handler):
     """Logger object connected python logging."""

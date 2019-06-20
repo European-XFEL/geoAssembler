@@ -26,7 +26,7 @@ class QtMainWidget(QtGui.QMainWindow):
     log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
 
-    def __init__(self, app, run_dir=None, geofile=None, levels=None, header=None):
+    def __init__(self, app, run_dir=None, geofile=None, levels=None):
         """Display detector data and arrange panels.
 
         Parameters:
@@ -40,8 +40,6 @@ class QtMainWidget(QtGui.QMainWindow):
             levels : (tuple)
             min/max values to be displayed (default: -1000)
 
-            header : (str)
-            header for the geometry file
         """
         super().__init__()
 
@@ -54,7 +52,6 @@ class QtMainWidget(QtGui.QMainWindow):
 
         self.geofile = geofile
         self.levels = levels or [None, None]
-        self.header = header or ''
 
         self.raw_data = None
         self.rect = None
@@ -213,10 +210,10 @@ class QtMainWidget(QtGui.QMainWindow):
         """Return the quadrant for a given set of coordinates."""
         y1, y2, y3 = 0, self.data.shape[-1]/2, self.data.shape[-1]
         x1, x2, x3 = 0, self.data.shape[-2]/2, self.data.shape[-2]
-        self.bounding_boxes = {1: (x2, x3, y2, y3),
-                               2: (x1, x2, y2, y3),
-                               3: (x1, x2, y1, y2),
-                               4: (x2, x3, y1, y2)}
+        self.bounding_boxes = {1: (x2, x3, y1, y2),
+                               2: (x1, x2, y1, y2),
+                               3: (x1, x2, y2, y3),
+                               4: (x2, x3, y2, y3)}
         for quadrant, bbox in self.bounding_boxes.items():
             if bbox[0] <= x < bbox[1] and bbox[2] <= y < bbox[3]:
                 return quadrant

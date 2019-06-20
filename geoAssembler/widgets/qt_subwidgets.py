@@ -314,7 +314,6 @@ class GeometryWidget(QtWidgets.QFrame):
         uic.loadUi(ui_file, self)
 
         self.main_widget = main_widget
-        self.header = main_widget.header
 
         for det in Defaults.detectors:
             self.cb_detectors.addItem(det)
@@ -324,9 +323,8 @@ class GeometryWidget(QtWidgets.QFrame):
         self.cb_detectors.setCurrentIndex(0)
         self.le_geometry_file.setText(content)
         self._geom_window = DetectorHelper(
-            self.det, content, self.header)
+            self.det, content)
         self._geom_window.filename_set_signal.connect(self._set_geom)
-        self._geom_window.header_set_signal.connect(self._set_header)
 
         self.bt_load.clicked.connect(self._load)
         self.bt_apply.clicked.connect(self._create_gemetry_obj)
@@ -360,14 +358,10 @@ class GeometryWidget(QtWidgets.QFrame):
                 os.remove(fname)
             except (FileNotFoundError, PermissionError):
                 pass
-            write_geometry(self.geom, fname, self.header, self.main_widget.log)
+            write_geometry(self.geom, fname, self.main_widget.log)
             txt = ' Geometry information saved to {}'.format(fname)
             self.main_widget.log.info(txt)
             warning(txt, title='Info')
-
-    @pyqtSlot()
-    def _set_header(self):
-        self.header = self._geom_window.header_text
 
     @pyqtSlot()
     def _set_geom(self):

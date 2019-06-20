@@ -41,18 +41,17 @@ def read_geometry(detector, filename, quad_pos=None):
         return DSSCGeometry.from_h5_file_and_quad_positions(filename, quad_pos)
 
 
-def write_geometry(geom, filename, header, logger):
+def write_geometry(geom, filename, logger):
     """Write the correct geometry description.
 
     Parameters:
         geom (GeometryAssembler): object holding the geometry information
         filename (str): Output filename
-        header (str): Additional infromation for a geometry header
         logger (str): Logging object to display information
     """
     from .geometry import AGIPDGeometry, DSSCGeometry, LPDGeometry
     if isinstance(geom, AGIPDGeometry):
-        geom.write_crystfel_geom(filename, header=header)
+        geom.write_crystfel_geom(filename)
     elif isinstance(geom, (LPDGeometry, DSSCGeometry)):
         geom.write_quad_pos(filename)
         logger.info('Quadpos {}'.format(geom.quad_pos))
