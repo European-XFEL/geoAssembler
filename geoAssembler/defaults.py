@@ -28,8 +28,8 @@ class DefaultGeometryConfig:
 
     # Definition of increments (INC) the quadrants should move
     # (u = up, d = down, r = right, l = left is given:
-    direction = {'u': (0, -INC),
-                 'd': (0, INC),
+    direction = {'u': (0, INC),
+                 'd': (0, -INC),
                  'r': (INC, 0),
                  'l': (-INC, 0)}
     # Translate quad's into module indices

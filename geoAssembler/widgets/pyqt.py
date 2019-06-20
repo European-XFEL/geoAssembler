@@ -162,17 +162,17 @@ class QtMainWidget(QtGui.QMainWindow):
         if not self.is_displayed:
             xvals = np.linspace(1., 3., self.canvas.shape[0])
             try:
-                self.imv.setImage(np.clip(self.data, *self.levels),
+                self.imv.setImage(np.clip(self.data[::-1], *self.levels),
                                   levels=self.levels, xvals=xvals)
             except ValueError:
-                self.imv.setImage(self.data,
+                self.imv.setImage(self.data[::-1],
                                   levels=None, xvals=xvals)
             self.is_displayed = True
 
         else:
             imageItem = self.imv.getImageItem()
             self.levels = tuple(imageItem.levels)
-            self.imv.setImage(np.clip(self.data, *self.levels),
+            self.imv.setImage(np.clip(self.data[::-1], *self.levels),
                               levels=self.levels,
                               xvals=np.linspace(1., 3., self.canvas.shape[0]))
 
@@ -195,7 +195,7 @@ class QtMainWidget(QtGui.QMainWindow):
             self.geom_obj.position_all_modules(self.raw_data,
                                                canvas=self.canvas.shape)
         self._draw_rect(quad)
-        self.imv.getImageItem().updateImage(self.data)
+        self.imv.getImageItem().updateImage(self.data[::-1])
 
     def _draw_shape(self):
         """Add a fit object to the image."""
@@ -206,7 +206,7 @@ class QtMainWidget(QtGui.QMainWindow):
         for num in self.shapes:
             self.image.removeItem(self.shapes[num])
 
-    def _get_quadrant(self, y, x):
+    def _get_quadrant(self, x, y):
         """Return the quadrant for a given set of coordinates."""
         y1, y2, y3 = 0, self.data.shape[-1]/2, self.data.shape[-1]
         x1, x2, x3 = 0, self.data.shape[-2]/2, self.data.shape[-2]
@@ -229,6 +229,8 @@ class QtMainWidget(QtGui.QMainWindow):
             self.geom_obj.get_quad_corners(quad,
                                            np.array(self.data.shape, dtype='i')//2)
         pen = QtGui.QPen(QtCore.Qt.red, 0.002)
+        Y, X = self.data.shape
+        P=(P[0], Y-P[1]-dy)
         self.rect = pg.RectROI(pos=P,
                                size=(dx, dy),
                                movable=False,
@@ -246,10 +248,11 @@ class QtMainWidget(QtGui.QMainWindow):
             return
         event.accept()
         # Get postion of mouse-click and display it
+        Y, X = self.data.shape
         pos = event.pos()
         x = int(pos.x())
-        y = int(pos.y())
-        quad = self._get_quadrant(x, y)
+        y = int(Y - pos.y())
+        quad = self._get_quadrant(y, x)
         if quad is None:
             self.imv.getView().removeItem(self.rect)
             self.rect = None
