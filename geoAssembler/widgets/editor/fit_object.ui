@@ -179,6 +179,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="cb_front_view">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set Front View for View Along the Beam, otherwise into the beam (CrystFEL standard)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string>Front View</string>
        </property>
