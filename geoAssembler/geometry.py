@@ -2,6 +2,7 @@
 
 import logging
 import os
+import tempfile
 
 import h5py
 from karabo_data.geometry2 import (AGIPD_1MGeometry,
@@ -225,7 +226,18 @@ class AGIPDGeometry(GeometryAssembler):
     @classmethod
     def from_crystfel_geom(cls, filename):
         """Load geometry from crystfel geometry."""
-        kd_geom = AGIPD_1MGeometry.from_crystfel_geom(filename)
+        try:
+            kd_geom = AGIPD_1MGeometry.from_crystfel_geom(filename)
+        except KeyError:
+            # Probably some informations like clen and adu_per_eV missing
+            with open(filename) as f:
+                geom_file = f.read()
+            with tempfile.NamedTemporaryFile() as temp:
+                with open(temp.name, 'w') as f:
+                    f.write("""clen = 0.118
+adu_per_eV = 0.0075
+"""+geom_file)
+                kd_geom = AGIPD_1MGeometry.from_crystfel_geom(temp.name)
         return cls(kd_geom)
 
     @property
