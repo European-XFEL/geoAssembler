@@ -103,7 +103,6 @@ class QtMainWidget(QtGui.QMainWindow):
 
         # Add widgets to the layout in their proper positions
         self.showMaximized()
-
         self.frontview = False
 
     # Some properties coming up
@@ -159,13 +158,20 @@ class QtMainWidget(QtGui.QMainWindow):
             self._flip_lr = -1
         else:
             self._flip_lr = 1
-        if self.canvas is None:
+        try:
             data, self.centre = self.geom_obj.position_all_modules(self.raw_data)
-            self.canvas = np.full(np.array(data.shape) + Defaults.canvas_margin,
-                                  np.nan)
+        except ValueError:
+            warning('Error while applying geometry, check Detector Settings')
+            return
+        self.canvas = np.full(np.array(data.shape) + Defaults.canvas_margin,
+                              np.nan)
+        try:
+            self.data, _ = self.geom_obj.position_all_modules(self.raw_data,
+                                                              canvas=self.canvas.shape)
+        except ValueError:
+            warning('Error while applying geometry, check Detector Settings')
+            return
 
-        self.data, _ = self.geom_obj.position_all_modules(self.raw_data,
-                                                          canvas=self.canvas.shape)
         # Display the data and assign each frame a time value from 1.0 to 3.0
         self._draw_rect(None)
         if not self.is_displayed:

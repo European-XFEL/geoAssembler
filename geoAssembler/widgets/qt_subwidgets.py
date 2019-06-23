@@ -369,6 +369,7 @@ class GeometryWidget(QtWidgets.QFrame):
     def _set_geom(self):
         """Put the geometry file name into the text box."""
         self.le_geometry_file.setText(self._geom_window.filename)
+        self.geom = None
 
     @property
     def geom_file(self):
