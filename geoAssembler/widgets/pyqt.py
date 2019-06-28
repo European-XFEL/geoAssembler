@@ -33,7 +33,7 @@ class QtMainWidget(QtGui.QMainWindow):
             run_dir : (str)
             Directory that contains the run data
 
-            geofile : (str) 
+            geofile : (str)
             The geometry that holding the geometric information on detector
             assembeling
 
@@ -157,6 +157,7 @@ class QtMainWidget(QtGui.QMainWindow):
             self.frontview = True
             self._flip_lr = -1
         else:
+            self.frontview = False
             self._flip_lr = 1
         try:
             data, self.centre = self.geom_obj.position_all_modules(self.raw_data)

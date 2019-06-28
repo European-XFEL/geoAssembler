@@ -44,6 +44,10 @@ class CircleShape(pg.EllipseROI):
         self.handleSize = 0
         _ = [self.removeHandle(handle) for handle in self.getHandles()]
 
+    def __repr__(self):
+        size = self.size()[0]
+        return 'Circle(d:{})'.format(size)
+
 
 class SquareShape(pg.RectROI):
     """Define a rectangular Shape with a fixed aspect ratio (aka square)."""
@@ -66,6 +70,10 @@ class SquareShape(pg.RectROI):
         self.aspectLocked = True
         self.handleSize = 0
         _ = [self.removeHandle(handle) for handle in self.getHandles()]
+
+    def __repr__(self):
+        size = self.size()[0]
+        return 'Square(a:{})'.format(size)
 
 
 class DetectorHelper(QtGui.QDialog):
