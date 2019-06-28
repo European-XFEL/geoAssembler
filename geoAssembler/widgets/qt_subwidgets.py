@@ -40,7 +40,6 @@ class FitObjectWidget(QtWidgets.QFrame):
         super().__init__(parent)
         ui_file = op.join(op.dirname(__file__), 'editor/fit_object.ui')
         uic.loadUi(ui_file, self)
-        print(ui_file)
 
         self.main_widget = main_widget
 
@@ -62,6 +61,7 @@ class FitObjectWidget(QtWidgets.QFrame):
         self.current_shape = None
         self.size = 690
         self.pen_size = 0.002
+
     def _draw(self):
         """Draw helper Objects (shape)."""
         if self.main_widget.quad == 0 or len(self.shapes) > 9:
@@ -71,8 +71,8 @@ class FitObjectWidget(QtWidgets.QFrame):
         self.current_shape = len(self.shapes) + 1
         self.shapes[self.current_shape] = shape
         self._update_spin_box(shape)
-        self._set_colors()
         self._update_combo_box()
+        self._set_colors()
         self.draw_shape_signal.emit()
 
     def _set_colors(self):
@@ -98,21 +98,25 @@ class FitObjectWidget(QtWidgets.QFrame):
 
     def _update_combo_box(self):
         """Add a new shape selection to the combo-box."""
-        self.cb_shape_number.addItem(str(self.current_shape))
-        self.cb_shape_number.setCurrentIndex(len(self.shapes)-1)
+        self.cb_shape_number.addItem(repr(self.shapes[self.current_shape]))
+        for i in range(self.cb_shape_number.count()):
+            # TODO: this seems to be a bug in QT. If only the last item is 
+            # activated all the others will get the same label.
+            # Activate all to avoid that behavior 
+            self.cb_shape_number.setCurrentIndex(i)
         self.cb_shape_number.setEnabled(True)
         self.bt_clear_shape.setEnabled(True)
         self.cb_shape_number.update()
+        #self.cb_shape_number.setCurrentIndex(self.cb_shape_number.count() - 2)
 
     def _get_shape(self):
         """Get the current shape form the shape combobox."""
-        try:
-            num = int(self.cb_shape_number.currentText())
-        except ValueError:
+        num = self.cb_shape_number.currentIndex()
+        if num == -1:
             # Shape is empty, do nothing
             return
-        self.current_shape = num
-        self._update_spin_box(self.shapes[num])
+        self.current_shape = num + 1
+        self._update_spin_box(self.shapes[self.current_shape])
         self._set_colors()
 
     def _update_spin_box(self, shapes):
@@ -139,6 +143,11 @@ class FitObjectWidget(QtWidgets.QFrame):
         pen.setWidthF(pen_size)
         shape.setSize((size, size))
         shape.setPen(pen)
+        idx = self.cb_shape_number.currentIndex()
+        txt = self.cb_shape_number.itemText(idx)
+        if txt != repr(shape):
+            self.cb_shape_number.setItemText(idx, repr(shape))
+            self.cb_shape_number.update()
 
     def _set_size(self):
         """Update spin_box if Shape is changed by hand."""
@@ -265,10 +274,17 @@ class RunDataWidget(QtWidgets.QFrame):
 
     def _read_rundir(self, rfolder):
         """Read a selected run directory."""
-        self.le_run_directory.setText(rfolder)
         self.main_widget.log.info('Opening run directory {}'.format(rfolder))
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        self.rundir = kd.RunDirectory(rfolder)
+        try:
+            self.rundir = kd.RunDirectory(rfolder)
+        except Exception:
+            QtGui.QApplication.restoreOverrideCursor()
+            self.main_widget.log.info('Could not find HDF5-Files')
+            warning('No HDF5-Files found', title='Info')
+            return
+
+        self.le_run_directory.setText(rfolder)
         self.min_tid = self.rundir.train_ids[0]
         self.max_tid = self.rundir.train_ids[-1]
         self.activate_spin_boxes()
