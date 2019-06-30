@@ -1,4 +1,6 @@
-"""Module that defines calibrans"""
+
+"""Module that defines pyFAI calibrans."""
+
 import os
 
 import pyFAI.calibrant

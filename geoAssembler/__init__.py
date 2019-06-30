@@ -1,4 +1,4 @@
-"""Call the calibration routine for ringbased calibration
+"""Call the calibration routine for ringbased calibration.
 
 Copyright (c) 2017, European X-Ray Free-Electron Laser Facility GmbH
 All rights reserved.
@@ -33,13 +33,14 @@ program. If not, see <https://opensource.org/licenses/BSD-3-Clause>
 
 
 Author: bergeman
+
 """
 
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 
-from .nb_viewer import CalibrateNb
-from .qt_viewer import CalibrateQt
+from .widgets.notebook import MainWidget as CalibrateNb
+from .widgets.pyqt import QtMainWidget
 from .calibrants import calibrants
 

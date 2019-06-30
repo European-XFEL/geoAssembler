@@ -6,22 +6,10 @@ import logging
 import os
 
 from pyqtgraph import QtGui
-from . import CalibrateQt
+from geoAssembler import QtMainWidget
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 log = logging.getLogger(__name__)
-
-# Define a header that should be added to the geometry file, this is useful
-# to use the geometry file with tools like hdfsee
-HEADER = """data = /entry_1/data_1/data
-;mask = /entry_1/data_1/mask
-
-mask_good = 0x0
-mask_bad = 0xffff
-
-adu_per_eV = 0.0075  ; no idea
-clen = {clen}  ; Camera length, aka detector distance
-photon_energy = {energy} ;"""
 
 NB_MESSAGE = """Notebook has been created. You can use it by loading the file
 {nb_path} either by using JupyterHub on desy:
@@ -94,8 +82,8 @@ def create_nb(rundir=None, geofile=None, clen=None, energy=None, levels=None,
 def create_calibrate_gui(*args, **kwargs):
     """Create a QtGui Application and return an instance of CalibrateQt."""
     app = QtGui.QApplication([])
-    calib = CalibrateQt(*args, **kwargs)
-    calib.window.show()
+    calib = QtMainWidget(app, *args, **kwargs)
+    #calib.show()
     app.exec_()
     app.closeAllWindows()
     return calib
@@ -123,10 +111,6 @@ def main(argv=None):
                     help='Select a run (default {})'.format(RUNDIR))
     ap.add_argument('--geometry', default=None,
                     help='Select a cfel geometry file (default None)')
-    ap.add_argument('--clen', default=CLEN,
-                    help='Detector distance [m] (default {})'.format(CLEN))
-    ap.add_argument('--energy', default=ENERGY,
-                    help='Photon energy [ev] (default {})'.format(ENERGY))
     ap.add_argument('--level', nargs=2, default=[None, None], type=float,
                     help='Pre defined display range for plotting')
     ap.add_argument('--test', default=False, action='store_true',
@@ -142,21 +126,17 @@ def main(argv=None):
     else:
         if args.test:
             from tempfile import TemporaryDirectory
-            from .tests.utils import create_test_directory
+            from geoAssembler.tests.utils import create_test_directory
             with TemporaryDirectory() as td:
                 log.info('Creating temp data in {}...'.format(td))
                 create_test_directory(td, det=args.det)
                 log.info('...done')
                 create_calibrate_gui(td,
                                      args.geometry,
-                                     levels=args.level,
-                                     header=HEADER.format(clen=args.clen,
-                                                          energy=args.energy))
+                                     levels=args.level)
         else:
             create_calibrate_gui(args.rundir,
-                                 args.geometry, levels=args.level,
-                                 header=HEADER.format(clen=args.clen,
-                                                      energy=args.energy))
+                                 args.geometry, levels=args.level)
 
 
 if __name__ == '__main__':

@@ -51,17 +51,6 @@
     "clen = {clen} #Detector distance in m\n",
     "energy = {energy} #Photon energy in eV I believe\n",
     "vmin, vmax = {levels} #The display range\n",
-    "\n",
-    "#Now construct the header of the geometry file from those properties\n",
-    "header = \"\"\"data = /entry_1/data_1/data\n",
-    ";mask = /entry_1/data_1/mask\n",
-    "\n",
-    "mask_good = 0x0\n",
-    "mask_bad = 0xffff\n",
-    "\n",
-    "adu_per_eV = 0.0075  ; no idea\n",
-    "clen = {}  ; Camera length, aka detector distance\n",
-    "photon_energy = {} ;\"\"\".format(clen, energy)"
    ]
   },
   {
@@ -206,7 +195,7 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "Finally the geometry can be saved by calling ```geom.write_crystfel_geom```. This method gets the output filename and the 'header' that contains information about detector distance and photon energy."
+    "Finally the geometry can be saved by calling ```geom.write_crystfel_geom```. This method gets the output filename."
    ]
   },
   {
@@ -224,7 +213,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "C.geom.write_crystfel_geom(output_geofile, header)"
+    "C.geom.write_crystfel_geom(output_geofile)"
    ]
   },
   {

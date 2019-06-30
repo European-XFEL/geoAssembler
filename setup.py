@@ -29,7 +29,6 @@ def find_version(*parts):
 def find_files(directory):
     return glob.glob(osp.join(directory, '*'))
 
-
 setup(name="geoAssembler",
       version=find_version("geoAssembler", "__init__.py"),
       author="European XFEL GmbH",
@@ -42,7 +41,7 @@ setup(name="geoAssembler",
       packages=find_packages(),
       data_files=[('templates', find_files('templates')),
                   ('cells', find_files('cells'))],
-      package_data={'': ['cells/*.D', 'templates/*.tmpl'],
+      package_data={'': ['cells/*.D', 'templates/*.tmpl', 'icons/*.png'],
                     'geoAssembler.tests': ['data_*.npz', 'test.geom'],
                     },
       entry_points={
@@ -50,7 +49,7 @@ setup(name="geoAssembler",
               'geoAssembler = geoAssembler.main:main'
           ]},
       dependency_links=[
-          'git+https://github.com/European-XFEL/karabo_data.git'],
+          'https://github.com/European-XFEL/karabo_data/tarball/master#egg=karabo-data-999.0.0'],
       install_requires=[
           'cfelpyutils',
           'karabo-data',

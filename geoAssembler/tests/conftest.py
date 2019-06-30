@@ -69,13 +69,6 @@ def save_geo():
 @pytest.fixture()
 def calib():
     """Create the calibration gui"""
-    # Define a header for the cfel geometry file
-    header="""
-    ;
-    clen = 5.5;
-    adu_per_eV = 0.0075
-    photon_energy = 10235;
-    """
     from ..qt_viewer import CalibrateQt
 
-    yield CalibrateQt(None, None, header=header)
+    yield CalibrateQt(None, None)

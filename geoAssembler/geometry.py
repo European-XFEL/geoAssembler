@@ -2,9 +2,11 @@
 
 import logging
 import os
+import tempfile
 
 import h5py
 from karabo_data.geometry2 import (AGIPD_1MGeometry,
+                                   DSSC_1MGeometry,
                                    LPD_1MGeometry, GeometryFragment)
 import numpy as np
 import pandas as pd
@@ -40,8 +42,6 @@ class GeometryAssembler:
 
     filename = None
     unit = None
-    asic_gap = None
-    panel_gap = None
     frag_ss_pixels = None
     frag_fs_pixels = None
     pixel_size = None
@@ -53,14 +53,16 @@ class GeometryAssembler:
 
     @property
     def modules(self):
+        """The karabo data geometry modules."""
         return self.kd_geom.modules
 
     @property
     def snapped_geom(self):
+        """Create a snapped geometry."""
         return self.kd_geom._snapped()
 
     def inspect(self):
-        """Alias for inspect method of kd_geom object."""
+        """Return inspect method of kd_geom object."""
         return self.kd_geom.inspect()
 
     def move_quad(self, quad, inc):
@@ -150,26 +152,42 @@ class GeometryAssembler:
                 out[..., y: y + h, x: x + w] = tile.transform(tile_data)
         return out, centre
 
-    def write_crystfel_geom(self, filename, header=''):
-        """Write the geometry to a crystfel geometry file.
+    def write_crystfel_geom(self, filename, *,
+                            data_path='/entry_1/instrument_1/detector_1/data',
+                            mask_path=None, dims=('frame', 'modno', 'ss', 'fs'),
+                            adu_per_ev=None, clen=None, photon_energy=None):
+        """Write this geometry to a CrystFEL format (.geom) geometry file.
 
-        Parameters:
-            filename (str): filename the geometry description is written
+        Parameters
+        ----------
 
-        Keywords:
-            header (str): specific header for a geometry file
+        filename : str
+            Filename of the geometry file to write.
+        data_path : str
+            Path to the group that contains the data array in the hdf5 file.
+            Default: ``'/entry_1/instrument_1/detector_1/data'``.
+        mask_path : str
+            Path to the group that contains the mask array in the hdf5 file.
+        dims : tuple
+            Dimensions of the data. Extra dimensions, except for the defaults,
+            should be added by their index, e.g.
+            ('frame', 'modno', 0, 'ss', 'fs') for raw data.
+            Default: ``('frame', 'modno', 'ss', 'fs')``.
+            Note: the dimensions must contain frame, modno, ss, fs.
+        adu_per_ev : float
+            ADU (analog digital units) per electron volt for the considered
+            detector.
+        clen : float
+            Distance between sample and detector in meters
+        photon_energy : float
+            Beam wave length in eV
         """
-        panel_chunks = []
-        for p, module in enumerate(self.modules):
-            for a, fragment in enumerate(module):
-                panel_chunks.append(fragment.to_crystfel_geom(p, a))
-
-        with open(filename, 'w') as f:
-            f.write(CRYSTFEL_HEADER_TEMPLATE.format(version=__version__,
-                                                    header=header))
-            for chunk in panel_chunks:
-                f.write(chunk)
-
+        return self.kd_geom.write_crystfel_geom(filename, data_path=data_path,
+                                                mask_path=mask_path,
+                                                dims=dims,
+                                                adu_per_ev=adu_per_ev,
+                                                clen=clen,
+                                                photon_energy=photon_energy)
     def write_quad_pos(self, filename):
         """Write current quadrant positions to csv file.
 
@@ -193,8 +211,6 @@ class AGIPDGeometry(GeometryAssembler):
         """
         GeometryAssembler.__init__(self, kd_geom)
         self.unit = 2e-4
-        self.asic_gap = 2
-        self.panel_gap = 29
         self.pixel_size = 2e-4  # 2e-4 metres == 0.2 mm
         self.frag_ss_pixels = 64
         self.frag_fs_pixels = 128
@@ -202,15 +218,26 @@ class AGIPDGeometry(GeometryAssembler):
 
     @classmethod
     def from_quad_positions(cls, quad_pos=None):
-        """Generate geometry from quadrant positions"""
+        """Generate geometry from quadrant positions."""
         quad_pos = quad_pos or Defaults.fallback_quad_pos[self.detector_name]
         kd_geom = AGIPD_1MGeometry.from_quad_positions(quad_pos)
         return cls(kd_geom)
 
     @classmethod
     def from_crystfel_geom(cls, filename):
-        """Load geometry from crystfel geometry"""
-        kd_geom = AGIPD_1MGeometry.from_crystfel_geom(filename)
+        """Load geometry from crystfel geometry."""
+        try:
+            kd_geom = AGIPD_1MGeometry.from_crystfel_geom(filename)
+        except KeyError:
+            # Probably some informations like clen and adu_per_eV missing
+            with open(filename) as f:
+                geom_file = f.read()
+            with tempfile.NamedTemporaryFile() as temp:
+                with open(temp.name, 'w') as f:
+                    f.write("""clen = 0.118
+adu_per_eV = 0.0075
+"""+geom_file)
+                kd_geom = AGIPD_1MGeometry.from_crystfel_geom(temp.name)
         return cls(kd_geom)
 
     @property
@@ -235,8 +262,71 @@ class AGIPDGeometry(GeometryAssembler):
                             columns=['X', 'Y'])
 
 
+class DSSCGeometry(GeometryAssembler):
+    """Detector layout for DSSC."""
+    detector_name = 'DSSC'
+
+    def __init__(self, kd_geom, filename):
+        """Set the properties for DSSC detector.
+
+        Paramerters:
+            kd_geom (DSSCGeometry) : karabo_data geometry objet
+            filename (str) : path to the hdf5 geometry description
+        """
+        GeometryAssembler.__init__(self, kd_geom)
+        self.filename = filename
+        self.pixel_size = 236e-6
+        self.unit = 1e-3
+        self.frag_ss_pixels = 128
+        self.frag_fs_pixels = 256
+        self._pixel_shape = np.array([1., 1.5/np.sqrt(3)])
+
+    @classmethod
+    def from_h5_file_and_quad_positions(cls, geom_file, quad_pos=None):
+        """Create geometry from geometry file or quad positions."""
+        quad_pos = quad_pos or Defaults.fallback_quad_pos[cls.detector_name]
+        kd_geom = DSSC_1MGeometry.from_h5_file_and_quad_positions(geom_file,
+                                                                 quad_pos)
+        return cls(kd_geom, geom_file)
+
+    @property
+    def quad_pos(self):
+        """Get the quadrant positions from the geometry object."""
+        quad_pos = np.zeros((4, 2))
+        for q in range(1, 5):
+            # Getting the offset for one tile (4th module, 2nd tile)
+            # is sufficient
+            quad_pos[q-1] = self._get_offsets(q, 1, 1)
+        return pd.DataFrame(quad_pos,
+                            columns=['Y', 'X'],
+                            index=['q{}'.format(i) for i in range(1, 5)])
+
+    def _get_offsets(self, quad, module, asic):
+        """Get the panel and asic offsets."""
+        quads_x_orientation = [-1, -1, 1, 1]
+        #quads_y_orientation = [1, 1, -1, -1]
+        x_orient = quads_x_orientation[quad - 1]
+        #y_orient = quads_y_orientation[quad - 1]
+        px_conv = self.pixel_size / self.unit
+        nmod = (quad-1) * 4 + module
+        frag = self.modules[nmod-1][asic-1]
+        if x_orient == -1:
+            cr_pos = (frag.corner_pos + (frag.fs_vec * self.frag_fs_pixels))[:2]
+        else:
+            cr_pos = (frag.corner_pos + (frag.ss_vec * self.frag_ss_pixels))[:2]
+
+        with h5py.File(self.filename, 'r') as f:
+            mod_grp = f['Q{}/M{}'.format(quad, module)]
+            mod_offset = mod_grp['Position'][:]
+            tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
+            cr_pos *= px_conv
+        return cr_pos - (mod_offset + tile_offset)
+
+
+
 class LPDGeometry(GeometryAssembler):
     """Detector layout for LPD."""
+    detector_name = 'LPD'
 
     def __init__(self, kd_geom, filename):
         """Set the properties for LPD detector.
@@ -247,18 +337,15 @@ class LPDGeometry(GeometryAssembler):
         """
         GeometryAssembler.__init__(self, kd_geom)
         self.filename = filename
-        self.asic_gap = 4
-        self.panel_gap = 4
         self.unit = 1e-3
         self.pixel_size = 5e-4  # 5e-4 metres == 0.5 mm
         self.frag_ss_pixels = 32
         self.frag_fs_pixels = 128
-        self.detector_name = 'AGIPD'
 
     @classmethod
     def from_h5_file_and_quad_positions(cls, geom_file, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
-        quad_pos = quad_pos or Defaults.fallback_quad_pos[self.detector_name]
+        quad_pos = quad_pos or Defaults.fallback_quad_pos[cls.detector_name]
         kd_geom = LPD_1MGeometry.from_h5_file_and_quad_positions(geom_file,
                                                                  quad_pos)
         return cls(kd_geom, geom_file)
