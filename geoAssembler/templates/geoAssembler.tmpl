@@ -1,0 +1,264 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Diffraction Ring Based Detector Geometry Calibration\n",
+    "\n",
+    "This notebook serves demonstrates how to use ipython based widgets to create a starting geometry from Power Based ring diffraction pattern."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "%matplotlib notebook\n",
+    "#This important for interactive plots \n",
+    "import os\n",
+    "import warnings\n",
+    "import sys\n",
+    "\n",
+    "from matplotlib import pyplot as plt\n",
+    "import matplotlib.patches as patches\n",
+    "\n",
+    "warnings.filterwarnings('ignore')\n",
+    "import numpy as np\n",
+    "\n",
+    "import karabo_data as kd\n",
+    "from geoAssembler import CalibrateNb as Calibrate\n",
+    "from geoAssembler.geometry import AGIPD_1MGeometry"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Define all parameters:\n",
+    "First define all variables and parameters that are needed to run this notebook:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "run_dir = {rundir} #Run directory\n",
+    "geofile = {geofile} #A predifined geometry file (can be none)\n",
+    "clen = {clen} #Detector distance in m\n",
+    "energy = {energy} #Photon energy in eV I believe\n",
+    "vmin, vmax = {levels} #The display range\n",
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Detector distance to the sample, Beam wave length are certainly helpful variables that should be defined in the geometry file."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Get a run dataset with ring pattern\n",
+    "\n",
+    "Data with ring patterns are neede to work with this tool. Therefore a run that contains data with diffraction patterns, for example from Lithium Titanium, should be defined. First open this run with karabo-data and read the data\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "run = kd.RunDirectory(run_dir)\n",
+    "run.info()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Read the train data\n",
+    "First read a train that has detector data. Sometimes it might happen that the first train Id's have only 'slow' but no detector data. To get the trains that have detector data the ```.train``` method with the ```require_all``` keyword can be applied"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "trains = run.trains(devices=[('*DET*', 'image.data')], require_all=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "This will return an iterator. To get the trainId one can either loop over trains or apply the ```next``` command"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "tId, train_data = next(trains)\n",
+    "tId"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Use the ```stack_detector_data``` to create a big array with all pulses for the selected train data. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_array = kd.stack_detector_data(train_data, 'image.data', only='DET')\n",
+    "train_array.shape"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Let's apply the ```sum``` function over a train rather than selecting single pulses. This can help to get a clearer signal, if necessary."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "data_array = np.sum(np.clip(train_array, 0, 2000), axis=0)\n",
+    "data_array.shape"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Start the geometry calibration with\n",
+    "First lets assume that we have no prior knowledge about the detector geometry. We naively just assume that all modules equally spaced with 29px distance to each other."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "scrolled": false
+   },
+   "outputs": [],
+   "source": [
+    "C =  Calibrate(data_array, geometry=geofile, vmin=vmin, vmax=vmax, figsize=(8,8))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Helper circles that guide the quadrant movement can be added by pushing the *Add circle* button. There can be multiple at a time. If there are different circles present, individual circles can be selected using the *Sel.* drop down menu. The radius can be adjusted with help of the *Radius* menu.\n",
+    "\n",
+    "The quadrants can be moved by selecting a Quadrant from the *Quadrant* menu. The selected quadrant can be moved horizontally and vertically via the *Horizontal* and *Vertical* spin boxes."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The centre of the geometry can be retrieved with the ```centre``` attribute:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "C.centre"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Finally the geometry can be saved by calling ```geom.write_crystfel_geom```. This method gets the output filename."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "output_geofile = 'testing.geom' # Change that name"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "C.geom.write_crystfel_geom(output_geofile)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The new geometry file could also be loaded for another round of refinement:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "C_new =  Calibrate(data_array, geometry=C.geom, vmin=vmin, vmax=vmax, figsize=(8,8))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "xfel",
+   "language": "python 3",
+   "name": "xfel"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.1"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
