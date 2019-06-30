@@ -1,0 +1,14 @@
+__pycache__
+*.pyc
+.ipynb_checkpoints
+!geoAssembler/icons/
+*.png
+!geoAssembler/icons/*.png
+!docs/.screenshot.png
+*cache
+*.csv
+*.geom
+build/
+dist/
+!geoAssembler/tests/test.geom
+geoAssembler.egg-info/
