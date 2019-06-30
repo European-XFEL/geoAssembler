@@ -106,8 +106,6 @@ class FitObjectWidget(QtWidgets.QFrame):
             self.cb_shape_number.setCurrentIndex(i)
         self.cb_shape_number.setEnabled(True)
         self.bt_clear_shape.setEnabled(True)
-        self.cb_shape_number.update()
-        #self.cb_shape_number.setCurrentIndex(self.cb_shape_number.count() - 2)
 
     def _get_shape(self):
         """Get the current shape form the shape combobox."""
@@ -147,7 +145,7 @@ class FitObjectWidget(QtWidgets.QFrame):
         txt = self.cb_shape_number.itemText(idx)
         if txt != repr(shape):
             self.cb_shape_number.setItemText(idx, repr(shape))
-            self.cb_shape_number.update()
+            #self.cb_shape_number.update()
 
     def _set_size(self):
         """Update spin_box if Shape is changed by hand."""
