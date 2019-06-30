@@ -1,4 +1,4 @@
-o# Ring Based Detector Geometry Calibration Tool
+# Shape Overlay Based Detector Geometry Calibration
 
 This repository provides a tool to calibrate AGIPD detector geometry information
 
