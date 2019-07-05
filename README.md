@@ -58,8 +58,9 @@ using the *Save* button.
 ## Calibration Using Jupyter
 The -nb, --notebook flag creates a jupyter notebook uses the home direcory.
 
-### Setup
-## Using Maxwell Cluster (recommended)
+## Setup
+
+### Using Maxwell Cluster (recommended)
 It is recommended to use the already setup application available in xfel's
 anaconda3 distirbution.
 All packages should be available via the xfel module. At the moment
@@ -69,7 +70,7 @@ $: module load exfel exfel_anaconda3
 $: geoAssembler
 ```
 
-## Using pip
+### Using pip
 The software is can be installed by pip:
 ```bash
 $: pip install .
