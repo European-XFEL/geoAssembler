@@ -56,15 +56,15 @@ def test_move_quad():
     asic = geom.modules[0][0]
     corners_before = asic.corner_pos
 
-    geom.move_quad(4, np.array((0,-1)))
-    geom.move_quad(4, np.array((1,0)))
+    geom.move_quad(1, np.array((0,-1)))
+    geom.move_quad(1, np.array((1,0)))
 
     np.testing.assert_allclose(geom.modules[0][0].corner_pos,
                                corners_before + np.array([1, -1, 0]))
 
     # Move back to original position
-    geom.move_quad(4, np.array((-1,0)))
-    geom.move_quad(4, np.array((0,1)))
+    geom.move_quad(1, np.array((-1,0)))
+    geom.move_quad(1, np.array((0,1)))
 
     asic = geom.modules[0][0]
     corners_after = asic.corner_pos
