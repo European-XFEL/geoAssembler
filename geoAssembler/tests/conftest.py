@@ -67,8 +67,8 @@ def save_geo():
         yield save_geo.name
 
 @pytest.fixture()
-def calib():
+def calib(gui_app):
     """Create the calibration gui"""
-    from ..qt_viewer import CalibrateQt
+    from ..widgets.pyqt import QtMainWidget
 
-    yield CalibrateQt(None, None)
+    yield QtMainWidget(gui_app)

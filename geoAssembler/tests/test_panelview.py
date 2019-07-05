@@ -1,21 +1,19 @@
 import os
-import pytest
 
-import mock
 import numpy as np
 from pyqtgraph import QtCore
 from PyQt5.QtTest import QTest
 
 from ..geometry import AGIPDGeometry
-from ..qt_viewer import CalibrateQt
+from ..widgets.pyqt import QtMainWidget
 
 
-def test_defaults(mock_dialog, mock_run):
+def test_defaults(mock_dialog, mock_run, gui_app):
     """Test default settings."""
     # Click add circle btn when no image is selected, check for circles
-    test_calib = CalibrateQt(mock_run, geofile=None, levels=[0, 1500])
-    QTest.mouseClick(test_calib.add_circ_btn, QtCore.Qt.LeftButton)
-    assert len(test_calib.circles) == 0
+    test_calib = QtMainWidget(gui_app, mock_run, geofile=None, levels=[0, 1500])
+    QTest.mouseClick(test_calib.fit_widget.bt_add_shape, QtCore.Qt.LeftButton)
+    assert len(test_calib.shapes) == 0
     # Click the add image button in test mode and check if a run-dir
     # can selected (shouldn't be)
     QTest.mouseClick(test_calib.apply_btn, QtCore.Qt.LeftButton)
