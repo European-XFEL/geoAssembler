@@ -26,7 +26,8 @@ class QtMainWidget(QtGui.QMainWindow):
     log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
 
-    def __init__(self, app, run_dir=None, geofile=None, levels=None):
+    def __init__(self, app, run_dir=None, geofile=None, levels=None,
+                 log_to_window=True):
         """Display detector data and arrange panels.
 
         Parameters:
@@ -39,6 +40,9 @@ class QtMainWidget(QtGui.QMainWindow):
 
             levels : (tuple)
             min/max values to be displayed (default: -1000)
+
+            log_to_window : (bool)
+            If true, direct Python logging into a dialog for the user.
 
         """
         super().__init__()
@@ -59,7 +63,8 @@ class QtMainWidget(QtGui.QMainWindow):
         self.quad = -1  # The selected quadrants (-1 none selected)
         self.is_displayed = False
         q_logger = QLogger(self)
-        self.log.addHandler(q_logger)
+        if log_to_window:
+            self.log.addHandler(q_logger)
 
         # Create new image view
         self.imv = pg.ImageView()

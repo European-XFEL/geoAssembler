@@ -11,7 +11,8 @@ from ..widgets.pyqt import QtMainWidget
 def test_defaults(mock_dialog, mock_run, gui_app):
     """Test default settings."""
     # Click add circle btn when no image is selected, check for circles
-    test_calib = QtMainWidget(gui_app, mock_run, geofile=None, levels=[0, 1500])
+    test_calib = QtMainWidget(gui_app, mock_run, geofile=None, levels=[0, 1500],
+                              log_to_window=False)
     QTest.mouseClick(test_calib.fit_widget.bt_add_shape, QtCore.Qt.LeftButton)
     assert len(test_calib.shapes) == 0
     # Click the add image button in test mode and check if a run-dir
