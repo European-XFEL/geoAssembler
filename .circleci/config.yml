@@ -2,7 +2,8 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.6.2
+      # -browsers image variants have xvfb running
+      - image: circleci/python:3.6.2-browsers
     steps:
       - checkout
       - restore_cache:
