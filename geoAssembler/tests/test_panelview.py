@@ -26,6 +26,7 @@ def test_defaults(mock_dialog, mock_run, gui_app):
     levels = tuple(test_calib.imv.getImageItem().levels)
     assert levels[0] == 0
     assert levels[1] == 1500
+    test_calib.close()
 
 def test_preset(mock_dialog, calib):
     """Test pre defined settings."""
