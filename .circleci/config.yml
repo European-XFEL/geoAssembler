@@ -25,4 +25,4 @@ jobs:
           paths:
             - "venv"
       - run:
-          command: venv/bin/pytest
+          command: venv/bin/pytest -v
