@@ -1,0 +1,21 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/python:3.6.2
+    steps:
+      - checkout
+      - restore_cache:
+          key: deps1-{{ .Branch }}-{{ checksum "setup.py" }}
+      - run:
+          name: Install Python deps in a venv
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -e '.[test]'
+      - save_cache:
+          key: deps1-{{ .Branch }}-{{ checksum "setup.py" }}
+          paths:
+            - "venv"
+      - run:
+          command: venv/bin/pytest
