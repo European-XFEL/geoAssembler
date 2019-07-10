@@ -3,13 +3,18 @@ dist: xenial
 services:
   - xvfb
 
+addons:
+  apt:
+    packages:
+      - qt5-default
+
 python:
   - "3.7"
   - "3.6"
   - "3.5"
 
 install:
-  - xvfb-run make install
+  - make install
 
 script:
   - make test
