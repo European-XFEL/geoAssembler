@@ -58,8 +58,9 @@ class QtMainWidget(QtGui.QMainWindow):
         self.rect = None
         self.quad = -1  # The selected quadrants (-1 none selected)
         self.is_displayed = False
-        q_logger = QLogger(self)
+        self.q_logger = q_logger = QLogger(self)
         self.log.addHandler(q_logger)
+        self.destroyed.connect(self._disconnect_log)
 
         # Create new image view
         self.imv = pg.ImageView()
@@ -104,6 +105,9 @@ class QtMainWidget(QtGui.QMainWindow):
         # Add widgets to the layout in their proper positions
         self.showMaximized()
         self.frontview = False
+
+    def _disconnect_log(self):
+        self.log.removeHandler(self.q_loggerQt)
 
     # Some properties coming up
     @property
