@@ -83,11 +83,6 @@ def create_calibrate_gui(*args, **kwargs):
     """Create a QtGui Application and return an instance of CalibrateQt."""
     app = QtGui.QApplication([])
     calib = QtMainWidget(app, *args, **kwargs)
-
-    from .widgets.qt_objects import QLogger
-    q_logger = QLogger(calib)
-    calib.log.addHandler(q_logger)
-
     #calib.show()
     app.exec_()
     app.closeAllWindows()

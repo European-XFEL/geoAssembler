@@ -58,6 +58,8 @@ class QtMainWidget(QtGui.QMainWindow):
         self.rect = None
         self.quad = -1  # The selected quadrants (-1 none selected)
         self.is_displayed = False
+        q_logger = QLogger(self)
+        self.log.addHandler(q_logger)
 
         # Create new image view
         self.imv = pg.ImageView()
