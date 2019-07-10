@@ -64,7 +64,11 @@ class QtMainWidget(QtGui.QMainWindow):
 
         # Create new image view
         self.imv = pg.ImageView()
-        self.log.info('Creating main window')
+        try:
+            self.log.info('Creating main window')
+        except RuntimeError:
+            print(self.log.handlers)
+            raise
         # Circle Points by Quadrant
         for action, keys in ((self._move_left, ('left', 'H')),
                              (self._move_up, ('up', 'K')),
