@@ -60,7 +60,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.is_displayed = False
         self.q_logger = q_logger = QLogger(self)
         self.log.addHandler(q_logger)
-        self.destroyed.connect(self._disconnect_log)
+        self.q_logger.widget.destroyed.connect(self._disconnect_log)
 
         # Create new image view
         self.imv = pg.ImageView()
