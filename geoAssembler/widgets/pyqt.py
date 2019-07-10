@@ -111,7 +111,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.frontview = False
 
     def _disconnect_log(self):
-        self.log.removeHandler(self.q_loggerQt)
+        self.log.removeHandler(self.q_logger)
 
     # Some properties coming up
     @property
