@@ -36,7 +36,7 @@ The following optional arguments can be set via the command line:
 
 ![Screenshot](docs/.screenshot.png)
 
-If no run directory, using ```-r/--run```, option has been preselect a
+If no run directory, using ```-r/--run```, option has been preselected a
 directory can to be set by clicking the Run-dir button. Train id's can be
 selected after a run has been selected. The user can either choose to display
 images by pulses or if the signal is to week/noisy by applying a Maximum or
