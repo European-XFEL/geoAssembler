@@ -1,5 +1,5 @@
-
-"""Definition of additionla qt helper objects."""
+"""Definition of additional qt helper objects."""
+from collections import deque
 from itertools import product
 import logging
 from os import path as op
@@ -158,36 +158,45 @@ class DetectorHelper(QtGui.QDialog):
         self.filename_set_signal.emit()
         self.close()
 
-class QLogger(logging.Handler):
-    """Logger object connected python logging."""
 
-    def __init__(self, main_widget):
-        """Create a Dialog that displays the log connected to logging.
+class LogCapturer(logging.Handler, QtCore.QObject):
+    """Emit Qt signal for Python logging, and store recent messages.
+    """
+    new_msg = QtCore.Signal(str)
 
-        Parameters:
-            main_widget : Parent creating this dialog
-        """
-        super().__init__()
-        self.win = QtGui.QDialog(main_widget)
-        layout = QtWidgets.QGridLayout()
-
-        self.widget = QtGui.QPlainTextEdit()
-        self.widget.setReadOnly(True)
-        layout.addWidget(self.widget, 0, 0, 10, 10)
-        ok_btn = create_button('Ok', 'ok')
-        ok_btn.clicked.connect(lambda: self.win.close())
-        layout.addWidget(ok_btn, 11, 0, 1, 1)
-        self.win.setLayout(layout)
-
-    def show(self):
-        """Show the log window."""
-        self.win.show()
+    def __init__(self, parent, level=logging.NOTSET):
+        QtCore.QObject.__init__(self, parent)
+        logging.Handler.__init__(self, level)
+        self.msg_buffer = deque(maxlen=500)
 
     def emit(self, record):
-        """Overload emit signal to write into text widget."""
         msg = self.format(record)
-        self.widget.appendPlainText(msg)
+        self.msg_buffer.append(msg)
+        self.new_msg.emit(msg)
 
-    def write(self, m):
-        """Overload write and do nothing."""
-        pass
+
+class LogDialog(QtGui.QDialog):
+    """A Dialog that displays the log connected to logging.
+
+    Parameters:
+        main_widget : Parent creating this dialog
+    """
+    def __init__(self, main_window):
+        super().__init__(parent=main_window)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.log_capturer = main_window.log_capturer
+
+        self.text_area = QtGui.QPlainTextEdit(self)
+        self.text_area.setReadOnly(True)
+        self.ok_btn = create_button('Ok', 'ok')
+        self.ok_btn.clicked.connect(self.close)
+
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.text_area, 0, 0, 10, 10)
+        layout.addWidget(self.ok_btn, 11, 0, 1, 1)
+        self.setLayout(layout)
+
+        for msg in self.log_capturer.msg_buffer:
+            self.text_area.appendPlainText(msg)
+
+        self.log_capturer.new_msg.connect(self.text_area.appendPlainText)
