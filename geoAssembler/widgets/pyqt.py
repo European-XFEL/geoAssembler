@@ -24,14 +24,13 @@ class QtMainWidget(QtGui.QMainWindow):
 
         Parameters:
             run_dir : (str)
-            Directory that contains the run data
+              Directory that contains the run data
 
             geofile : (str)
-            The geometry that holding the geometric information on detector
-            assembeling
+              The detector geometry file (CrystFEL or XFEL format)
 
             levels : (tuple)
-            min/max values to be displayed (default: -1000)
+              min/max values to be displayed (default: -1000)
         """
         super().__init__()
 
