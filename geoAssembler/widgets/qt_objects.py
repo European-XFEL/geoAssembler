@@ -29,7 +29,7 @@ class CircleShape(pg.EllipseROI):
         """Create a circular region of interest.
 
         Parameters:
-           pos (int) : centre of the circle
+           pos (tuple) : centre of the circle (x, y)
            size (int) : diameter of the circle
         """
         pen = QtGui.QPen(QtCore.Qt.red, 0.002)
@@ -56,7 +56,7 @@ class SquareShape(pg.RectROI):
         """Create a squared region of interest.
 
         Parameters:
-           pos (int) : centre of the circle
+           pos (tuple) : centre of the circle (x, y)
            size (int) : diameter of the circle
         """
         pen = QtGui.QPen(QtCore.Qt.red, 0.002)
