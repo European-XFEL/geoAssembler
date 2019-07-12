@@ -8,13 +8,12 @@ from os import path as op
 import karabo_data as kd
 import numpy as np
 from PyQt5 import uic
-from PyQt5.QtCore import pyqtSlot
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
 from .qt_objects import (CircleShape, DetectorHelper, SquareShape, warning)
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..gui_utils import (create_button, get_icon,
+from ..gui_utils import (get_icon,
                          read_geometry, write_geometry)
 
 
@@ -379,7 +378,7 @@ class GeometryWidget(QtWidgets.QFrame):
             self.main_widget.log.info(txt)
             warning(txt, title='Info')
 
-    @pyqtSlot()
+    @Slot()
     def _set_geom(self):
         """Put the geometry file name into the text box."""
         self.le_geometry_file.setText(self._geom_window.filename)

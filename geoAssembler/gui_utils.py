@@ -1,9 +1,6 @@
-
 """Provide helper methods for the gui."""
 
-from collections import namedtuple
 import os
-
 
 from pyqtgraph.Qt import (QtCore, QtGui)
 from .defaults import DefaultGeometryConfig as Defaults

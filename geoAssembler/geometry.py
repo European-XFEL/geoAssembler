@@ -1,7 +1,6 @@
 """Provide AGIPD-D geometry information that supports quadrant moving."""
 
 import logging
-import os
 import tempfile
 
 import h5py
@@ -10,8 +9,6 @@ from karabo_data.geometry2 import (AGIPD_1MGeometry,
                                    LPD_1MGeometry, GeometryFragment)
 import numpy as np
 import pandas as pd
-
-from . import __version__
 
 from .defaults import DefaultGeometryConfig as Defaults
 

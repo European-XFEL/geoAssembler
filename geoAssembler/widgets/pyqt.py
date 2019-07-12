@@ -1,12 +1,9 @@
 """Qt Version of the detector geometry calibration."""
 
 import logging
-from os import path as op
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5 import uic
-from PyQt5.QtWidgets import QHBoxLayout
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 from pyqtgraph.Qt import QtCore, QtGui
 
@@ -14,10 +11,7 @@ from .qt_subwidgets import GeometryWidget, RunDataWidget, FitObjectWidget
 from .qt_objects import QLogger, warning
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..gui_utils import create_button, get_icon
-
-
-Slot = QtCore.pyqtSlot
+from ..gui_utils import get_icon
 
 
 class QtMainWidget(QtGui.QMainWindow):
