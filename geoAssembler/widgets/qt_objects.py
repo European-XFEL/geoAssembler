@@ -184,6 +184,7 @@ class LogDialog(QtGui.QDialog):
     def __init__(self, main_window):
         super().__init__(parent=main_window)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setWindowTitle('GeoAssembler Logs')
         self.log_capturer = main_window.log_capturer
 
         self.text_area = QtGui.QPlainTextEdit(self)
