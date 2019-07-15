@@ -233,10 +233,9 @@ class QtMainWidget(QtGui.QMainWindow):
 
     def _draw_rect(self, quad):
         """Draw rectangle around quadrant."""
-        try:
+        if self.rect is not None:
             self.imv.getView().removeItem(self.rect)
-        except AttributeError:
-            pass
+
         if quad is None:
             return
         self.quad = quad
