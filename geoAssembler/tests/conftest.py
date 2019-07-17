@@ -71,6 +71,6 @@ def calib(gui_app):
     """Create the calibration gui"""
     from ..widgets.pyqt import QtMainWidget
 
-    main_gui = QtMainWidget(gui_app, log_to_window=False)
+    main_gui = QtMainWidget(gui_app)
     yield main_gui
     main_gui.close()

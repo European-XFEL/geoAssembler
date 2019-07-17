@@ -1,7 +1,6 @@
 """Provide AGIPD-D geometry information that supports quadrant moving."""
 
 import logging
-import os
 import tempfile
 
 import h5py
@@ -10,8 +9,6 @@ from karabo_data.geometry2 import (AGIPD_1MGeometry,
                                    LPD_1MGeometry, GeometryFragment)
 import numpy as np
 import pandas as pd
-
-from . import __version__
 
 from .defaults import DefaultGeometryConfig as Defaults
 
@@ -202,6 +199,7 @@ class GeometryAssembler:
 
 class AGIPDGeometry(GeometryAssembler):
     """Detector layout for AGIPD-1M."""
+    detector_name = 'AGIPD'
 
     def __init__(self, kd_geom):
         """Set the properties for AGIPD detector.
@@ -214,12 +212,11 @@ class AGIPDGeometry(GeometryAssembler):
         self.pixel_size = 2e-4  # 2e-4 metres == 0.2 mm
         self.frag_ss_pixels = 64
         self.frag_fs_pixels = 128
-        self.detector_name = 'AGIPD'
 
     @classmethod
     def from_quad_positions(cls, quad_pos=None):
         """Generate geometry from quadrant positions."""
-        quad_pos = quad_pos or Defaults.fallback_quad_pos[self.detector_name]
+        quad_pos = quad_pos or Defaults.fallback_quad_pos[cls.detector_name]
         kd_geom = AGIPD_1MGeometry.from_quad_positions(quad_pos)
         return cls(kd_geom)
 

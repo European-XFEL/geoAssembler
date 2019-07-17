@@ -1,23 +1,16 @@
 """Qt Version of the detector geometry calibration."""
-
 import logging
-from os import path as op
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5 import uic
-from PyQt5.QtWidgets import QHBoxLayout
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 from pyqtgraph.Qt import QtCore, QtGui
 
 from .qt_subwidgets import GeometryWidget, RunDataWidget, FitObjectWidget
-from .qt_objects import QLogger, warning
+from .qt_objects import LogCapturer, LogDialog, warning
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..gui_utils import create_button, get_icon
-
-
-Slot = QtCore.pyqtSlot
+from ..gui_utils import get_icon
 
 
 class QtMainWidget(QtGui.QMainWindow):
@@ -26,24 +19,18 @@ class QtMainWidget(QtGui.QMainWindow):
     log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
 
-    def __init__(self, app, run_dir=None, geofile=None, levels=None,
-                 log_to_window=True):
+    def __init__(self, app, run_dir=None, geofile=None, levels=None):
         """Display detector data and arrange panels.
 
         Parameters:
             run_dir : (str)
-            Directory that contains the run data
+              Directory that contains the run data
 
             geofile : (str)
-            The geometry that holding the geometric information on detector
-            assembeling
+              The detector geometry file (CrystFEL or XFEL format)
 
             levels : (tuple)
-            min/max values to be displayed (default: -1000)
-
-            log_to_window : (bool)
-            If true, direct Python logging into a dialog for the user.
-
+              min/max values to be displayed (default: -1000)
         """
         super().__init__()
 
@@ -62,9 +49,9 @@ class QtMainWidget(QtGui.QMainWindow):
         self.rect = None
         self.quad = -1  # The selected quadrants (-1 none selected)
         self.is_displayed = False
-        q_logger = QLogger(self)
-        if log_to_window:
-            self.log.addHandler(q_logger)
+
+        # This is hooked up to the Python logging system outside the class
+        self.log_capturer = LogCapturer(self)
 
         # Create new image view
         self.imv = pg.ImageView()
@@ -91,7 +78,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.fit_widget.draw_shape_signal.connect(self._draw_shape)
         self.fit_widget.delete_shape_signal.connect(self._clear_shape)
         self.fit_widget.quit_signal.connect(app.quit)
-        self.fit_widget.show_log_signal.connect(q_logger.show)
+        self.fit_widget.show_log_signal.connect(self.show_log)
         main_widget = QtGui.QWidget(self)
         self.setCentralWidget(main_widget)
 
@@ -246,10 +233,9 @@ class QtMainWidget(QtGui.QMainWindow):
 
     def _draw_rect(self, quad):
         """Draw rectangle around quadrant."""
-        try:
+        if self.rect is not None:
             self.imv.getView().removeItem(self.rect)
-        except AttributeError:
-            pass
+
         if quad is None:
             return
         self.quad = quad
@@ -305,3 +291,7 @@ class QtMainWidget(QtGui.QMainWindow):
 
     def _move_left(self):
         self._move('l')
+
+    @QtCore.Slot()
+    def show_log(self):
+        LogDialog(self).open()
