@@ -70,7 +70,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.fit_widget = FitObjectWidget(self, None)
 
         self.geom_selector = GeometryWidget(self, self.geofile)
-        self.geom_selector.draw_img_signal.connect(self._draw)
+        self.geom_selector.new_geometry.connect(self.assemble_draw)
 
         self.run_selector = RunDataWidget(self)
         self.run_selector.run_changed.connect(self.draw_newlevels)
@@ -136,7 +136,7 @@ class QtMainWidget(QtGui.QMainWindow):
     @property
     def geom_obj(self):
         """Get the karabo data geometry object."""
-        return self.geom_selector.geom
+        return self.geom_selector.get_geom()
 
     @QtCore.Slot()
     def draw_newlevels(self):

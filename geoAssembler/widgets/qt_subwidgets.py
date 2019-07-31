@@ -297,11 +297,11 @@ class RunDataWidget(QtWidgets.QFrame):
 class GeometryWidget(QtWidgets.QFrame):
     """Define a Hbox containing a QLineEdit with a Label."""
 
-    draw_img_signal = Signal()
+    new_geometry = Signal()
 
-    def __init__(self, main_widget, content, parent=None):
+    def __init__(self, main_widget, filename):
         """Create nested widgets to select and save geometry files."""
-        super().__init__(parent)
+        super().__init__(main_widget)
         ui_file = op.join(op.dirname(__file__), 'editor/geometry_editor.ui')
         uic.loadUi(ui_file, self)
 
@@ -314,14 +314,11 @@ class GeometryWidget(QtWidgets.QFrame):
         self.cb_detectors.currentIndexChanged.connect(
             self._update_quadpos)
         self.cb_detectors.setCurrentIndex(0)
-        self.le_geometry_file.setText(content)
-        self._geom_window = DetectorHelper(
-            self.det, content)
+        self.le_geometry_file.setText(filename)
+        self._geom_window = DetectorHelper(self.det, filename, self)
         self._geom_window.filename_set_signal.connect(self._set_geom)
 
         self.bt_load.clicked.connect(self._load)
-        self.bt_apply.clicked.connect(self._create_gemetry_obj)
-        self.bt_apply.setIcon(get_icon('system-run.png'))
         self.bt_load.setIcon(get_icon('file.png'))
         self.bt_save.clicked.connect(self._save_geometry_obj)
         self.bt_save.setIcon(get_icon('save.png'))
@@ -361,6 +358,7 @@ class GeometryWidget(QtWidgets.QFrame):
         """Put the geometry file name into the text box."""
         self.le_geometry_file.setText(self._geom_window.filename)
         self.geom = None
+        self.new_geometry.emit()
 
     @property
     def geom_file(self):
@@ -384,4 +382,8 @@ class GeometryWidget(QtWidgets.QFrame):
         if self.geom is None:
             quad_pos = self._geom_window.quad_pos
             self.geom = read_geometry(self.det, self.geom_file, quad_pos)
-        self.draw_img_signal.emit()
+
+    def get_geom(self):
+        if self.geom is None:
+            self._create_gemetry_obj()
+        return self.geom
