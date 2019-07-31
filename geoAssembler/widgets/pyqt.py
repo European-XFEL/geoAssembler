@@ -71,6 +71,8 @@ class QtMainWidget(QtGui.QMainWindow):
 
         self.geom_selector = GeometryWidget(self, self.geofile)
         self.geom_selector.new_geometry.connect(self.assemble_draw)
+        self.geom_selector.bt_clip_levels.clicked.connect(self.clip_levels)
+        self.geom_selector.bt_reset_levels.clicked.connect(self.draw_newlevels)
 
         self.run_selector = RunDataWidget(self)
         self.run_selector.run_changed.connect(self.draw_newlevels)
@@ -183,6 +185,13 @@ class QtMainWidget(QtGui.QMainWindow):
         self.geom_selector.activate()
         self.quad = -1
         self.fit_widget.bt_add_shape.setEnabled(True)
+
+    @QtCore.Slot()
+    def clip_levels(self):
+        """Clip the image to the selected levels, rescaling the histogram"""
+        self.levels = tuple(self.imv.getImageItem().levels)
+        self.redraw_image()
+        self.imv.updateImage(autoHistogramRange=True)
 
     def redraw_image(self):
         img = self.data[::-1, ::self._flip_lr]
