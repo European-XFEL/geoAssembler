@@ -158,12 +158,7 @@ class QtMainWidget(QtGui.QMainWindow):
         except ValueError:
             warning('No data in trainId, select a different trainId')
             return
-        if self.fit_widget.cb_front_view.isChecked():
-            self.frontview = True
-            self._flip_lr = -1
-        else:
-            self.frontview = False
-            self._flip_lr = 1
+
         try:
             data, self.centre = self.geom_obj.position_all_modules(self.raw_data)
         except ValueError:
@@ -180,24 +175,7 @@ class QtMainWidget(QtGui.QMainWindow):
 
         # Display the data and assign each frame a time value from 1.0 to 3.0
         self._draw_rect(None)
-        if not self.is_displayed:
-            xvals = np.linspace(1., 3., self.canvas.shape[0])
-            try:
-                self.imv.setImage(np.clip(self.data[::-1, ::self._flip_lr],
-                                  *self.levels),
-                                  levels=self.levels, xvals=xvals)
-            except ValueError:
-                self.imv.setImage(self.data[::-1, ::self._flip_lr],
-                                  levels=None, xvals=xvals)
-            self.is_displayed = True
-
-        else:
-            imageItem = self.imv.getImageItem()
-            self.levels = tuple(imageItem.levels)
-            self.imv.setImage(np.clip(self.data[::-1, ::self._flip_lr],
-                              *self.levels),
-                              levels=self.levels,
-                              xvals=np.linspace(1., 3., self.canvas.shape[0]))
+        self.redraw_image()
 
         self.imv.getImageItem().mouseClickEvent = self._click
         # Set a custom color map
@@ -205,6 +183,21 @@ class QtMainWidget(QtGui.QMainWindow):
         self.geom_selector.activate()
         self.quad = -1
         self.fit_widget.bt_add_shape.setEnabled(True)
+
+    def redraw_image(self):
+        img = self.data[::-1, ::self._flip_lr]
+        if self.levels != [None, None]:
+            img = np.clip(img, *self.levels)
+        self.imv.setImage(img, autoLevels=False, autoHistogramRange=False)
+
+    @property
+    def _flip_lr(self):
+        return -1 if self.frontview else 1
+
+    @QtCore.Slot(int)
+    def front_view_changed(self, new_state):
+        self.frontview = (new_state == QtCore.Qt.Checked)
+        self.redraw_image()
 
     def _move(self, d):
         """Move the quadrant."""
@@ -217,7 +210,7 @@ class QtMainWidget(QtGui.QMainWindow):
             self.geom_obj.position_all_modules(self.raw_data,
                                                canvas=self.canvas.shape)
         self._draw_rect(quad)
-        self.imv.getImageItem().updateImage(self.data[::-1, ::self._flip_lr])
+        self.redraw_image()
 
     def _draw_shape(self):
         """Add a fit object to the image."""

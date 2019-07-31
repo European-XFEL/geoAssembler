@@ -26,7 +26,6 @@ class FitObjectWidget(QtWidgets.QFrame):
     delete_shape_signal = Signal()
     quit_signal = Signal()
     show_log_signal = Signal()
-    front_view = Signal()
 
     def __init__(self, main_widget, parent=None):
         """Add a spin box with a label to set radii.
@@ -53,6 +52,7 @@ class FitObjectWidget(QtWidgets.QFrame):
         self.bt_show_log.clicked.connect(self.show_log_signal.emit)
         self.bt_quit.setIcon(get_icon('exit.png'))
         self.bt_show_log.setIcon(get_icon('log.png'))
+        self.cb_front_view.stateChanged.connect(main_widget.front_view_changed)
 
         self.shapes = {}
         self.current_shape = None
