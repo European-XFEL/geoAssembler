@@ -72,8 +72,9 @@ class QtMainWidget(QtGui.QMainWindow):
         self.geom_selector = GeometryWidget(self, self.geofile)
         self.geom_selector.draw_img_signal.connect(self._draw)
 
-        self.run_selector = RunDataWidget(run_dir, self)
-        self.run_selector.draw_img_signal.connect(self._draw)
+        self.run_selector = RunDataWidget(self)
+        self.run_selector.run_changed.connect(self.draw_newlevels)
+        self.run_selector.selection_changed.connect(self.assemble_draw)
 
         self.fit_widget.draw_shape_signal.connect(self._draw_shape)
         self.fit_widget.delete_shape_signal.connect(self._clear_shape)
@@ -96,6 +97,10 @@ class QtMainWidget(QtGui.QMainWindow):
         # Add widgets to the layout in their proper positions
         self.showMaximized()
         self.frontview = False
+
+        # If a run directory was already given, read it
+        if run_dir:
+            self.run_selector.read_rundir(run_dir)
 
     # Some properties coming up
     @property
@@ -133,7 +138,15 @@ class QtMainWidget(QtGui.QMainWindow):
         """Get the karabo data geometry object."""
         return self.geom_selector.geom
 
-    def _draw(self):
+    @QtCore.Slot()
+    def draw_newlevels(self):
+        self.levels = [None, None]
+        self.assemble_draw()
+        self.imv.updateImage(autoHistogramRange=True)
+        self.imv.autoLevels()
+
+    @QtCore.Slot()
+    def assemble_draw(self):
         """Read the geometry file and position all modules."""
         if self.run_dir is None:
             warning('Click the Run-dir button to select a run directory')
@@ -190,8 +203,6 @@ class QtMainWidget(QtGui.QMainWindow):
         # Set a custom color map
         self.imv.setColorMap(pg.ColorMap(*zip(*Gradients['grey']['ticks'])))
         self.geom_selector.activate()
-        imageItem = self.imv.getImageItem()
-        self.levels = tuple(imageItem.levels)
         self.quad = -1
         self.fit_widget.bt_add_shape.setEnabled(True)
 
