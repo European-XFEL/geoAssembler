@@ -145,6 +145,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.assemble_draw()
         self.imv.setLevels(level_low, level_high)
         self.imv.setHistogramRange(min(level_low, 0), level_high * 2)
+        self.imv.autoRange()
 
     @QtCore.Slot()
     def assemble_draw(self):
@@ -187,7 +188,9 @@ class QtMainWidget(QtGui.QMainWindow):
 
     def redraw_image(self):
         img = self.data[::-1, ::self._flip_lr]
-        self.imv.setImage(img, autoLevels=False, autoHistogramRange=False)
+        self.imv.setImage(
+            img, autoLevels=False, autoHistogramRange=False, autoRange=False
+        )
 
     @property
     def _flip_lr(self):
