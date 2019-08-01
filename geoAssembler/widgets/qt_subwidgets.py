@@ -179,7 +179,6 @@ class RunDataWidget(QtWidgets.QFrame):
 
         self.main_widget = main_widget
         self.rundir = None
-        self.tid = None
         self._cached_train_stack = (None, None)  # (tid, data)
 
         self.bt_select_run_dir.clicked.connect(self._sel_run)
@@ -194,6 +193,9 @@ class RunDataWidget(QtWidgets.QFrame):
 
         self.sb_train_id.valueChanged.connect(self.selection_changed.emit)
         self.sb_pulse_id.valueChanged.connect(self.selection_changed.emit)
+
+    def get_train_id(self):
+        return self.sb_train_id.value()
 
     def run_loaded(self):
         """Update the UI after a run is successfully loaded"""
