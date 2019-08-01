@@ -42,7 +42,7 @@ class QtMainWidget(QtGui.QMainWindow):
         pg.LabelItem(justify='right')
 
         self.geofile = geofile
-        self.levels = levels or [None, None]
+        self.initial_levels = levels or [None, None]
 
         self.raw_data = None
         self.canvas = None
@@ -71,11 +71,9 @@ class QtMainWidget(QtGui.QMainWindow):
 
         self.geom_selector = GeometryWidget(self, self.geofile)
         self.geom_selector.new_geometry.connect(self.assemble_draw)
-        self.geom_selector.bt_clip_levels.clicked.connect(self.clip_levels)
-        self.geom_selector.bt_reset_levels.clicked.connect(self.draw_newlevels)
 
         self.run_selector = RunDataWidget(self)
-        self.run_selector.run_changed.connect(self.draw_newlevels)
+        self.run_selector.run_changed.connect(self.draw_reset_levels)
         self.run_selector.selection_changed.connect(self.assemble_draw)
 
         self.fit_widget.draw_shape_signal.connect(self._draw_shape)
@@ -141,11 +139,12 @@ class QtMainWidget(QtGui.QMainWindow):
         return self.geom_selector.get_geom()
 
     @QtCore.Slot()
-    def draw_newlevels(self):
-        self.levels = [None, None]
+    def draw_reset_levels(self):
+        """Reset the image low/high levels to their initial values"""
+        level_low, level_high = self.initial_levels
         self.assemble_draw()
-        self.imv.updateImage(autoHistogramRange=True)
-        self.imv.autoLevels()
+        self.imv.setLevels(level_low, level_high)
+        self.imv.setHistogramRange(min(level_low, 0), level_high * 2)
 
     @QtCore.Slot()
     def assemble_draw(self):
@@ -186,17 +185,8 @@ class QtMainWidget(QtGui.QMainWindow):
         self.quad = -1
         self.fit_widget.bt_add_shape.setEnabled(True)
 
-    @QtCore.Slot()
-    def clip_levels(self):
-        """Clip the image to the selected levels, rescaling the histogram"""
-        self.levels = tuple(self.imv.getImageItem().levels)
-        self.redraw_image()
-        self.imv.updateImage(autoHistogramRange=True)
-
     def redraw_image(self):
         img = self.data[::-1, ::self._flip_lr]
-        if self.levels != [None, None]:
-            img = np.clip(img, *self.levels)
         self.imv.setImage(img, autoLevels=False, autoHistogramRange=False)
 
     @property
