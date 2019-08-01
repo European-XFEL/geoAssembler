@@ -200,6 +200,8 @@ class QtMainWidget(QtGui.QMainWindow):
     def front_view_changed(self, new_state):
         self.frontview = (new_state == QtCore.Qt.Checked)
         self.redraw_image()
+        if self.quad > 0:
+            self._draw_rect(self.quad)
 
     def _move(self, d):
         """Move the quadrant."""
