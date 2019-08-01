@@ -42,7 +42,7 @@ class QtMainWidget(QtGui.QMainWindow):
         pg.LabelItem(justify='right')
 
         self.geofile = geofile
-        self.initial_levels = levels or [None, None]
+        self.initial_levels = levels or [0, 10000]
 
         self.raw_data = None
         self.canvas = None
