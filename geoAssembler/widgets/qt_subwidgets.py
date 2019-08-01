@@ -234,7 +234,7 @@ class RunDataWidget(QtWidgets.QFrame):
         rfolder = QtGui.QFileDialog.getExistingDirectory(self,
                                                          'Select run directory')
         if rfolder:
-            self._read_rundir(rfolder)
+            self.read_rundir(rfolder)
 
     def read_rundir(self, rfolder):
         """Read a selected run directory."""
