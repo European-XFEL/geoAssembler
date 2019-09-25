@@ -1,5 +1,6 @@
+import os.path
 import pytest
-
+from unittest import mock
 
 @pytest.fixture(scope='session', autouse=True)
 def gui_app():
@@ -21,7 +22,6 @@ def mock_run():
 @pytest.fixture(scope='module')
 def mock_dialog(mock_run):
     """Create a mock dialog for opening a mock_run."""
-    import mock
     from pyqtgraph import QtGui as QG
 
     patch = mock.patch.object
@@ -30,7 +30,6 @@ def mock_dialog(mock_run):
 @pytest.fixture(scope='module')
 def mock_save(save_geo):
     """Create a mock dialog for saving mock files."""
-    import mock
     from pyqtgraph import QtGui as QG
 
     patch = mock.patch.object
@@ -39,7 +38,6 @@ def mock_save(save_geo):
 @pytest.fixture(scope='module')
 def mock_warning():
     """Create a mock dialog for saving mock files."""
-    import mock
     from pyqtgraph import QtGui as QG
 
     patch = mock.patch.object
@@ -48,7 +46,6 @@ def mock_warning():
 @pytest.fixture(scope='module')
 def mock_open(geomfile):
     """Create a mock dialog for opening mock files."""
-    import mock
     from pyqtgraph import QtGui as QG
 
     patch = mock.patch.object
@@ -57,7 +54,6 @@ def mock_open(geomfile):
 @pytest.fixture(scope='session')
 def geomfile():
     """Define the geometry file."""
-    import os
     return os.path.join(os.path.dirname(__file__), 'test.geom')
 
 @pytest.fixture(scope='session')

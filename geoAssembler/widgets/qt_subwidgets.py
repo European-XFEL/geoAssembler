@@ -1,7 +1,5 @@
-
 """Definitions of all widgets that go into the geoAssembler."""
 
-from collections import namedtuple
 import os
 from os import path as op
 
@@ -28,7 +26,6 @@ class FitObjectWidget(QtWidgets.QFrame):
     delete_shape_signal = Signal()
     quit_signal = Signal()
     show_log_signal = Signal()
-    front_view = Signal()
 
     def __init__(self, main_widget, parent=None):
         """Add a spin box with a label to set radii.
@@ -55,6 +52,7 @@ class FitObjectWidget(QtWidgets.QFrame):
         self.bt_show_log.clicked.connect(self.show_log_signal.emit)
         self.bt_quit.setIcon(get_icon('exit.png'))
         self.bt_show_log.setIcon(get_icon('log.png'))
+        self.cb_front_view.stateChanged.connect(main_widget.front_view_changed)
 
         self.shapes = {}
         self.current_shape = None
@@ -165,111 +163,82 @@ class FitObjectWidget(QtWidgets.QFrame):
 class RunDataWidget(QtWidgets.QFrame):
     """A widget that defines run-directory, trainId and self.rb_pulse selection."""
 
-    # A Pattern to validate the entry for the run direcotry
-    PULSE_SEL = namedtuple('sel_method', 'num method button')
-    PULSE_MEAN = namedtuple('sel_method', 'num method button')
-    PULSE_SUM = namedtuple('sel_method', 'num method button')
-    PULSE_SEL.method = None
-    PULSE_MEAN.method = np.nanmean
-    PULSE_SUM.method = np.nansum
-    PULSE_SEL.num = 1
-    PULSE_MEAN.num = 2
-    PULSE_SUM.num = 3
-    
-    draw_img_signal = Signal()
-    def __init__(self, run_dir, main_widget, parent=None):
+    run_changed = Signal()
+    selection_changed = Signal()
+
+    def __init__(self, main_widget):
         """Create a btn for run-dir select and 2 spin boxes for train, self.rb_pulse.
 
         Parameters:
-            run_dir (str) : The default run directory
             main_widget : Parent widget
         """
-        super().__init__(parent)
+        super().__init__(main_widget)
 
         ui_file = op.join(op.dirname(__file__), 'editor/run_data.ui')
         uic.loadUi(ui_file, self)
 
         self.main_widget = main_widget
         self.rundir = None
-        self.tid = None
-        self._img = None
-        self.min_tid = None
-        self.max_tid = None
+        self._cached_train_stack = (None, None)  # (tid, data)
 
-        # Creat an hbox with a title, a field to add a filename and a button
         self.bt_select_run_dir.clicked.connect(self._sel_run)
         self.bt_select_run_dir.setIcon(get_icon('open.png'))
-        self.sb_train_id.valueChanged.connect(self._update)
 
-        self.rb_pulse.setChecked(False)
-        self.rb_pulse.setEnabled(False)
-        self.PULSE_SEL.button = self.rb_pulse
-        self.rb_pulse.clicked.connect(
-            lambda: self._set_sel_method(self.PULSE_SEL))
+        for radio_btn in (self.rb_pulse, self.rb_sum, self.rb_mean):
+            radio_btn.clicked.connect(self._set_sel_method)
 
-        self.rb_sum.setChecked(False)
-        self.rb_sum.setEnabled(False)
-        self.PULSE_SUM.button = self.rb_sum
-        self.rb_sum.clicked.connect(
-            lambda: self._set_sel_method(self.PULSE_SUM))
-
-        self.rb_mean.setChecked(False)
-        self.rb_mean.setEnabled(False)
-        self.PULSE_MEAN.button = self.rb_mean
-        self.rb_mean.clicked.connect(
-            lambda: self._set_sel_method(self.PULSE_MEAN))
-
-        self._sel = self.rb_pulse, self.rb_sum, self.rb_mean
-        # If a run directory was already given read it
-        if run_dir:
-            self._read_rundir(run_dir)
         # Apply no selection method (sum, mean) to select self.rb_pulses by default
         self._sel_method = None
         self._read_train = True
 
-        self.sb_pulse_id.valueChanged.connect(self.draw_img_signal.emit)
+        self.sb_train_id.valueChanged.connect(self.selection_changed.emit)
+        self.sb_pulse_id.valueChanged.connect(self.selection_changed.emit)
 
-    def activate_spin_boxes(self):
-        """Set min/max sizes of the spinbox according to trainId's and imgs."""
-        self.sb_train_id.setMinimum(self.min_tid)
-        self.sb_train_id.setMaximum(self.max_tid)
-        self.sb_train_id.setValue(self.min_tid)
+    def get_train_id(self):
+        return self.sb_train_id.value()
+
+    def run_loaded(self):
+        """Update the UI after a run is successfully loaded"""
+        self.sb_train_id.setMinimum(self.rundir.train_ids[0])
+        self.sb_train_id.setMaximum(self.rundir.train_ids[-1])
+        self.sb_train_id.setValue(self.rundir.train_ids[0])
+
+        det_info = self.rundir.detector_info(
+            tuple(self.rundir.detector_sources)[0])
+        self.sb_pulse_id.setMaximum(det_info['frames_per_train'] - 1)
+
+        # Enable spin boxes and radio buttons
         self.sb_train_id.setEnabled(True)
         self.sb_pulse_id.setEnabled(True)
-        for sel in (self.PULSE_SEL, self.PULSE_MEAN, self.PULSE_SUM):
-            sel.button.setEnabled(True)
-        self.PULSE_SEL.button.setChecked(True)
-        self._update()
+        for radio_btn in (self.rb_pulse, self.rb_sum, self.rb_mean):
+            radio_btn.setEnabled(True)
 
-    def _set_sel_method(self, btn_prop):
-        """Set the self.rb_pulse selection method (self.rb_pulse #, mean, sum)."""
-        for sel in (self.PULSE_SEL, self.PULSE_MEAN, self.PULSE_SUM):
-            sel.button.setChecked(False)
-        btn_prop.button.setChecked(True)
-        if btn_prop.num == 1:
-            self.sb_pulse_id.setEnabled(True)
+        self.run_changed.emit()
+
+    @QtCore.Slot()
+    def _set_sel_method(self):
+        select_pulse = False
+        if self.rb_mean.isChecked():
+            self._sel_method = np.nanmean
+        elif self.rb_sum.isChecked():
+            self._sel_method = np.nansum
         else:
-            self.sb_pulse_id.setEnabled(False)
-        # Get the self.rb_pulse selection method
-        self._sel_method = btn_prop.method
+            # Single Pulse
+            self._sel_method = None
+            select_pulse = True
 
-    def _update(self):
-        """Update train_id and img."""
-        self.tid = self.sb_train_id.value()
-        self.det_info = self.rundir.detector_info(
-            tuple(self.rundir.detector_sources)[0])
-        self.sb_pulse_id.setMaximum(self.det_info['frames_per_train'] - 1)
-        self._read_train = True
+        self.sb_pulse_id.setEnabled(select_pulse)
+        self.selection_changed.emit()
 
-    @Slot(bool)
+    @QtCore.Slot()
     def _sel_run(self):
         """Select a run directory."""
         rfolder = QtGui.QFileDialog.getExistingDirectory(self,
                                                          'Select run directory')
         if rfolder:
-            self._read_rundir(rfolder)
+            self.read_rundir(rfolder)
 
-    def _read_rundir(self, rfolder):
+    def read_rundir(self, rfolder):
         """Read a selected run directory."""
         self.main_widget.log.info('Opening run directory {}'.format(rfolder))
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
@@ -282,48 +251,59 @@ class RunDataWidget(QtWidgets.QFrame):
             return
 
         self.le_run_directory.setText(rfolder)
-        self.min_tid = self.rundir.train_ids[0]
-        self.max_tid = self.rundir.train_ids[-1]
-        self.activate_spin_boxes()
+        self.run_loaded()
         QtGui.QApplication.restoreOverrideCursor()
 
+    def get_train_stack(self):
+        """Get a 4D array representing detector data in a train
+
+        (pulses, modules, slow_scan, fast_scan)
+        """
+        tid = self.sb_train_id.value()
+        if tid == self._cached_train_stack[0]:
+            return self._cached_train_stack[1]
+
+        self.main_widget.log.info('Reading train #: %s', tid)
+        _, data = self.rundir.select('*/DET/*', 'image.data').train_from_id(tid)
+        img = kd.stack_detector_data(data, 'image.data')
+
+        # Probaply raw data with gain dimension - take the data dim
+        if len(img.shape) == 5:
+            img = img[:, 0]  # TODO: confirm if first gain dim is data
+        arr = np.clip(img, 0, None)
+
+        self._cached_train_stack = (tid, arr)
+        return arr
+
+
     def get(self):
-        """Get the image of selected train."""
+        """Get the image of selected train & pulse (or mean/sum).
+
+        Returns 3D array (modules, slow_scan, fast_scan)
+        """
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        if self._read_train:
-            self.main_widget.log.info('Reading train #: {}'.format(self.tid))
-            _, data = self.rundir.train_from_id(self.tid,
-                                                devices=[('*DET*',
-                                                          'image.data')])
-            try:
-                img = kd.stack_detector_data(data, 'image.data')
-            except ValueError:
-                QtGui.QApplication.restoreOverrideCursor()
-                self.main_widget.log.error('Bad train, skipping')
-                raise ValueError('Bad train')
-            # Probaply raw data with gain dimension - take the data dim
-            if len(img.shape) == 5:
-                img = img[:, 0] # TODO: confirm if first gain dim is data
-            self._img = np.clip(img, 0, None)
-            self._read_train = False
-        if self._sel_method is None:
-            # Read the selected train number
-            self.rb_pulse_num = self.sb_pulse_id.value()
-            raw_data = self._img[self.rb_pulse_num]
-        else:
-            raw_data = self._sel_method(self._img, axis=0)
-        QtGui.QApplication.restoreOverrideCursor()
-        return np.nan_to_num(raw_data)
+        try:
+            train_stack = self.get_train_stack()
+            if self._sel_method is None:
+                # Read the selected train number
+                pulse_num = self.sb_pulse_id.value()
+                raw_data = train_stack[pulse_num]
+            else:
+                raw_data = self._sel_method(train_stack, axis=0)
+
+            return np.nan_to_num(raw_data)
+        finally:
+            QtGui.QApplication.restoreOverrideCursor()
 
 
 class GeometryWidget(QtWidgets.QFrame):
     """Define a Hbox containing a QLineEdit with a Label."""
 
-    draw_img_signal = Signal()
+    new_geometry = Signal()
 
-    def __init__(self, main_widget, content, parent=None):
+    def __init__(self, main_widget, filename):
         """Create nested widgets to select and save geometry files."""
-        super().__init__(parent)
+        super().__init__(main_widget)
         ui_file = op.join(op.dirname(__file__), 'editor/geometry_editor.ui')
         uic.loadUi(ui_file, self)
 
@@ -336,14 +316,11 @@ class GeometryWidget(QtWidgets.QFrame):
         self.cb_detectors.currentIndexChanged.connect(
             self._update_quadpos)
         self.cb_detectors.setCurrentIndex(0)
-        self.le_geometry_file.setText(content)
-        self._geom_window = DetectorHelper(
-            self.det, content)
+        self.le_geometry_file.setText(filename)
+        self._geom_window = DetectorHelper(self.det, filename, self)
         self._geom_window.filename_set_signal.connect(self._set_geom)
 
         self.bt_load.clicked.connect(self._load)
-        self.bt_apply.clicked.connect(self._create_gemetry_obj)
-        self.bt_apply.setIcon(get_icon('system-run.png'))
         self.bt_load.setIcon(get_icon('file.png'))
         self.bt_save.clicked.connect(self._save_geometry_obj)
         self.bt_save.setIcon(get_icon('save.png'))
@@ -383,6 +360,7 @@ class GeometryWidget(QtWidgets.QFrame):
         """Put the geometry file name into the text box."""
         self.le_geometry_file.setText(self._geom_window.filename)
         self.geom = None
+        self.new_geometry.emit()
 
     @property
     def geom_file(self):
@@ -406,4 +384,8 @@ class GeometryWidget(QtWidgets.QFrame):
         if self.geom is None:
             quad_pos = self._geom_window.quad_pos
             self.geom = read_geometry(self.det, self.geom_file, quad_pos)
-        self.draw_img_signal.emit()
+
+    def get_geom(self):
+        if self.geom is None:
+            self._create_gemetry_obj()
+        return self.geom
