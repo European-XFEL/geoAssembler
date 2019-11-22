@@ -53,6 +53,7 @@ def test_move_quad(agipd_frame):
 
     horz_widg.value += 2
     vert_widg.value -= 3
-
+    
+    dh, dv = 2 * calib.geom.pixel_size, 3 * calib.geom.pixel_size
     print("after:", calib.quad_pos.loc['q1'])
-    assert tuple(calib.quad_pos.loc['q1']) == (q1_x_initial + 2, q1_y_initial - 3)
+    assert tuple(calib.quad_pos.loc['q1']) == (q1_x_initial + dh, q1_y_initial - dv)
