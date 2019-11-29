@@ -300,6 +300,6 @@ class QtMainWidget(QtGui.QMainWindow):
     def _move_left(self):
         self._move('l')
 
-    @QtCore.Slot()
+    @QtCore.pyqtSlot()
     def show_log(self):
         LogDialog(self).open()

@@ -59,8 +59,9 @@ def test_move_quad():
     geom.move_quad(1, np.array((0,-1)))
     geom.move_quad(1, np.array((1,0)))
 
+    delta = np.array([1, -1, 0]) * geom.pixel_size
     np.testing.assert_allclose(geom.modules[0][0].corner_pos,
-                               corners_before + np.array([1, -1, 0]))
+                               corners_before + delta)
 
     # Move back to original position
     geom.move_quad(1, np.array((-1,0)))
