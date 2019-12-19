@@ -138,7 +138,7 @@ class QtMainWidget(QtGui.QMainWindow):
         """Get the karabo data geometry object."""
         return self.geom_selector.get_geom()
 
-    @QtCore.Slot()
+    @QtCore.pyqtSlot()
     def draw_reset_levels(self):
         """Reset the image low/high levels to their initial values"""
         level_low, level_high = self.initial_levels
@@ -147,7 +147,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.imv.setHistogramRange(min(level_low, 0), level_high * 2)
         self.imv.autoRange()
 
-    @QtCore.Slot()
+    @QtCore.pyqtSlot()
     def assemble_draw(self):
         """Read the geometry file and position all modules."""
         if self.run_dir is None:
@@ -196,7 +196,7 @@ class QtMainWidget(QtGui.QMainWindow):
     def _flip_lr(self):
         return -1 if self.frontview else 1
 
-    @QtCore.Slot(int)
+    @QtCore.pyqtSlot(int)
     def front_view_changed(self, new_state):
         self.frontview = (new_state == QtCore.Qt.Checked)
         self.redraw_image()
