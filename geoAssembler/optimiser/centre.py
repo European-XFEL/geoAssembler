@@ -6,7 +6,7 @@ from itertools import product
 from .utility import Integrator
 
 from karabo_data.geometry2 import DetectorGeometryBase
-from typing import Union, Tuple
+from typing import Union
 
 
 class CentreOptimiser:
@@ -15,6 +15,7 @@ class CentreOptimiser:
                  unit: str = "2th_deg"):
         self.frame = frame
         self.integrator = Integrator(geom, sample_dist_mm, unit)
+        self.integrate2d = self.integrator.integrate2d
 
     def _minimiser(self, centre_offset):
         res = self.integrator.integrate2d(
@@ -30,7 +31,7 @@ class CentreOptimiser:
     def _find_centre(self,
                      radius: Union[int, float], stepsize: Union[int, float],
                      base_offset=[0, 0], pool=None, verbose=False):
-        res_tuple = namedtuple("Result", "centre array xs ys")
+        res_tuple = namedtuple("FindCentreResult", "centre array xs ys")
         xs = np.arange(-radius, radius+stepsize, stepsize) + base_offset[0]
         ys = np.arange(-radius, radius+stepsize, stepsize) + base_offset[1]
 
@@ -60,6 +61,7 @@ class CentreOptimiser:
         return res
 
     def optimise(self, r_step_pairs=[(50, 10), (10, 2), (3, 0.5)], pool=None):
+        res_tuple = namedtuple("OptimiseResult", "optimal_offset results")
         centre_offset = [0, 0]
         results = []
 
@@ -75,4 +77,4 @@ class CentreOptimiser:
 
             results.append(res)
 
-        return centre_offset, results
+        return res_tuple(centre_offset, results)
