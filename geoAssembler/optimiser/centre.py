@@ -26,7 +26,7 @@ class CentreOptimiser:
         self.integrator = Integrator(geom, sample_dist_mm, unit)
         self.integrate2d = self.integrator.integrate2d
 
-    def _minimiser(self, centre_offset):
+    def _loss_function(self, centre_offset):
         """
         Simple cost function which computes the 1d azimuthal integration
         result with a centre offset, it then returns one over this result
@@ -54,7 +54,7 @@ class CentreOptimiser:
                      centre_offset=[0, 0], pool=None, verbose=False):
         """
         Creates a grid of (2*radius/stepsize)^2 coordinates around the given
-        centre offset, applies the `_minimiser` to the grid and returns the
+        centre offset, applies the `_loss_function` to the grid and returns the
         coordinates of the minimum value.
 
         Can optionally take in a `pool` for parallelisation.
@@ -91,9 +91,9 @@ class CentreOptimiser:
                   f"radius {radius}, stepsize {stepsize} - ", end='')
 
         if pool is not None:
-            min_array = pool.map(self._minimiser, product(xs, ys))
+            min_array = pool.map(self._loss_function, product(xs, ys))
         else:
-            min_array = map(self._minimiser, product(xs, ys))
+            min_array = map(self._loss_function, product(xs, ys))
 
         min_array = np.array(list(min_array))
         min_array = np.reshape(min_array, (len(xs), len(ys)))
