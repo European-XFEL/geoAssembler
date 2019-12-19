@@ -10,6 +10,15 @@ from typing import Union
 
 
 class CentreOptimiser:
+    """
+    Object used to manage the optimisation of the centre position
+    via maximization of the azimuthal integration result.
+
+    The centre position leading to the highest azimuthal integration
+    value at a radial bin should be the one where the diffraction
+    rings form as straight a line as possible, and the rings becoming
+    straight lines in polar coordinates indicates an accurate centre.
+    """
     def __init__(self, geom: DetectorGeometryBase,
                  frame: np.ndarray, sample_dist_mm: Union[int, float],
                  unit: str = "2th_deg"):
@@ -18,25 +27,68 @@ class CentreOptimiser:
         self.integrate2d = self.integrator.integrate2d
 
     def _minimiser(self, centre_offset):
+        """
+        Simple cost function which computes the 1d azimuthal integration
+        result with a centre offset, it then returns one over this result
+        so that it can be minimised.
+
+        Note: the first and last 100 radial bins are excluded, as these can
+        lead to artifacts which cause the optimisation to fail.
+
+        Parameters
+        ----------
+
+        centre_offset: pair of values
+            Sets the centre position of the search grid.
+        """
         res = self.integrator.integrate2d(
             self.frame,
             centre_offset=centre_offset
         ).intensity
 
         #  Slice off the ends as they are not reliable
-        #  also multiply by 1e6 to scale the results up
-        #  otherwise they could get very small
-        return 1e6/np.max(np.nanmean(res, axis=0)[100:-100])
+        return 1/np.max(np.nanmean(res, axis=0)[100:-100])
 
     def _find_centre(self,
                      radius: Union[int, float], stepsize: Union[int, float],
-                     base_offset=[0, 0], pool=None, verbose=False):
-        res_tuple = namedtuple("FindCentreResult", "centre array xs ys")
-        xs = np.arange(-radius, radius+stepsize, stepsize) + base_offset[0]
-        ys = np.arange(-radius, radius+stepsize, stepsize) + base_offset[1]
+                     centre_offset=[0, 0], pool=None, verbose=False):
+        """
+        Creates a grid of (2*radius/stepsize)^2 coordinates around the given
+        centre offset, applies the `_minimiser` to the grid and returns the
+        coordinates of the minimum value.
 
-        print(f"Trying {len(xs)**2} combinations, "
-              f"radius {radius}, stepsize {stepsize} - ", end='')
+        Can optionally take in a `pool` for parallelisation.
+
+        Parameters
+        ----------
+
+        radius: int or float
+            Half of the width of the coordinate grid used during the search,
+            not realy a radius as the grid is square. The grid is inclusive
+            and will range from -r to +r.
+
+        stepsize: int or float
+            Size of steps used when creating the grid, if the radius is 10
+            and the steps are 2 then it will go: [-10, -8, ..., 0, ... 8, 10]
+
+        centre_offset: pair of values
+            Sets the centre position of the search grid.
+
+        pool: a multiprocessing Pool object
+            Used to enable multiprocessing over multiple threads, it is
+            recommended to only use 32 threads, the number of threads
+            should increase if larger grids are used.
+
+        verbose: Bool
+            Set to true to print status and progress messages.
+        """
+        res_tuple = namedtuple("FindCentreResult", "centre array xs ys")
+        xs = np.arange(-radius, radius+stepsize, stepsize) + centre_offset[0]
+        ys = np.arange(-radius, radius+stepsize, stepsize) + centre_offset[1]
+
+        if verbose:
+            print(f"Trying {len(xs)*len(ys)} combinations, "
+                  f"radius {radius}, stepsize {stepsize} - ", end='')
 
         if pool is not None:
             min_array = pool.map(self._minimiser, product(xs, ys))
@@ -60,7 +112,31 @@ class CentreOptimiser:
 
         return res
 
-    def optimise(self, r_step_pairs=[(50, 10), (10, 2), (3, 0.5)], pool=None):
+    def optimise(self, r_step_pairs=[(50, 10), (10, 2), (3, 0.5)],
+                 centre_offset=[0, 0], pool=None, verbose=True):
+        """
+        Function which performs a grid-search which goes from coarse to fine
+        coordinates, defined by `r_step_pairs`.
+
+        Parameters
+        ----------
+
+        r_step_pairs: list of tuples
+            A list of tuple pair of radius and step size, where the optimum
+            coordinates of the previous grid are used as the centre for the
+            subsequent grid.
+
+            e.g. `[(50, 10), (10, 2)]` creates a grid of pixel of pixel
+            coordinates from -50 to +50, with steps of 10, so an 11x11 grid.
+
+            The optimal position is then fed into the next step, which uses a
+            grid from -10 to +10, with steps of 2, centred on the pervious pos.
+
+        pool: a multiprocessing Pool object
+            Used to enable multiprocessing over multiple threads, it is
+            recommended to only use 32 threads, the number of threads
+            should increase if larger grids are used.
+        """
         res_tuple = namedtuple("OptimiseResult", "optimal_offset results")
         centre_offset = [0, 0]
         results = []
@@ -69,7 +145,7 @@ class CentreOptimiser:
             res = self._find_centre(
                 radius, stepsize,
                 centre_offset,
-                verbose=True,
+                verbose=verbose,
                 pool=pool
             )
 

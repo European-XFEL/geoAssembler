@@ -11,7 +11,16 @@ from typing import Union, Tuple
 
 class Integrator:
     """
-    TODO: docstrings
+    Object wrapping pyFAI and extra-geom geometries to probide a more
+    convenient way of integrating 2d detector images.
+
+    Creating the integrator requires a geometry, as well as the distance
+    from the samlpe to the detector in mm. If unknown, 200mm seems to be
+    a good 'normal' guess for AGIPD.
+
+    Once created, use the `integrate2d` method to get a 2d unrolled view
+    of the detector image. You can them sum over the image to get a 1d
+    integration result.
     """
 
     def __init__(self, geom: DetectorGeometryBase,
@@ -23,10 +32,10 @@ class Integrator:
         fakeimage, centre_geom = geom.position_modules_fast(fakedata)
         self.size = fakeimage.shape
 
+        #  pyFAI takes in coordinates in the opposite order to those
+        #  produced by extra-geom, so swap it around here
         self.centre = [centre_geom[1], centre_geom[0]]
 
-        # TODO: This works for square pixels, check what karabo_data
-        # does for DSSC/non-square pixel sizes latercentre
         self.detector = Detector(
             pixel1=geom.pixel_size,
             pixel2=geom.pixel_size
@@ -39,7 +48,17 @@ class Integrator:
         self.raidus = ((self.size[0]/2)**2 + (self.size[1]/2)**2)**(1/2)
         self.azimuth_bins = self.raidus * (self.size[0]/self.size[1])
 
-    def integrate2d(self, frame, centre_offset=None):
+    def integrate2d(self, frame: np.ndarray, centre_offset=None):
+        """
+        Unroll the image - changes the axis from cartesian x/y to
+        polar radius/azimuthal angle.
+
+        A sum over the angle can be performed to get a result for
+        the azimuthal integration.
+
+        Returns a pyFAI `Integrate2dResult` object, check pyFAI
+        docs for more information.
+        """
         if centre_offset is not None:
             self.ai.setFit2D(
                 self.sample_dist_mm,
@@ -58,12 +77,33 @@ class Integrator:
 
 
 def avg_frame(run: DataCollection, geom: DetectorGeometryBase,
-              train_index: int, masking=True) -> Tuple[np.ndarray, Tuple]:
+              train_index: int, pulse_pattern=None,
+              masking=True,) -> Tuple[np.ndarray, Tuple]:
+    """
+    Returns the average value of a train with some built-in masking  of known
+    bad pixels and some corrections. Designed for use with AGIPD only.
+
+    Requires an extra-data run, extra-geom geometry, and a train index,
+    optionally can provide a slice as the pulse pattern if required.
+
+    Returns a 2d image, and the centre of the image as given by the geometry.
+    """
     run = run.select('*/DET/*', 'image.*')
     train_data = run.train_from_index(train_index)[1]
 
-    stacked_image: np.array = stack_detector_data(train_data, 'image.data')
-    stacked_mask: np.array = stack_detector_data(train_data, 'image.mask')
+    if pulse_pattern is not None:
+        if type(pulse_pattern) != slice:
+            print("`pulse_pattern` should be a python slice object, e.g."
+                  "`slice(10)` for first 10 pulses, or `slice(None, None, 2)` "
+                  "for every-other pulse")
+
+            raise NotImplementedError("`pulse_pattern must be a `slice` not "
+                                      f"`{type(pulse_pattern)}`")
+    else:
+        pulse_pattern = slice(None, None)  # Equivalent to selecting all pulses
+
+    stacked_image = stack_detector_data(train_data, 'image.data')[pulse_pattern]
+    stacked_mask = stack_detector_data(train_data, 'image.mask')[pulse_pattern]
 
     if masking:
         #  Any non-zero masks are set to nan
@@ -81,6 +121,8 @@ def avg_frame(run: DataCollection, geom: DetectorGeometryBase,
 
     if masking:
         #  Mask off edges of asics
+        #  TODO: Replace with extra-geom built-in asic edeg masking
+        #  once that is merged
         edge_mask = np.full((8, 16, 512//8, 128), np.nan)
         edge_mask[:, :, 1:-1, :] = 1
         edge_mask = edge_mask.reshape((16, 512, 128))
