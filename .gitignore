@@ -12,3 +12,7 @@ build/
 dist/
 !geoAssembler/tests/test.geom
 geoAssembler.egg-info/
+.venv/
+.venv
+.vscode/
+pyrightconfig.json
