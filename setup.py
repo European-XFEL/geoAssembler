@@ -58,8 +58,8 @@ setup(name="geoAssembler",
           'pyqtgraph',
           'ipywidgets',
           'pyFai',
-          'PyQt5',
-          'PyQt5-sip',
+          'PyQt5 >= 5.13.2',
+          'PyQt5-sip >= 12.7.0',
           'scipy'
 
       ],
