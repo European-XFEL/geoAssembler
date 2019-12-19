@@ -97,9 +97,9 @@ class FitObjectWidget(QtWidgets.QFrame):
         """Add a new shape selection to the combo-box."""
         self.cb_shape_number.addItem(repr(self.shapes[self.current_shape]))
         for i in range(self.cb_shape_number.count()):
-            # TODO: this seems to be a bug in QT. If only the last item is 
+            # TODO: this seems to be a bug in QT. If only the last item is
             # activated all the others will get the same label.
-            # Activate all to avoid that behavior 
+            # Activate all to avoid that behavior
             self.cb_shape_number.setCurrentIndex(i)
         self.cb_shape_number.setEnabled(True)
         self.bt_clear_shape.setEnabled(True)
@@ -215,7 +215,7 @@ class RunDataWidget(QtWidgets.QFrame):
 
         self.run_changed.emit()
 
-    @QtCore.Slot()
+    @QtCore.pyqtSlot()
     def _set_sel_method(self):
         select_pulse = False
         if self.rb_mean.isChecked():
@@ -230,7 +230,7 @@ class RunDataWidget(QtWidgets.QFrame):
         self.sb_pulse_id.setEnabled(select_pulse)
         self.selection_changed.emit()
 
-    @QtCore.Slot()
+    @QtCore.pyqtSlot()
     def _sel_run(self):
         """Select a run directory."""
         rfolder = QtGui.QFileDialog.getExistingDirectory(self,
