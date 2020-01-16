@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1052</width>
+    <width>1136</width>
     <height>63</height>
    </rect>
   </property>
@@ -27,7 +27,11 @@
       </widget>
      </item>
      <item row="0" column="1">
-      <widget class="QLineEdit" name="le_run_directory"/>
+      <widget class="QLineEdit" name="le_run_directory">
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
      </item>
      <item row="0" column="2">
       <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -73,16 +77,25 @@
      </item>
      <item row="0" column="4">
       <widget class="QRadioButton" name="rb_pulse">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select a Single Pulse&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>Single Pulse</string>
        </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
       </widget>
      </item>
      <item row="0" column="5">
       <widget class="QRadioButton" name="rb_sum">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apply Sum over all Pulses&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
@@ -93,6 +106,9 @@
      </item>
      <item row="0" column="6">
       <widget class="QRadioButton" name="rb_mean">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apply Average over all Pulses&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
@@ -102,14 +118,20 @@
       </widget>
      </item>
      <item row="0" column="7">
-      <widget class="QRadioButton" name="radioButton">
+      <widget class="QRadioButton" name="rb_macro">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string>From Macro</string>
        </property>
       </widget>
      </item>
      <item row="0" column="8">
-      <widget class="QPushButton" name="pushButton">
+      <widget class="QPushButton" name="bt_define_macro">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string>Define Macro</string>
        </property>

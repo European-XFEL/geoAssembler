@@ -56,19 +56,19 @@ def test_move_quad():
     asic = geom.modules[0][0]
     corners_before = asic.corner_pos
 
-    geom.move_quad(4, np.array((0,-1)))
-    geom.move_quad(4, np.array((1,0)))
+    geom.move_quad(1, np.array((0,-1)))
+    geom.move_quad(1, np.array((1,0)))
 
+    delta = np.array([1, -1, 0]) * geom.pixel_size
     np.testing.assert_allclose(geom.modules[0][0].corner_pos,
-                               corners_before + np.array([1, -1, 0]))
+                               corners_before + delta)
 
     # Move back to original position
-    geom.move_quad(4, np.array((-1,0)))
-    geom.move_quad(4, np.array((0,1)))
+    geom.move_quad(1, np.array((-1,0)))
+    geom.move_quad(1, np.array((0,1)))
 
-    asic = geom.modules[0][0]
-    corners_after = asic.corner_pos
-    assert np.all(corners_before - corners_after == np.zeros(3, dtype='i'))
+    np.testing.assert_allclose(geom.modules[0][0].corner_pos,
+                               corners_before)
 
 def get_quad_corners():
     """The the mothod returning the quadrant corners."""

@@ -1,9 +1,6 @@
-
 """Provide helper methods for the gui."""
 
-from collections import namedtuple
 import os
-
 
 from pyqtgraph.Qt import (QtCore, QtGui)
 from .defaults import DefaultGeometryConfig as Defaults
@@ -47,7 +44,7 @@ def write_geometry(geom, filename, logger):
     Parameters:
         geom (GeometryAssembler): object holding the geometry information
         filename (str): Output filename
-        logger (str): Logging object to display information
+        logger (logging.Logger): Logging object to display information
     """
     from .geometry import AGIPDGeometry, DSSCGeometry, LPDGeometry
     if isinstance(geom, AGIPDGeometry):

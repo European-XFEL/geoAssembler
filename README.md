@@ -1,4 +1,4 @@
-o# Ring Based Detector Geometry Calibration Tool
+# Shape Overlay Based Detector Geometry Calibration
 
 This repository provides a tool to calibrate AGIPD detector geometry information
 
@@ -36,7 +36,7 @@ The following optional arguments can be set via the command line:
 
 ![Screenshot](docs/.screenshot.png)
 
-If no run directory, using ```-r/--run```, option has been preselect a
+If no run directory, using ```-r/--run```, option has been preselected a
 directory can to be set by clicking the Run-dir button. Train id's can be
 selected after a run has been selected. The user can either choose to display
 images by pulses or if the signal is to week/noisy by applying a Maximum or
@@ -59,15 +59,23 @@ using the *Save* button.
 The -nb, --notebook flag creates a jupyter notebook uses the home direcory.
 
 ## Setup
+
+### Using Maxwell Cluster (recommended)
 It is recommended to use the already setup application available in xfel's
 anaconda3 distirbution.
 All packages should be available via the xfel module. At the moment
 the module has to be activated by
 ```bash
-source /gpfs/exfel/sw/software/modules
-module load xfel
+$: module load exfel exfel_anaconda3
+$: geoAssembler
 ```
 
+### Using pip
+The software is can be installed by pip:
+```bash
+$: pip install .
+$: geoAssembler
+```
 
 ### Dependencies
 If the user doesn't want or cannot use the xfel module and wants to install the

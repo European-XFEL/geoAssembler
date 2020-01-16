@@ -3,11 +3,9 @@
 import os
 import logging
 
-import numpy as np
-
-
 from ipywidgets import widgets, Layout
 from matplotlib import cm
+import numpy as np
 import pyFAI
 import pyFAI.calibrant
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
@@ -76,6 +74,7 @@ class ShapeTab(widgets.VBox):
         self.parent.shapes = {}
         self.row2 = widgets.HBox([self.shape_type_dn, self.shape_btn, self.clr_btn])
         self.children = [self.row1, self.row2]
+
     def _create_spin_boxes(self, size, angle):
         """Create  spin boxes for shape size and angle."""
         if self.parent.shapes[self.current_shape].type == 'circle':
@@ -195,13 +194,13 @@ class ShapeTab(widgets.VBox):
         d = pos['owner'].description.lower()[0]
         pn = int(pos['new'])
         po = int(pos['old'])
-        sign = np.sign(pn - po)
+        delta = pn - po
         if d == 'h':
-            pos = np.array((sign, 0))
+            pos = np.array((delta, 0))
             if self.parent.frontview:
                 pos = -pos
         else:
-            pos = np.array((0, sign))
+            pos = np.array((0, delta))
         self.parent.geom.move_quad(self.parent.quad, pos)
         self.parent.draw_quad_bound(self.parent.quad)
         self.parent.update_plot(None)

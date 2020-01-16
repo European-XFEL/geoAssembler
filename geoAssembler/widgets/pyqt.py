@@ -1,23 +1,16 @@
 """Qt Version of the detector geometry calibration."""
-
 import logging
-from os import path as op
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5 import uic
-from PyQt5.QtWidgets import QHBoxLayout
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 from pyqtgraph.Qt import QtCore, QtGui
 
 from .qt_subwidgets import GeometryWidget, RunDataWidget, FitObjectWidget
-from .qt_objects import QLogger, warning
+from .qt_objects import LogCapturer, LogDialog, warning
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..gui_utils import create_button, get_icon
-
-
-Slot = QtCore.pyqtSlot
+from ..gui_utils import get_icon
 
 
 class QtMainWidget(QtGui.QMainWindow):
@@ -31,15 +24,13 @@ class QtMainWidget(QtGui.QMainWindow):
 
         Parameters:
             run_dir : (str)
-            Directory that contains the run data
+              Directory that contains the run data
 
             geofile : (str)
-            The geometry that holding the geometric information on detector
-            assembeling
+              The detector geometry file (CrystFEL or XFEL format)
 
             levels : (tuple)
-            min/max values to be displayed (default: -1000)
-
+              min/max values to be displayed (default: -1000)
         """
         super().__init__()
 
@@ -51,15 +42,16 @@ class QtMainWidget(QtGui.QMainWindow):
         pg.LabelItem(justify='right')
 
         self.geofile = geofile
-        self.levels = levels or [None, None]
+        self.initial_levels = levels or [0, 10000]
 
         self.raw_data = None
         self.canvas = None
         self.rect = None
         self.quad = -1  # The selected quadrants (-1 none selected)
         self.is_displayed = False
-        q_logger = QLogger(self)
-        self.log.addHandler(q_logger)
+
+        # This is hooked up to the Python logging system outside the class
+        self.log_capturer = LogCapturer(self)
 
         # Create new image view
         self.imv = pg.ImageView()
@@ -78,15 +70,16 @@ class QtMainWidget(QtGui.QMainWindow):
         self.fit_widget = FitObjectWidget(self, None)
 
         self.geom_selector = GeometryWidget(self, self.geofile)
-        self.geom_selector.draw_img_signal.connect(self._draw)
+        self.geom_selector.new_geometry.connect(self.assemble_draw)
 
-        self.run_selector = RunDataWidget(run_dir, self)
-        self.run_selector.draw_img_signal.connect(self._draw)
+        self.run_selector = RunDataWidget(self)
+        self.run_selector.run_changed.connect(self.draw_reset_levels)
+        self.run_selector.selection_changed.connect(self.assemble_draw)
 
         self.fit_widget.draw_shape_signal.connect(self._draw_shape)
         self.fit_widget.delete_shape_signal.connect(self._clear_shape)
         self.fit_widget.quit_signal.connect(app.quit)
-        self.fit_widget.show_log_signal.connect(q_logger.show)
+        self.fit_widget.show_log_signal.connect(self.show_log)
         main_widget = QtGui.QWidget(self)
         self.setCentralWidget(main_widget)
 
@@ -104,6 +97,10 @@ class QtMainWidget(QtGui.QMainWindow):
         # Add widgets to the layout in their proper positions
         self.showMaximized()
         self.frontview = False
+
+        # If a run directory was already given, read it
+        if run_dir:
+            self.run_selector.read_rundir(run_dir)
 
     # Some properties coming up
     @property
@@ -139,9 +136,19 @@ class QtMainWidget(QtGui.QMainWindow):
     @property
     def geom_obj(self):
         """Get the karabo data geometry object."""
-        return self.geom_selector.geom
+        return self.geom_selector.get_geom()
 
-    def _draw(self):
+    @QtCore.pyqtSlot()
+    def draw_reset_levels(self):
+        """Reset the image low/high levels to their initial values"""
+        level_low, level_high = self.initial_levels
+        self.assemble_draw()
+        self.imv.setLevels(level_low, level_high)
+        self.imv.setHistogramRange(min(level_low, 0), level_high * 2)
+        self.imv.autoRange()
+
+    @QtCore.pyqtSlot()
+    def assemble_draw(self):
         """Read the geometry file and position all modules."""
         if self.run_dir is None:
             warning('Click the Run-dir button to select a run directory')
@@ -153,12 +160,7 @@ class QtMainWidget(QtGui.QMainWindow):
         except ValueError:
             warning('No data in trainId, select a different trainId')
             return
-        if self.fit_widget.cb_front_view.isChecked():
-            self.frontview = True
-            self._flip_lr = -1
-        else:
-            self.frontview = False
-            self._flip_lr = 1
+
         try:
             data, self.centre = self.geom_obj.position_all_modules(self.raw_data)
         except ValueError:
@@ -175,33 +177,31 @@ class QtMainWidget(QtGui.QMainWindow):
 
         # Display the data and assign each frame a time value from 1.0 to 3.0
         self._draw_rect(None)
-        if not self.is_displayed:
-            xvals = np.linspace(1., 3., self.canvas.shape[0])
-            try:
-                self.imv.setImage(np.clip(self.data[::-1, ::self._flip_lr],
-                                  *self.levels),
-                                  levels=self.levels, xvals=xvals)
-            except ValueError:
-                self.imv.setImage(self.data[::-1, ::self._flip_lr],
-                                  levels=None, xvals=xvals)
-            self.is_displayed = True
-
-        else:
-            imageItem = self.imv.getImageItem()
-            self.levels = tuple(imageItem.levels)
-            self.imv.setImage(np.clip(self.data[::-1, ::self._flip_lr],
-                              *self.levels),
-                              levels=self.levels,
-                              xvals=np.linspace(1., 3., self.canvas.shape[0]))
+        self.redraw_image()
 
         self.imv.getImageItem().mouseClickEvent = self._click
         # Set a custom color map
         self.imv.setColorMap(pg.ColorMap(*zip(*Gradients['grey']['ticks'])))
         self.geom_selector.activate()
-        imageItem = self.imv.getImageItem()
-        self.levels = tuple(imageItem.levels)
         self.quad = -1
         self.fit_widget.bt_add_shape.setEnabled(True)
+
+    def redraw_image(self):
+        img = self.data[::-1, ::self._flip_lr]
+        self.imv.setImage(
+            img, autoLevels=False, autoHistogramRange=False, autoRange=False
+        )
+
+    @property
+    def _flip_lr(self):
+        return -1 if self.frontview else 1
+
+    @QtCore.pyqtSlot(int)
+    def front_view_changed(self, new_state):
+        self.frontview = (new_state == QtCore.Qt.Checked)
+        self.redraw_image()
+        if self.quad > 0:
+            self._draw_rect(self.quad)
 
     def _move(self, d):
         """Move the quadrant."""
@@ -214,7 +214,7 @@ class QtMainWidget(QtGui.QMainWindow):
             self.geom_obj.position_all_modules(self.raw_data,
                                                canvas=self.canvas.shape)
         self._draw_rect(quad)
-        self.imv.getImageItem().updateImage(self.data[::-1, ::self._flip_lr])
+        self.redraw_image()
 
     def _draw_shape(self):
         """Add a fit object to the image."""
@@ -241,10 +241,9 @@ class QtMainWidget(QtGui.QMainWindow):
 
     def _draw_rect(self, quad):
         """Draw rectangle around quadrant."""
-        try:
+        if self.rect is not None:
             self.imv.getView().removeItem(self.rect)
-        except AttributeError:
-            pass
+
         if quad is None:
             return
         self.quad = quad
@@ -300,3 +299,7 @@ class QtMainWidget(QtGui.QMainWindow):
 
     def _move_left(self):
         self._move('l')
+
+    @QtCore.pyqtSlot()
+    def show_log(self):
+        LogDialog(self).open()

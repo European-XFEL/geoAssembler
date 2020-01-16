@@ -1,7 +1,6 @@
 """Provide AGIPD-D geometry information that supports quadrant moving."""
 
 import logging
-import os
 import tempfile
 
 import h5py
@@ -10,8 +9,6 @@ from karabo_data.geometry2 import (AGIPD_1MGeometry,
                                    LPD_1MGeometry, GeometryFragment)
 import numpy as np
 import pandas as pd
-
-from . import __version__
 
 from .defaults import DefaultGeometryConfig as Defaults
 
@@ -75,10 +72,14 @@ class GeometryAssembler:
         pos = Defaults.quad2index[self.detector_name][quad]
         if len(inc) == 2:
             inc = np.array(list(inc)+[0])
-        new_modules = [_move_mod(m, inc) if (pos <= i < pos + 4) else m
+        new_modules = [_move_mod(m, inc * self.pixel_size) if (pos <= i < pos + 4) else m
                        for i, m in enumerate(self.modules)]
         kd_geom_cls = type(self.kd_geom)
         self.kd_geom = kd_geom_cls(new_modules)
+
+    @property
+    def _px_conv(self):
+        return self.pixel_size / self.unit
 
     def get_quad_corners(self, quad, centre):
         """Get the bounding box of a quad.
@@ -134,7 +135,6 @@ class GeometryAssembler:
         else:
             _, centre = self.snapped_geom._get_dimensions()
             size_yx = canvas
-
             cv_centre = (canvas[0]//2, canvas[-1]//2)
             shift = np.array(centre) - np.array(cv_centre)
             out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
@@ -149,6 +149,7 @@ class GeometryAssembler:
                 # Offset by centre to make all coordinates positive
                 y, x = tile.corner_idx + centre
                 h, w = tile.pixel_dims
+                s = tile.transform(tile_data)
                 out[..., y: y + h, x: x + w] = tile.transform(tile_data)
         return out, centre
 
@@ -202,6 +203,7 @@ class GeometryAssembler:
 
 class AGIPDGeometry(GeometryAssembler):
     """Detector layout for AGIPD-1M."""
+    detector_name = 'AGIPD'
 
     def __init__(self, kd_geom):
         """Set the properties for AGIPD detector.
@@ -214,12 +216,11 @@ class AGIPDGeometry(GeometryAssembler):
         self.pixel_size = 2e-4  # 2e-4 metres == 0.2 mm
         self.frag_ss_pixels = 64
         self.frag_fs_pixels = 128
-        self.detector_name = 'AGIPD'
 
     @classmethod
     def from_quad_positions(cls, quad_pos=None):
         """Generate geometry from quadrant positions."""
-        quad_pos = quad_pos or Defaults.fallback_quad_pos[self.detector_name]
+        quad_pos = quad_pos or Defaults.fallback_quad_pos[cls.detector_name]
         kd_geom = AGIPD_1MGeometry.from_quad_positions(quad_pos)
         return cls(kd_geom)
 
@@ -307,7 +308,6 @@ class DSSCGeometry(GeometryAssembler):
         #quads_y_orientation = [1, 1, -1, -1]
         x_orient = quads_x_orientation[quad - 1]
         #y_orient = quads_y_orientation[quad - 1]
-        px_conv = self.pixel_size / self.unit
         nmod = (quad-1) * 4 + module
         frag = self.modules[nmod-1][asic-1]
         if x_orient == -1:
@@ -319,7 +319,7 @@ class DSSCGeometry(GeometryAssembler):
             mod_grp = f['Q{}/M{}'.format(quad, module)]
             mod_offset = mod_grp['Position'][:]
             tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
-            cr_pos *= px_conv
+            cr_pos *= self._px_conv
         return cr_pos - (mod_offset + tile_offset)
 
 
@@ -364,7 +364,6 @@ class LPDGeometry(GeometryAssembler):
 
     def _get_offsets(self, quad, module, asic):
         """Get the panel and asic offsets."""
-        px_conv = self.pixel_size / self.unit
         nmod = (quad-1) * 4 + module
         frag = self.modules[nmod-1][asic-1]
         cr_pos = (frag.corner_pos +
@@ -374,7 +373,7 @@ class LPDGeometry(GeometryAssembler):
             mod_grp = f['Q{}/M{}'.format(quad, module)]
             mod_offset = mod_grp['Position'][:]
             tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
-            cr_pos *= px_conv
+            cr_pos *= self._px_conv
         return cr_pos - (mod_offset + tile_offset)
 
 CRYSTFEL_HEADER_TEMPLATE = """\

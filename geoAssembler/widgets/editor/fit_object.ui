@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1023</width>
-    <height>90</height>
+    <width>1026</width>
+    <height>100</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -180,7 +180,7 @@
      <item>
       <widget class="QCheckBox" name="cb_front_view">
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set Front View for View Along the Beam, otherwise into the beam (CrystFEL standard)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Front view of detector, looking along the beam. Otherwise, looking into the beam like CrystFEL tools.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>Front View</string>

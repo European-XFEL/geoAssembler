@@ -83,6 +83,7 @@ def create_calibrate_gui(*args, **kwargs):
     """Create a QtGui Application and return an instance of CalibrateQt."""
     app = QtGui.QApplication([])
     calib = QtMainWidget(app, *args, **kwargs)
+    logging.getLogger().addHandler(calib.log_capturer)
     #calib.show()
     app.exec_()
     app.closeAllWindows()
@@ -111,7 +112,7 @@ def main(argv=None):
                     help='Select a run (default {})'.format(RUNDIR))
     ap.add_argument('--geometry', default=None,
                     help='Select a cfel geometry file (default None)')
-    ap.add_argument('--level', nargs=2, default=[None, None], type=float,
+    ap.add_argument('--level', nargs=2, default=[0, 10000], type=float,
                     help='Pre defined display range for plotting')
     ap.add_argument('--test', default=False, action='store_true',
                     help='Test mode')
