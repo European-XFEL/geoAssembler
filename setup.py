@@ -43,6 +43,7 @@ setup(name="geoAssembler",
                   ('cells', find_files('cells'))],
       package_data={'': ['cells/*.D', 'templates/*.tmpl', 'icons/*.png'],
                     'geoAssembler.tests': ['data_*.npz', 'test.geom'],
+                    'geoAssembler.widgets.editor': ['*.ui'],
                     },
       entry_points={
           'gui_scripts': [
