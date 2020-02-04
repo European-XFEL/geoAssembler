@@ -48,8 +48,6 @@ setup(name="geoAssembler",
           'gui_scripts': [
               'geoAssembler = geoAssembler.main:main'
           ]},
-      dependency_links=[
-          'https://github.com/European-XFEL/karabo_data/tarball/master#egg=karabo-data-999.0.0'],
       install_requires=[
           'cfelpyutils',
           'karabo-data',
@@ -61,7 +59,6 @@ setup(name="geoAssembler",
           'PyQt5 >= 5.13.2, <= 6.0.0',
           'PyQt5-sip >= 12.7.0, <= 13.0.0',
           'scipy'
-
       ],
       extras_require={
           'docs': [
