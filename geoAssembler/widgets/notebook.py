@@ -151,7 +151,7 @@ class MainWidget:
             raw_data (3d-array)  : Data array, containing detector image
                                    (nmodules, y, x)
         Keywords:
-            geometry : None/Karabo_DataGeometry2 object
+            geometry : None/extra_geom geometry object
             The geometry file can either be an AGIPD_1MGeometry object or
             the filename to the geometry file in CFEL fromat
 

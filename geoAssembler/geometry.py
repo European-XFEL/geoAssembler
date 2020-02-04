@@ -4,9 +4,9 @@ import logging
 import tempfile
 
 import h5py
-from karabo_data.geometry2 import (AGIPD_1MGeometry,
-                                   DSSC_1MGeometry,
-                                   LPD_1MGeometry, GeometryFragment)
+from extra_geom import (
+    AGIPD_1MGeometry, DSSC_1MGeometry, LPD_1MGeometry, GeometryFragment,
+)
 import numpy as np
 import pandas as pd
 
@@ -31,7 +31,7 @@ def _move_mod(module, inc):
 
 
 class GeometryAssembler:
-    """Base class for geometry methods not part of karabo_data.
+    """Base class for geometry methods not part of extra_geom.
 
     This base class provides methods for getting quad corners, moving them
     and positioning all modules.
@@ -45,7 +45,7 @@ class GeometryAssembler:
     detector_name = 'generic'
 
     def __init__(self, kd_geom):
-        """The class is instanciated using a karabo_data geometry object."""
+        """The class is instanciated using an extra_geom geometry object."""
         self.kd_geom = kd_geom
 
     @property
@@ -209,7 +209,7 @@ class AGIPDGeometry(GeometryAssembler):
         """Set the properties for AGIPD detector.
 
         Paramerters:
-            kd_geom (AGIPD_1MGeometry) : karabo_data geometry objet
+            kd_geom (AGIPD_1MGeometry) : extra_geom geometry objet
         """
         GeometryAssembler.__init__(self, kd_geom)
         self.unit = 2e-4
@@ -271,7 +271,7 @@ class DSSCGeometry(GeometryAssembler):
         """Set the properties for DSSC detector.
 
         Paramerters:
-            kd_geom (DSSCGeometry) : karabo_data geometry objet
+            kd_geom (DSSCGeometry) : extra_geom geometry objet
             filename (str) : path to the hdf5 geometry description
         """
         GeometryAssembler.__init__(self, kd_geom)
@@ -332,7 +332,7 @@ class LPDGeometry(GeometryAssembler):
         """Set the properties for LPD detector.
 
         Paramerters:
-            kd_geom (LPD_1MGeometry) : karabo_data geometry objet
+            kd_geom (LPD_1MGeometry) : extra_geom geometry objet
             filename (str) : path to the hdf5 geometry description
         """
         GeometryAssembler.__init__(self, kd_geom)

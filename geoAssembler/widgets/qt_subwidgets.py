@@ -3,7 +3,7 @@
 import os
 from os import path as op
 
-import karabo_data as kd
+from extra_data import RunDirectory, stack_detector_data
 import numpy as np
 from PyQt5 import uic
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
@@ -243,7 +243,7 @@ class RunDataWidget(QtWidgets.QFrame):
         self.main_widget.log.info('Opening run directory {}'.format(rfolder))
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         try:
-            self.rundir = kd.RunDirectory(rfolder)
+            self.rundir = RunDirectory(rfolder)
         except Exception:
             QtGui.QApplication.restoreOverrideCursor()
             self.main_widget.log.info('Could not find HDF5-Files')
@@ -265,7 +265,7 @@ class RunDataWidget(QtWidgets.QFrame):
 
         self.main_widget.log.info('Reading train #: %s', tid)
         _, data = self.rundir.select('*/DET/*', 'image.data').train_from_id(tid)
-        img = kd.stack_detector_data(data, 'image.data')
+        img = stack_detector_data(data, 'image.data')
 
         # Probaply raw data with gain dimension - take the data dim
         if len(img.shape) == 5:
@@ -377,7 +377,7 @@ class GeometryWidget(QtWidgets.QFrame):
         return self.cb_detectors.currentText()
 
     def _create_gemetry_obj(self):
-        """Create the karabo_data geometry object."""
+        """Create the extra_geom geometry object."""
         if self.det != 'AGIPD' and not self.geom_file:
             warning('Click the load button to load a geometry file')
             return

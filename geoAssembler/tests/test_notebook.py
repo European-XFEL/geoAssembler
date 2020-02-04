@@ -1,4 +1,4 @@
-import karabo_data
+from extra_data import RunDirectory, stack_detector_data
 import ipywidgets
 import pytest
 
@@ -8,11 +8,11 @@ from geoAssembler.widgets.nb_tabs import ShapeTab
 
 @pytest.fixture(scope='session')
 def agipd_frame(mock_run):
-    run = karabo_data.RunDirectory(mock_run)
+    run = RunDirectory(mock_run)
     print(run.instrument_sources)
     print(run.keys_for_source('SPB_DET_AGIPD1M-1/DET/10CH0:xtdf'))
     tid, train_data = run.select('*/DET/*', 'image.data').train_from_index(0)
-    ary = karabo_data.stack_detector_data(train_data, 'image.data')
+    ary = stack_detector_data(train_data, 'image.data')
     return ary[0]
 
 def test_create_widgets(agipd_frame):
