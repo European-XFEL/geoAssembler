@@ -45,23 +45,23 @@ class GeometryAssembler:
     pixel_size = None
     detector_name = 'generic'
 
-    def __init__(self, kd_geom):
+    def __init__(self, exgeom_obj):
         """The class is instanciated using an extra_geom geometry object."""
-        self.kd_geom = kd_geom
+        self.exgeom_obj = exgeom_obj
 
     @property
     def modules(self):
         """The karabo data geometry modules."""
-        return self.kd_geom.modules
+        return self.exgeom_obj.modules
 
     @property
     def snapped_geom(self):
         """Create a snapped geometry."""
-        return self.kd_geom._snapped()
+        return self.exgeom_obj._snapped()
 
     def inspect(self):
-        """Return inspect method of kd_geom object."""
-        return self.kd_geom.inspect()
+        """Plot a representation of the current geometry."""
+        return self.exgeom_obj.inspect()
 
     def move_quad(self, quad, inc):
         """Move the whole quad in a given direction.
@@ -75,8 +75,8 @@ class GeometryAssembler:
             inc = np.array(list(inc)+[0])
         new_modules = [_move_mod(m, inc * self.pixel_size) if (pos <= i < pos + 4) else m
                        for i, m in enumerate(self.modules)]
-        kd_geom_cls = type(self.kd_geom)
-        self.kd_geom = kd_geom_cls(new_modules)
+        exgeom_cls = type(self.exgeom_obj)
+        self.exgeom_obj = exgeom_cls(new_modules)
 
     @property
     def _px_conv(self):
@@ -114,9 +114,6 @@ class GeometryAssembler:
         data : ndarray
           The last three dimensions should be channelno, pixel_ss, pixel_fs
           (lengths 16, 512, 128). ss/fs are slow-scan and fast-scan.
-
-        Keywords
-        ---------
         canvas : ndarray
           The canvas the out array will be embeded in. If None is given
           (default) no embedding will be applied.
@@ -128,7 +125,6 @@ class GeometryAssembler:
           The last two dimensions represent pixel y and x in the detector space.
         centre : ndarray
           (y, x) pixel location of the detector centre in this geometry.
-
         """
         if canvas is None:
             size_yx, centre = self.snapped_geom._get_dimensions()
@@ -144,7 +140,7 @@ class GeometryAssembler:
             centre -= shift
         for i, module in enumerate(self.snapped_geom.modules):
             mod_data = data[..., i, :, :]
-            tiles_data = self.kd_geom.split_tiles(mod_data)
+            tiles_data = self.exgeom_obj.split_tiles(mod_data)
             for j, tile in enumerate(module):
                 tile_data = tiles_data[j]
                 # Offset by centre to make all coordinates positive
@@ -184,12 +180,12 @@ class GeometryAssembler:
         photon_energy : float
             Beam wave length in eV
         """
-        return self.kd_geom.write_crystfel_geom(filename, data_path=data_path,
-                                                mask_path=mask_path,
-                                                dims=dims,
-                                                adu_per_ev=adu_per_ev,
-                                                clen=clen,
-                                                photon_energy=photon_energy)
+        return self.exgeom_obj.write_crystfel_geom(filename, data_path=data_path,
+                                                   mask_path=mask_path,
+                                                   dims=dims,
+                                                   adu_per_ev=adu_per_ev,
+                                                   clen=clen,
+                                                   photon_energy=photon_energy)
     def write_quad_pos(self, filename):
         """Write current quadrant positions to csv file.
 
@@ -206,13 +202,13 @@ class AGIPDGeometry(GeometryAssembler):
     """Detector layout for AGIPD-1M."""
     detector_name = 'AGIPD'
 
-    def __init__(self, kd_geom):
+    def __init__(self, exgeom_obj):
         """Set the properties for AGIPD detector.
 
         Paramerters:
-            kd_geom (AGIPD_1MGeometry) : extra_geom geometry objet
+            exgeom_obj (AGIPD_1MGeometry) : extra_geom geometry objet
         """
-        GeometryAssembler.__init__(self, kd_geom)
+        GeometryAssembler.__init__(self, exgeom_obj)
         self.unit = 2e-4
         self.pixel_size = 2e-4  # 2e-4 metres == 0.2 mm
         self.frag_ss_pixels = 64
@@ -222,14 +218,14 @@ class AGIPDGeometry(GeometryAssembler):
     def from_quad_positions(cls, quad_pos=None):
         """Generate geometry from quadrant positions."""
         quad_pos = quad_pos or Defaults.fallback_quad_pos[cls.detector_name]
-        kd_geom = AGIPD_1MGeometry.from_quad_positions(quad_pos)
-        return cls(kd_geom)
+        exgeom_obj = AGIPD_1MGeometry.from_quad_positions(quad_pos)
+        return cls(exgeom_obj)
 
     @classmethod
     def from_crystfel_geom(cls, filename):
         """Load geometry from crystfel geometry."""
         try:
-            kd_geom = AGIPD_1MGeometry.from_crystfel_geom(filename)
+            exgeom_obj = AGIPD_1MGeometry.from_crystfel_geom(filename)
         except KeyError:
             # Probably some informations like clen and adu_per_eV missing
             with open(filename) as f:
@@ -239,8 +235,8 @@ class AGIPDGeometry(GeometryAssembler):
                     f.write("""clen = 0.118
 adu_per_eV = 0.0075
 """+geom_file)
-                kd_geom = AGIPD_1MGeometry.from_crystfel_geom(temp.name)
-        return cls(kd_geom)
+                exgeom_obj = AGIPD_1MGeometry.from_crystfel_geom(temp.name)
+        return cls(exgeom_obj)
 
     @property
     def quad_pos(self):
@@ -268,14 +264,14 @@ class DSSCGeometry(GeometryAssembler):
     """Detector layout for DSSC."""
     detector_name = 'DSSC'
 
-    def __init__(self, kd_geom, filename):
+    def __init__(self, exgeom_obj, filename):
         """Set the properties for DSSC detector.
 
         Paramerters:
-            kd_geom (DSSCGeometry) : extra_geom geometry objet
+            exgeom_obj (DSSCGeometry) : extra_geom geometry objet
             filename (str) : path to the hdf5 geometry description
         """
-        GeometryAssembler.__init__(self, kd_geom)
+        GeometryAssembler.__init__(self, exgeom_obj)
         self.filename = filename
         self.pixel_size = 236e-6
         self.unit = 1e-3
@@ -287,9 +283,10 @@ class DSSCGeometry(GeometryAssembler):
     def from_h5_file_and_quad_positions(cls, geom_file, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
         quad_pos = quad_pos or Defaults.fallback_quad_pos[cls.detector_name]
-        kd_geom = DSSC_1MGeometry.from_h5_file_and_quad_positions(geom_file,
-                                                                 quad_pos)
-        return cls(kd_geom, geom_file)
+        exgeom_obj = DSSC_1MGeometry.from_h5_file_and_quad_positions(
+            geom_file,quad_pos
+        )
+        return cls(exgeom_obj, geom_file)
 
     @property
     def quad_pos(self):
@@ -329,14 +326,14 @@ class LPDGeometry(GeometryAssembler):
     """Detector layout for LPD."""
     detector_name = 'LPD'
 
-    def __init__(self, kd_geom, filename):
+    def __init__(self, exgeom_obj, filename):
         """Set the properties for LPD detector.
 
         Paramerters:
-            kd_geom (LPD_1MGeometry) : extra_geom geometry objet
+            exgeom_obj (LPD_1MGeometry) : extra_geom geometry objet
             filename (str) : path to the hdf5 geometry description
         """
-        GeometryAssembler.__init__(self, kd_geom)
+        GeometryAssembler.__init__(self, exgeom_obj)
         self.filename = filename
         self.unit = 1e-3
         self.pixel_size = 5e-4  # 5e-4 metres == 0.5 mm
@@ -347,9 +344,10 @@ class LPDGeometry(GeometryAssembler):
     def from_h5_file_and_quad_positions(cls, geom_file, quad_pos=None):
         """Create geometry from geometry file or quad positions."""
         quad_pos = quad_pos or Defaults.fallback_quad_pos[cls.detector_name]
-        kd_geom = LPD_1MGeometry.from_h5_file_and_quad_positions(geom_file,
-                                                                 quad_pos)
-        return cls(kd_geom, geom_file)
+        exgeom_obj = LPD_1MGeometry.from_h5_file_and_quad_positions(
+            geom_file, quad_pos
+        )
+        return cls(exgeom_obj, geom_file)
 
     @property
     def quad_pos(self):
