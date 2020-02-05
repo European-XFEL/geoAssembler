@@ -7,10 +7,7 @@ before_script:
     - apt update
     - apt -y install xvfb
     - apt -y install qt5-default
-    - pip install git+https://github.com/European-XFEL/karabo_data.git
-    - pip install pytest
-    - pip install future
-    - pip install .
+    - pip install .[test]
     - export DISPLAY=:99.0
     - start-stop-daemon --start -b -x /usr/bin/Xvfb $DISPLAY
 

@@ -43,16 +43,16 @@ setup(name="geoAssembler",
                   ('cells', find_files('cells'))],
       package_data={'': ['cells/*.D', 'templates/*.tmpl', 'icons/*.png'],
                     'geoAssembler.tests': ['data_*.npz', 'test.geom'],
+                    'geoAssembler.widgets.editor': ['*.ui'],
                     },
       entry_points={
           'gui_scripts': [
               'geoAssembler = geoAssembler.main:main'
           ]},
-      dependency_links=[
-          'https://github.com/European-XFEL/karabo_data/tarball/master#egg=karabo-data-999.0.0'],
       install_requires=[
           'cfelpyutils',
-          'karabo-data',
+          'EXtra-data',
+          'EXtra-geom',
           'matplotlib',
           'numpy',
           'pyqtgraph',
@@ -61,7 +61,6 @@ setup(name="geoAssembler",
           'PyQt5 >= 5.13.2, <= 6.0.0',
           'PyQt5-sip >= 12.7.0, <= 13.0.0',
           'scipy'
-
       ],
       extras_require={
           'docs': [

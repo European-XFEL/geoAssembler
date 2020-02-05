@@ -27,7 +27,7 @@
     "warnings.filterwarnings('ignore')\n",
     "import numpy as np\n",
     "\n",
-    "import karabo_data as kd\n",
+    "from extra_data import RunDirectory, stack_detector_data\n",
     "from geoAssembler import CalibrateNb as Calibrate\n",
     "from geoAssembler.geometry import AGIPD_1MGeometry"
    ]
@@ -75,7 +75,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "run = kd.RunDirectory(run_dir)\n",
+    "run = RunDirectory(run_dir)\n",
     "run.info()"
    ]
   },
@@ -126,7 +126,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "train_array = kd.stack_detector_data(train_data, 'image.data')\n",
+    "train_array = stack_detector_data(train_data, 'image.data')\n",
     "train_array.shape"
    ]
   },

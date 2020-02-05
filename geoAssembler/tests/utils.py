@@ -3,8 +3,8 @@ import os
 from h5py import File
 import numpy as np
 
-from karabo_data.tests.mockdata.detectors import AGIPDModule, LPDModule
-from karabo_data.tests.mockdata import write_file
+from extra_data.tests.mockdata.detectors import AGIPDModule, LPDModule
+from extra_data.tests.mockdata import write_file
 
 # Define the keys and mock modules for each detector type
 LOOKUP = {'AGIPD':(AGIPDModule, 'SPB_DET_AGIPD1M-1'),
