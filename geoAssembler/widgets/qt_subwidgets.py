@@ -24,7 +24,6 @@ class FitObjectWidget(QtWidgets.QFrame):
 
     draw_shape_signal = Signal()
     delete_shape_signal = Signal()
-    quit_signal = Signal()
     show_log_signal = Signal()
 
     def __init__(self, main_widget, parent=None):
@@ -48,9 +47,7 @@ class FitObjectWidget(QtWidgets.QFrame):
         self.bt_clear_shape.clicked.connect(self._clear)
         self.bt_clear_shape.setIcon(get_icon('clear-all.png'))
         self.bt_clear_shape.setEnabled(False)
-        self.bt_quit.clicked.connect(self.quit_signal.emit)
         self.bt_show_log.clicked.connect(self.show_log_signal.emit)
-        self.bt_quit.setIcon(get_icon('exit.png'))
         self.bt_show_log.setIcon(get_icon('log.png'))
         self.cb_front_view.stateChanged.connect(main_widget.front_view_changed)
 
