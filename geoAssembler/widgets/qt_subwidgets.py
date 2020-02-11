@@ -184,7 +184,7 @@ class RunDataWidget(QtWidgets.QFrame):
         self.bt_select_run_dir.clicked.connect(self._sel_run)
         self.bt_select_run_dir.setIcon(get_icon('open.png'))
 
-        for radio_btn in (self.rb_pulse, self.rb_sum, self.rb_mean):
+        for radio_btn in (self.rb_pulse, self.rb_mean):
             radio_btn.clicked.connect(self._set_sel_method)
 
         # Apply no selection method (sum, mean) to select self.rb_pulses by default
@@ -210,7 +210,7 @@ class RunDataWidget(QtWidgets.QFrame):
         # Enable spin boxes and radio buttons
         self.sb_train_id.setEnabled(True)
         self.sb_pulse_id.setEnabled(True)
-        for radio_btn in (self.rb_pulse, self.rb_sum, self.rb_mean):
+        for radio_btn in (self.rb_pulse, self.rb_mean):
             radio_btn.setEnabled(True)
 
         self.run_changed.emit()
@@ -220,8 +220,6 @@ class RunDataWidget(QtWidgets.QFrame):
         select_pulse = False
         if self.rb_mean.isChecked():
             self._sel_method = np.nanmean
-        elif self.rb_sum.isChecked():
-            self._sel_method = np.nansum
         else:
             # Single Pulse
             self._sel_method = None

@@ -92,19 +92,6 @@
       </widget>
      </item>
      <item row="0" column="5">
-      <widget class="QRadioButton" name="rb_sum">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apply Sum over all Pulses&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="text">
-        <string>Sum</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="6">
       <widget class="QRadioButton" name="rb_mean">
        <property name="enabled">
         <bool>false</bool>
@@ -117,7 +104,7 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="7">
+     <item row="0" column="6">
       <widget class="QRadioButton" name="rb_macro">
        <property name="enabled">
         <bool>false</bool>
@@ -127,7 +114,7 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="8">
+     <item row="0" column="7">
       <widget class="QPushButton" name="bt_define_macro">
        <property name="enabled">
         <bool>false</bool>
