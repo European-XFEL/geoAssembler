@@ -78,7 +78,6 @@ class QtMainWidget(QtGui.QMainWindow):
 
         self.fit_widget.draw_shape_signal.connect(self._draw_shape)
         self.fit_widget.delete_shape_signal.connect(self._clear_shape)
-        self.fit_widget.quit_signal.connect(app.quit)
         self.fit_widget.show_log_signal.connect(self.show_log)
         main_widget = QtGui.QWidget(self)
         self.setCentralWidget(main_widget)
