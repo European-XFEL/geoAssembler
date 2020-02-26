@@ -4,6 +4,7 @@ import os
 from os import path as op
 
 from extra_data import RunDirectory, stack_detector_data
+from extra_data.components import AGIPD1M, LPD1M, DSSC1M
 import numpy as np
 from PyQt5 import uic
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
@@ -17,6 +18,13 @@ from ..gui_utils import (get_icon,
 
 Slot = QtCore.pyqtSlot
 Signal = QtCore.pyqtSignal
+
+# Map the names in the detector dropdown to data access classes
+det_data_classes = {
+    'AGIPD': AGIPD1M,
+    'LPD': LPD1M,
+    'DSSC': DSSC1M
+}
 
 
 class FitObjectWidget(QtWidgets.QFrame):
@@ -196,13 +204,12 @@ class RunDataWidget(QtWidgets.QFrame):
 
     def run_loaded(self):
         """Update the UI after a run is successfully loaded"""
-        self.sb_train_id.setMinimum(self.rundir.train_ids[0])
-        self.sb_train_id.setMaximum(self.rundir.train_ids[-1])
-        self.sb_train_id.setValue(self.rundir.train_ids[0])
+        det = det_data_classes[self.main_widget.det](self.rundir, min_modules=9)
+        self.sb_train_id.setMinimum(det.data.train_ids[0])
+        self.sb_train_id.setMaximum(det.data.train_ids[-1])
+        self.sb_train_id.setValue(det.data.train_ids[0])
 
-        det_info = self.rundir.detector_info(
-            tuple(self.rundir.detector_sources)[0])
-        self.sb_pulse_id.setMaximum(det_info['frames_per_train'] - 1)
+        self.sb_pulse_id.setMaximum(det.frames_per_train - 1)
 
         # Enable spin boxes and radio buttons
         self.sb_train_id.setEnabled(True)
