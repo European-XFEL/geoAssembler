@@ -3,7 +3,8 @@
 import os
 from os import path as op
 
-import karabo_data as kd
+from extra_data import RunDirectory, stack_detector_data
+from extra_data.components import AGIPD1M, LPD1M, DSSC1M
 import numpy as np
 from PyQt5 import uic
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
@@ -18,13 +19,19 @@ from ..gui_utils import (get_icon,
 Slot = QtCore.pyqtSlot
 Signal = QtCore.pyqtSignal
 
+# Map the names in the detector dropdown to data access classes
+det_data_classes = {
+    'AGIPD': AGIPD1M,
+    'LPD': LPD1M,
+    'DSSC': DSSC1M
+}
+
 
 class FitObjectWidget(QtWidgets.QFrame):
     """Define a Hbox containing a Spinbox with a Label."""
 
     draw_shape_signal = Signal()
     delete_shape_signal = Signal()
-    quit_signal = Signal()
     show_log_signal = Signal()
 
     def __init__(self, main_widget, parent=None):
@@ -48,9 +55,7 @@ class FitObjectWidget(QtWidgets.QFrame):
         self.bt_clear_shape.clicked.connect(self._clear)
         self.bt_clear_shape.setIcon(get_icon('clear-all.png'))
         self.bt_clear_shape.setEnabled(False)
-        self.bt_quit.clicked.connect(self.quit_signal.emit)
         self.bt_show_log.clicked.connect(self.show_log_signal.emit)
-        self.bt_quit.setIcon(get_icon('exit.png'))
         self.bt_show_log.setIcon(get_icon('log.png'))
         self.cb_front_view.stateChanged.connect(main_widget.front_view_changed)
 
@@ -184,7 +189,7 @@ class RunDataWidget(QtWidgets.QFrame):
         self.bt_select_run_dir.clicked.connect(self._sel_run)
         self.bt_select_run_dir.setIcon(get_icon('open.png'))
 
-        for radio_btn in (self.rb_pulse, self.rb_sum, self.rb_mean):
+        for radio_btn in (self.rb_pulse, self.rb_mean):
             radio_btn.clicked.connect(self._set_sel_method)
 
         # Apply no selection method (sum, mean) to select self.rb_pulses by default
@@ -199,18 +204,17 @@ class RunDataWidget(QtWidgets.QFrame):
 
     def run_loaded(self):
         """Update the UI after a run is successfully loaded"""
-        self.sb_train_id.setMinimum(self.rundir.train_ids[0])
-        self.sb_train_id.setMaximum(self.rundir.train_ids[-1])
-        self.sb_train_id.setValue(self.rundir.train_ids[0])
+        det = det_data_classes[self.main_widget.det](self.rundir, min_modules=9)
+        self.sb_train_id.setMinimum(det.data.train_ids[0])
+        self.sb_train_id.setMaximum(det.data.train_ids[-1])
+        self.sb_train_id.setValue(det.data.train_ids[0])
 
-        det_info = self.rundir.detector_info(
-            tuple(self.rundir.detector_sources)[0])
-        self.sb_pulse_id.setMaximum(det_info['frames_per_train'] - 1)
+        self.sb_pulse_id.setMaximum(det.frames_per_train - 1)
 
         # Enable spin boxes and radio buttons
         self.sb_train_id.setEnabled(True)
         self.sb_pulse_id.setEnabled(True)
-        for radio_btn in (self.rb_pulse, self.rb_sum, self.rb_mean):
+        for radio_btn in (self.rb_pulse, self.rb_mean):
             radio_btn.setEnabled(True)
 
         self.run_changed.emit()
@@ -220,8 +224,6 @@ class RunDataWidget(QtWidgets.QFrame):
         select_pulse = False
         if self.rb_mean.isChecked():
             self._sel_method = np.nanmean
-        elif self.rb_sum.isChecked():
-            self._sel_method = np.nansum
         else:
             # Single Pulse
             self._sel_method = None
@@ -243,7 +245,7 @@ class RunDataWidget(QtWidgets.QFrame):
         self.main_widget.log.info('Opening run directory {}'.format(rfolder))
         QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
         try:
-            self.rundir = kd.RunDirectory(rfolder)
+            self.rundir = RunDirectory(rfolder)
         except Exception:
             QtGui.QApplication.restoreOverrideCursor()
             self.main_widget.log.info('Could not find HDF5-Files')
@@ -265,7 +267,7 @@ class RunDataWidget(QtWidgets.QFrame):
 
         self.main_widget.log.info('Reading train #: %s', tid)
         _, data = self.rundir.select('*/DET/*', 'image.data').train_from_id(tid)
-        img = kd.stack_detector_data(data, 'image.data')
+        img = stack_detector_data(data, 'image.data')
 
         # Probaply raw data with gain dimension - take the data dim
         if len(img.shape) == 5:
@@ -377,7 +379,7 @@ class GeometryWidget(QtWidgets.QFrame):
         return self.cb_detectors.currentText()
 
     def _create_gemetry_obj(self):
-        """Create the karabo_data geometry object."""
+        """Create the extra_geom geometry object."""
         if self.det != 'AGIPD' and not self.geom_file:
             warning('Click the load button to load a geometry file')
             return

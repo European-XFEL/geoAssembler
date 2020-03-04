@@ -8,11 +8,7 @@ deploy:
 	rm -fr $(DEPLOY_PATH)
 	mkdir -p $(DEPLOY_PATH)
 	conda create -y -p $(ENV_PATH) python=3.6 h5py matplotlib future
-	$(ENV_PATH)/bin/python -m pip install -I karabo_data
-	$(ENV_PATH)/bin/python $(PWD)/setup.py install -f
-	$(ENV_PATH)/bin/python -m pip uninstall -y numpy
-	rm -r $(ENV_PATH)/lib/python3.6/site-packages/numpy/
-	$(ENV_PATH)/bin/python -m pip install -I numpy
+	$(ENV_PATH)/bin/python -m pip install .
 	ln $(DEPLOY_PATH)/env/bin/geoAssemblerGui $(DEPLOY_PATH)/geoAssemblerGui
 
 install:

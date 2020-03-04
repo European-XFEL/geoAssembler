@@ -76,7 +76,6 @@ def create_button(label, icon_type):
                    'log': ('log.png', 16),
                    'main': ('main_icon_64x64.png', 64),
                    'ok': ('gtk-ok.png', 16),
-                   'quit': ('exit.png', 16),
                    'quads': ('quads.png', 16),
                    'shapes': ('shapes.png', 16),
                    'rundir': ('open.png', 16),
