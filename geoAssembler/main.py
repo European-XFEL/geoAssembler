@@ -45,8 +45,13 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.notebook:
-        create_nb(args.rundir, args.geometry, args.clen, args.energy, args.level,
-                  args.nb_dir, args.nb_file)
+        create_nb(
+            rundir=args.rundir,
+            geofile=args.geometry,
+            levels=args.level,
+            nb_dir=args.nb_dir,
+            nb_file=args.nb_file,
+        )
     else:
         from .qt import run_gui
         if args.test:
