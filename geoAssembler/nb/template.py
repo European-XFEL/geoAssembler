@@ -21,48 +21,38 @@ ENERGY = 10235  # Default beam energy
 RUNDIR = '/gpfs/exfel/exp/XMPL/201750/p700000/proc/r0005'
 
 
-def copy_notebook(defaults):
-    """Create a new notebook and copy it into the user-space."""
+def fill_notebook_template(nb_vars, dest_path):
+    """Fill the notebook template and write it to the destination path"""
     parent = os.path.dirname(__file__)
     tmpl = os.path.join(parent, 'templates', 'geoAssembler.tmpl')
-    try:
-        os.makedirs(defaults['folder'])
-    except FileExistsError:
-        pass
+
     with open(tmpl) as f:
         jb_tmpl = f.read()
 
-    for key in ('rundir', 'geofile', 'levels', 'clen', 'energy'):
-        jb_tmpl = jb_tmpl.replace('{%s}' % key, str(defaults[key]))
+    for key, value in nb_vars.items():
+        jb_tmpl = jb_tmpl.replace('{%s}' % key, repr(value))
 
-    with open(os.path.join(defaults['folder'], defaults['name']), 'w') as f:
+    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+    with open(dest_path, 'w') as f:
         f.write(jb_tmpl)
 
-    print(NB_MESSAGE.format(nb_path=os.path.join(defaults['folder'],
-                                                 defaults['name'])))
+    print(NB_MESSAGE.format(nb_path=dest_path))
 
 
 def create_nb(rundir=None, geofile=None, clen=None, energy=None, levels=None,
-              nb_dir=None, nb_file=None):
-    """Creat a notebook and copy it into the user space."""
-    # Get the default varaibles for the notebook, if user has already given them
-    # take them if not ask for them and provide default options
-    nb_defaults = {}
-    nb_defaults['rundir'] = repr(rundir or RUNDIR)
-    if geofile is not None:
-        nb_defaults['geofile'] = repr(geofile)
-    else:
-        nb_defaults['geofile'] = None
-    if levels is None:
-        levels = [None, None]
-    else:
-        levels = levels
-    nb_defaults['levels'] = levels
-    nb_defaults['energy'] = energy
-    nb_defaults['folder'] = nb_dir or NB_DIR
-    name = nb_file or NB_FILE
-    if not name.endswith('.ipynb'):
-        name += '.ipynb'
-    nb_defaults['name'] = os.path.basename(name)
-    nb_defaults['clen'] = clen or CLEN
-    copy_notebook(nb_defaults)
+              dest_path=None):
+    """Create a notebook from a template and save it into the user space."""
+    nb_vars = {
+        'rundir': rundir or RUNDIR,
+        'geofile': geofile,
+        'levels': levels or [None, None],
+        'energy': energy or ENERGY,
+        'clen': clen or CLEN,
+    }
+
+    if dest_path is None:
+        dest_path = os.path.join(NB_DIR, NB_FILE)
+    elif not dest_path.endswith('.ipynb'):
+        dest_path += '.ipynb'
+
+    fill_notebook_template(nb_vars, dest_path)

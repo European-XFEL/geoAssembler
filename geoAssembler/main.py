@@ -3,6 +3,7 @@
 
 from argparse import ArgumentParser
 import logging
+import os.path as osp
 
 from .nb import create_nb, NB_FILE, NB_DIR
 
@@ -49,8 +50,7 @@ def main(argv=None):
             rundir=args.rundir,
             geofile=args.geometry,
             levels=args.level,
-            nb_dir=args.nb_dir,
-            nb_file=args.nb_file,
+            dest_path=osp.join(args.nb_dir, args.nb_file),
         )
     else:
         from .qt import run_gui
