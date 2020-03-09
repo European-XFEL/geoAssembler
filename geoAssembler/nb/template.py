@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 NB_MESSAGE = """Notebook has been created. You can use it by loading the file
 {nb_path} either by using JupyterHub on desy:
@@ -21,20 +22,16 @@ ENERGY = 10235  # Default beam energy
 RUNDIR = '/gpfs/exfel/exp/XMPL/201750/p700000/proc/r0005'
 
 
-def fill_notebook_template(nb_vars, dest_path):
+def fill_notebook_template(nb_vars, dest_path: Path):
     """Fill the notebook template and write it to the destination path"""
-    parent = os.path.dirname(__file__)
-    tmpl = os.path.join(parent, 'templates', 'geoAssembler.tmpl')
-
-    with open(tmpl) as f:
-        jb_tmpl = f.read()
+    tmpl = Path(__file__).parent / 'templates' / 'geoAssembler.tmpl'
+    contents = tmpl.read_text('utf-8')
 
     for key, value in nb_vars.items():
-        jb_tmpl = jb_tmpl.replace('{%s}' % key, repr(value))
+        contents = contents.replace('{%s}' % key, repr(value))
 
-    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-    with open(dest_path, 'w') as f:
-        f.write(jb_tmpl)
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    dest_path.write_text(contents, 'utf-8')
 
     print(NB_MESSAGE.format(nb_path=dest_path))
 
@@ -51,8 +48,8 @@ def create_nb(rundir=None, geofile=None, clen=None, energy=None, levels=None,
     }
 
     if dest_path is None:
-        dest_path = os.path.join(NB_DIR, NB_FILE)
-    elif not dest_path.endswith('.ipynb'):
-        dest_path += '.ipynb'
+        dest_path = Path(NB_DIR, NB_FILE)
+    elif dest_path.suffix != '.ipynb':
+        dest_path = dest_path.with_name(dest_path.name + '.ipynb')
 
     fill_notebook_template(nb_vars, dest_path)
