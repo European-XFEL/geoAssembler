@@ -15,4 +15,5 @@ geoAssembler.egg-info/
 .venv/
 .venv
 .vscode/
+.idea/
 pyrightconfig.json
