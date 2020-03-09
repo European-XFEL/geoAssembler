@@ -3,8 +3,8 @@ import ipywidgets
 import pytest
 
 from geoAssembler import CalibrateNb
-from geoAssembler.widgets.notebook import CircleShape, SquareShape
-from geoAssembler.widgets.nb_tabs import ShapeTab
+from geoAssembler.nb.notebook import CircleShape, SquareShape
+from geoAssembler.nb.tabs import ShapeTab
 
 @pytest.fixture(scope='session')
 def agipd_frame(mock_run):
