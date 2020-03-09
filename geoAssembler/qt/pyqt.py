@@ -10,7 +10,7 @@ from .subwidgets import GeometryWidget, RunDataWidget, FitObjectWidget
 from .objects import LogCapturer, LogDialog, warning
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..gui_utils import get_icon
+from .utils import get_icon
 
 
 class QtMainWidget(QtGui.QMainWindow):

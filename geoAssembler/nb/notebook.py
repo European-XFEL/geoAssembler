@@ -14,7 +14,7 @@ from matplotlib.patches import Ellipse, Rectangle
 
 from ..defaults import DefaultGeometryConfig as Defaults
 from .tabs import ShapeTab, MaterialTab
-from ..gui_utils import read_geometry
+from ..io_utils import read_geometry
 
 log = logging.getLogger(__name__)
 
