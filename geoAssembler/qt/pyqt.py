@@ -6,8 +6,8 @@ import pyqtgraph as pg
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 from pyqtgraph.Qt import QtCore, QtGui
 
-from .qt_subwidgets import GeometryWidget, RunDataWidget, FitObjectWidget
-from .qt_objects import LogCapturer, LogDialog, warning
+from .subwidgets import GeometryWidget, RunDataWidget, FitObjectWidget
+from .objects import LogCapturer, LogDialog, warning
 
 from ..defaults import DefaultGeometryConfig as Defaults
 from ..gui_utils import get_icon

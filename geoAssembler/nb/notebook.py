@@ -13,7 +13,7 @@ from matplotlib.patches import Ellipse, Rectangle
 
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from .nb_tabs import ShapeTab, MaterialTab
+from .tabs import ShapeTab, MaterialTab
 from ..gui_utils import read_geometry
 
 log = logging.getLogger(__name__)
@@ -265,7 +265,7 @@ class MainWidget:
             self.tabs.set_title(i, tab.title)
 
     def _add_widgets(self):
-        """Add widgets to the layour."""
+        """Add widgets to the layout."""
         # Slider for the max, vmin view
         self.val_slider = widgets.FloatRangeSlider(
             value=[self.vmin, self.vmax],

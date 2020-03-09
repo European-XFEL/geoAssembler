@@ -40,6 +40,6 @@ Author: bergeman
 __version__ = "0.5.0"
 
 
-from .widgets.notebook import MainWidget as CalibrateNb
-from .widgets.pyqt import QtMainWidget
+from .nb.notebook import MainWidget as CalibrateNb
+from geoAssembler.qt.pyqt import QtMainWidget
 from .calibrants import calibrants

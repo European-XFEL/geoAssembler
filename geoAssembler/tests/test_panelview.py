@@ -5,7 +5,7 @@ from pyqtgraph import QtCore
 from PyQt5.QtTest import QTest
 
 from ..geometry import AGIPDGeometry
-from ..widgets.pyqt import QtMainWidget
+from geoAssembler.qt.pyqt import QtMainWidget
 
 
 def test_defaults(mock_dialog, gui_app):

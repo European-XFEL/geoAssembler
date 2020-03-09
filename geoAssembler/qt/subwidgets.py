@@ -9,7 +9,7 @@ import numpy as np
 from PyQt5 import uic
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
-from .qt_objects import (CircleShape, DetectorHelper, SquareShape, warning)
+from .objects import (CircleShape, DetectorHelper, SquareShape, warning)
 
 from ..defaults import DefaultGeometryConfig as Defaults
 from ..gui_utils import (get_icon,
