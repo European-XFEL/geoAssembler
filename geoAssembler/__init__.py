@@ -41,5 +41,4 @@ __version__ = "0.5.0"
 
 
 from .nb.notebook import MainWidget as CalibrateNb
-from geoAssembler.qt.pyqt import QtMainWidget
 from .calibrants import calibrants

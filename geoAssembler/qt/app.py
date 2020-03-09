@@ -13,6 +13,16 @@ from ..defaults import DefaultGeometryConfig as Defaults
 from .utils import get_icon
 
 
+def run_gui(*args, **kwargs):
+    """Create a QtGui Application and return an instance of CalibrateQt."""
+    app = QtGui.QApplication([])
+    calib = QtMainWidget(app, *args, **kwargs)
+    logging.getLogger().addHandler(calib.log_capturer)
+    #calib.show()
+    app.exec_()
+    app.closeAllWindows()
+
+
 class QtMainWidget(QtGui.QMainWindow):
     """Qt-Version of the Calibration Class."""
 

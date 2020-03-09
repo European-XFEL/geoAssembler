@@ -5,9 +5,6 @@ from argparse import ArgumentParser
 import logging
 import os
 
-from pyqtgraph import QtGui
-from geoAssembler import QtMainWidget
-
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 log = logging.getLogger(__name__)
 
@@ -79,17 +76,6 @@ def create_nb(rundir=None, geofile=None, clen=None, energy=None, levels=None,
     copy_notebook(nb_defaults)
 
 
-def create_calibrate_gui(*args, **kwargs):
-    """Create a QtGui Application and return an instance of CalibrateQt."""
-    app = QtGui.QApplication([])
-    calib = QtMainWidget(app, *args, **kwargs)
-    logging.getLogger().addHandler(calib.log_capturer)
-    #calib.show()
-    app.exec_()
-    app.closeAllWindows()
-    return calib
-
-
 def main(argv=None):
     """Define the help string."""
     ap = ArgumentParser(description="""
@@ -119,12 +105,13 @@ def main(argv=None):
     ap.add_argument('--det', default='AGIPD', choices=('AGIPD', 'LPD'),
                     help='If test mode is activated, the name of the detector')
 
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     if args.notebook:
         create_nb(args.rundir, args.geometry, args.clen, args.energy, args.level,
                   args.nb_dir, args.nb_file)
     else:
+        from .qt import run_gui
         if args.test:
             from tempfile import TemporaryDirectory
             from geoAssembler.tests.utils import create_test_directory
@@ -132,12 +119,9 @@ def main(argv=None):
                 log.info('Creating temp data in {}...'.format(td))
                 create_test_directory(td, det=args.det)
                 log.info('...done')
-                create_calibrate_gui(td,
-                                     args.geometry,
-                                     levels=args.level)
+                run_gui(td, args.geometry, levels=args.level)
         else:
-            create_calibrate_gui(args.rundir,
-                                 args.geometry, levels=args.level)
+            run_gui(args.rundir, args.geometry, levels=args.level)
 
 
 if __name__ == '__main__':
