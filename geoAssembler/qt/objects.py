@@ -9,7 +9,7 @@ from PyQt5 import uic
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..gui_utils import create_button, get_icon
+from .utils import create_button, get_icon
 
 
 def warning(txt, title="Warning"):
