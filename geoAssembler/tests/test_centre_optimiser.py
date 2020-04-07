@@ -19,7 +19,7 @@ frame_path = os.path.dirname(geoAssembler.__file__) + "/tests/optimiser-test-fra
 frame = np.load(frame_path)
 
 
-def test_integrator(geom, frame):
+def test_integrator():
     optimiser = geoOptimiser.CentreOptimiser(geom, frame, sample_dist_mm=200)
 
     missaligned_2dint = optimiser.integrate2d(frame).intensity
@@ -43,20 +43,11 @@ def test_integrator(geom, frame):
     assert brightest_ring_idx == 106
 
 
-def test_optimiser(geom, frame):
+def test_optimiser():
     optimiser = geoOptimiser.CentreOptimiser(geom, frame, sample_dist_mm=200)
 
-    res = optimiser.optimise(r_step_pairs=[(20, 10)])
-    assert np.all(res.optimal_offset == np.array([-10, 0]))
-
     res = optimiser.optimise(
-        centre_offset=res.optimal_offset,
-        r_step_pairs=[(3, 1)]
-    )
-    assert np.all(res.optimal_offset == np.array([-12, -3]))
-
-    res = optimiser.optimise(
-        centre_offset=res.optimal_offset,
+        centre_offset=[-12, -3],
         r_step_pairs=[(1.5, 0.5)]
     )
     assert np.all(res.optimal_offset == np.array([-13., -4.5]))
