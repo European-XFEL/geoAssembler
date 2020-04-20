@@ -20,10 +20,10 @@ class CentreOptimiser:
     straight lines in polar coordinates indicates an accurate centre.
     """
     def __init__(self, geom: DetectorGeometryBase,
-                 frame: np.ndarray, sample_dist_mm: Union[int, float],
+                 frame: np.ndarray, sample_dist_m: Union[int, float],
                  unit: str = "2th_deg"):
         self.frame = frame
-        self.integrator = Integrator(geom, sample_dist_mm, unit)
+        self.integrator = Integrator(geom, sample_dist_m, unit)
         self.integrate2d = self.integrator.integrate2d
 
         #  Slightly dodgy way to pull the quadrant corner positions out of geom

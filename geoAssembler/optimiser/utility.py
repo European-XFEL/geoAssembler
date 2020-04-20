@@ -24,16 +24,14 @@ class Integrator:
     """
 
     def __init__(self, geom: DetectorGeometryBase,
-                 sample_dist_mm: Union[int, float], unit: str = "2th_deg"):
+                 sample_dist_m: Union[int, float], unit: str = "2th_deg"):
         self.unit = unit
-        self.sample_dist_mm = sample_dist_mm
+        self.sample_dist_m = sample_dist_m
 
         fakedata = np.zeros(geom.expected_data_shape)
         fakeimage, centre_geom = geom.position_modules_fast(fakedata)
         self.size = fakeimage.shape
 
-        #  pyFAI takes in coordinates in the opposite order to those
-        #  produced by extra-geom, so swap it around here
         self.centre = [centre_geom[1], centre_geom[0]]
 
         self.detector = Detector(
@@ -42,7 +40,12 @@ class Integrator:
         )
 
         ai = AzimuthalIntegrator(detector=self.detector)
-        ai.setFit2D(self.sample_dist_mm, self.centre[0], self.centre[1])
+        ai.setPyFAI(
+            detector=self.detector,
+            dist=self.sample_dist_m,
+            poni1=self.centre[1] * ai.pixel1,
+            poni2=self.centre[0] * ai.pixel2,
+        )
         self.ai = ai
 
         self.radius = ((self.size[0]/2)**2 + (self.size[1]/2)**2)**(1/2)
@@ -60,10 +63,11 @@ class Integrator:
         docs for more information.
         """
         if centre_offset is not None:
-            self.ai.setFit2D(
-                self.sample_dist_mm,
-                centre_offset[0] + self.centre[0],
-                centre_offset[1] + self.centre[1]
+            self.ai.setPyFAI(
+                detector=self.detector,
+                dist=self.sample_dist_m,
+                poni1=(centre_offset[1] + self.centre[1]) * self.ai.pixel1,
+                poni2=(centre_offset[0] + self.centre[0]) * self.ai.pixel2,
             )
 
         return self.ai.integrate2d(

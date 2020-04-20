@@ -20,7 +20,7 @@ frame = np.load(frame_path)
 
 
 def test_integrator():
-    optimiser = geoOptimiser.CentreOptimiser(geom, frame, sample_dist_mm=200)
+    optimiser = geoOptimiser.CentreOptimiser(geom, frame, sample_dist_m=0.2)
 
     missaligned_2dint = optimiser.integrate2d(frame).intensity
     missaligned_2dint_r = optimiser.integrate2d(frame).radial
@@ -44,7 +44,7 @@ def test_integrator():
 
 
 def test_optimiser():
-    optimiser = geoOptimiser.CentreOptimiser(geom, frame, sample_dist_mm=200)
+    optimiser = geoOptimiser.CentreOptimiser(geom, frame, sample_dist_m=0.2)
 
     res = optimiser.optimise(
         centre_offset=[-12, -3],
