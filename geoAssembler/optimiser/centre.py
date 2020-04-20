@@ -28,7 +28,7 @@ class CentreOptimiser:
 
         #  Slightly dodgy way to pull the quadrant corner positions out of geom
         #  TODO: Suggest adding this in to extra-geom?
-        self.original_centre = [
+        self.original_quadrant_pos = [
             m[0].corners()[0, :2]*geom._get_plot_scale_factor('px')
             for m
             in geom.modules
@@ -167,7 +167,7 @@ class CentreOptimiser:
         optimal_quad_positions = [
             tuple(qp - centre_offset)
             for qp
-            in self.original_centre
+            in self.original_quadrant_pos
         ]
 
         oqp = (
