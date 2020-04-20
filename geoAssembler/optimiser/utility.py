@@ -1,11 +1,11 @@
 import numpy as np
 
+from copy import deepcopy
 from extra_data import stack_detector_data
-from pyFAI.detectors import Detector
-from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
-
 from extra_data.reader import DataCollection
 from extra_geom.detectors import DetectorGeometryBase
+from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
+from pyFAI.detectors import Detector
 from typing import Union, Tuple
 
 
@@ -62,15 +62,17 @@ class Integrator:
         Returns a pyFAI `Integrate2dResult` object, check pyFAI
         docs for more information.
         """
+        ai = deepcopy(self.ai)
+
         if centre_offset is not None:
-            self.ai.setPyFAI(
+            ai.setPyFAI(
                 detector=self.detector,
                 dist=self.sample_dist_m,
-                poni1=(centre_offset[1] + self.centre[1]) * self.ai.pixel1,
-                poni2=(centre_offset[0] + self.centre[0]) * self.ai.pixel2,
+                poni1=(centre_offset[1] + self.centre[1]) * ai.pixel1,
+                poni2=(centre_offset[0] + self.centre[0]) * ai.pixel2,
             )
 
-        return self.ai.integrate2d(
+        return ai.integrate2d(
             frame,
             self.radius,
             self.azimuth_bins,
