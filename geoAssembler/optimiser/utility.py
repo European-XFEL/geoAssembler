@@ -32,7 +32,7 @@ class Integrator:
         fakeimage, centre_geom = geom.position_modules_fast(fakedata)
         self.size = fakeimage.shape
 
-        self.centre = [centre_geom[1], centre_geom[0]]
+        self.centre = [centre_geom[0], centre_geom[1]]
 
         self.detector = Detector(
             pixel1=geom.pixel_size,
@@ -43,8 +43,8 @@ class Integrator:
         ai.setPyFAI(
             detector=self.detector,
             dist=self.sample_dist_m,
-            poni1=self.centre[1] * ai.pixel1,
-            poni2=self.centre[0] * ai.pixel2,
+            poni1=self.centre[0] * ai.pixel1,
+            poni2=self.centre[1] * ai.pixel2,
         )
         self.ai = ai
 
@@ -65,11 +65,14 @@ class Integrator:
         ai = deepcopy(self.ai)
 
         if centre_offset is not None:
+            #  The centre offset is flipped here for... reasons. The correct
+            #  order of x y for both the centre position and for the centre
+            #  offset between pyFAI and extra-geom is not clear to me at all
             ai.setPyFAI(
                 detector=self.detector,
                 dist=self.sample_dist_m,
-                poni1=(centre_offset[1] + self.centre[1]) * ai.pixel1,
-                poni2=(centre_offset[0] + self.centre[0]) * ai.pixel2,
+                poni1=(centre_offset[1] + self.centre[0]) * ai.pixel1,
+                poni2=(centre_offset[0] + self.centre[1]) * ai.pixel2,
             )
 
         return ai.integrate2d(
