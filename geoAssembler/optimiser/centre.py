@@ -29,7 +29,7 @@ class CentreOptimiser:
         #  Slightly dodgy way to pull the quadrant corner positions out of geom
         #  TODO: Suggest adding this in to extra-geom?
         self.original_quadrant_pos = [
-            m[0].corners()[0, :2]*geom._get_plot_scale_factor('px')
+            m[0].corners()[0, :2]/geom.pixel_size
             for m
             in geom.modules
         ][::4]
