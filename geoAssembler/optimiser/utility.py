@@ -1,12 +1,12 @@
-import numpy as np
-
 from copy import deepcopy
+from typing import Tuple, Union
+
+import numpy as np
 from extra_data import stack_detector_data
 from extra_data.reader import DataCollection
 from extra_geom.detectors import DetectorGeometryBase
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 from pyFAI.detectors import Detector
-from typing import Union, Tuple
 
 
 class Integrator:

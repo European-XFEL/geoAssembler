@@ -1,12 +1,12 @@
-import numpy as np
-
 from collections import namedtuple
 from itertools import product
+from typing import Union
+
+import numpy as np
+from extra_geom.detectors import DetectorGeometryBase
+from scipy.optimize import differential_evolution
 
 from .utility import Integrator
-
-from extra_geom.detectors import DetectorGeometryBase
-from typing import Union
 
 
 class CentreOptimiser:
