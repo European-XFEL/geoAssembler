@@ -57,71 +57,7 @@ class CentreOptimiser:
         #  Slice off the ends as they are not reliable
         return 1/np.max(np.nanmean(res, axis=0)[100:-100])
 
-    def _find_centre(self,
-                     radius: Union[int, float], stepsize: Union[int, float],
-                     centre_offset=[0, 0], pool=None, verbose=False):
-        """
-        Creates a grid of (2*radius/stepsize)^2 coordinates around the given
-        centre offset, applies the `_loss_function` to the grid and returns the
-        coordinates of the minimum value.
-
-        Can optionally take in a `pool` for parallelisation.
-
-        Parameters
-        ----------
-
-        radius: int or float
-            Half of the width of the coordinate grid used during the search,
-            not really a radius as the grid is square. The grid is inclusive
-            and will range from -r to +r.
-
-        stepsize: int or float
-            Size of steps used when creating the grid, if the radius is 10
-            and the steps are 2 then it will go: [-10, -8, ..., 0, ... 8, 10]
-
-        centre_offset: pair of values
-            Sets the centre position of the search grid.
-
-        pool: a multiprocessing Pool object
-            Used to enable multiprocessing over multiple threads, it is
-            recommended to only use 32 threads, the number of threads
-            should increase if larger grids are used.
-
-        verbose: Bool
-            Set to true to print status and progress messages.
-        """
-        res_tuple = namedtuple("FindCentreResult", "centre array xs ys")
-        xs = np.arange(-radius, radius+stepsize, stepsize) + centre_offset[0]
-        ys = np.arange(-radius, radius+stepsize, stepsize) + centre_offset[1]
-
-        if verbose:
-            print(f"Trying {len(xs)*len(ys)} combinations, "
-                  f"radius {radius}, stepsize {stepsize} - ", end='')
-
-        if pool is not None:
-            min_array = pool.map(self._loss_function, product(xs, ys))
-        else:
-            min_array = map(self._loss_function, product(xs, ys))
-
-        min_array = np.array(list(min_array))
-        min_array = np.reshape(min_array, (len(xs), len(ys)))
-
-        centre_idx = [x[0] for x in np.where(min_array == np.amin(min_array))]
-        centre = np.array([xs[centre_idx[0]], ys[centre_idx[1]]])
-
-        if verbose:
-            print(f"found centre at -> {centre}")
-
-        res = res_tuple(
-            centre,
-            min_array,
-            xs, ys
-        )
-
-        return res
-
-    def optimise(self, r_step_pairs=[(50, 10), (10, 2), (3, 0.5)],
-                 centre_offset=[0, 0], pool=None, verbose=True):
+    def optimise(self, bounds=[(-50, 50), (-50, 50)], workers=1, verbose=False):
         """
         Function which performs a grid-search which goes from coarse to fine
         coordinates, defined by `r_step_pairs`.
@@ -149,18 +85,14 @@ class CentreOptimiser:
             "OptimiseResult", "optimal_quad_positions optimal_offset results"
         )
 
-        results = []
-        for radius, stepsize in r_step_pairs:
-            res = self._find_centre(
-                radius, stepsize,
-                centre_offset,
-                verbose=verbose,
-                pool=pool
-            )
+        results = differential_evolution(
+            self._loss_function,
+            bounds,
+            workers=workers,
+            disp=verbose
+        )
 
-            centre_offset = res.centre
-
-            results.append(res)
+        centre_offset = results.x
 
         #  Subtract the centre offset to move the modules in the correct
         #  way to shift the centre
