@@ -41,22 +41,3 @@ def test_integrator():
     ))[0][0]
 
     assert brightest_ring_idx == 106
-
-
-def test_optimiser():
-    optimiser = centreOptimiser.CentreOptimiser(geom, frame, sample_dist_m=0.2)
-
-    res = optimiser.optimise(
-        centre_offset=[-12, -3],
-        r_step_pairs=[(1.5, 0.5)]
-    )
-    assert np.all(res.optimal_offset == np.array([-13., -4.5]))
-
-    assert np.all(
-        res.optimal_quad_positions == [
-            (-512.0, 629.5),
-            (-537.0, -5.5),
-            (533.0, -155.5),
-            (555.5, 479.5),
-        ]
-    )
