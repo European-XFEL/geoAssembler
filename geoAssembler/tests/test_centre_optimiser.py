@@ -22,22 +22,22 @@ frame = np.load(frame_path)
 def test_integrator():
     optimiser = centreOptimiser.CentreOptimiser(geom, frame, sample_dist_m=0.2)
 
-    missaligned_2dint = optimiser.integrate2d(frame).intensity
-    missaligned_2dint_r = optimiser.integrate2d(frame).radial
-    missaligned_2dint_a = optimiser.integrate2d(frame).azimuthal
+    misaligned_2dint = optimiser.integrate2d(frame).intensity
+    misaligned_2dint_r = optimiser.integrate2d(frame).radial
+    misaligned_2dint_a = optimiser.integrate2d(frame).azimuthal
 
-    assert missaligned_2dint.shape == (957, 832)
-    assert missaligned_2dint_r.shape == (832,)
-    assert missaligned_2dint_a.shape == (957,)
+    assert misaligned_2dint.shape == (957, 832)
+    assert misaligned_2dint_r.shape == (832,)
+    assert misaligned_2dint_a.shape == (957,)
 
-    missaligned_1dint = np.nanmean(missaligned_2dint, axis=0)[100:-100]
-    missaligned_1dint_x = optimiser.integrate2d(frame).radial[100:-100]
+    misaligned_1dint = np.nanmean(misaligned_2dint, axis=0)[100:-100]
+    misaligned_1dint_x = optimiser.integrate2d(frame).radial[100:-100]
 
     #  Kinda crappy test...
-    # assert hash(missaligned_1dint.data.tobytes()) == 993467963203778007
+    # assert hash(misaligned_1dint.data.tobytes()) == 993467963203778007
 
     brightest_ring_idx = np.where(
-        missaligned_1dint == np.max(missaligned_1dint
+        misaligned_1dint == np.max(misaligned_1dint
     ))[0][0]
 
     assert brightest_ring_idx == 106
