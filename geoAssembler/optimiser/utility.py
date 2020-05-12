@@ -11,7 +11,7 @@ from pyFAI.detectors import Detector
 
 class Integrator:
     """
-    Object wrapping pyFAI and extra-geom geometries to probide a more
+    Object wrapping pyFAI and extra-geom geometries to provides a more
     convenient way of integrating 2d detector images.
 
     Creating the integrator requires a geometry, as well as the distance
