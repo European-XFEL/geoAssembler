@@ -33,9 +33,6 @@ def test_integrator():
     misaligned_1dint = np.nanmean(misaligned_2dint, axis=0)[100:-100]
     misaligned_1dint_x = optimiser.integrate2d(frame).radial[100:-100]
 
-    #  Kinda crappy test...
-    # assert hash(misaligned_1dint.data.tobytes()) == 993467963203778007
-
     brightest_ring_idx = np.where(
         misaligned_1dint == np.max(misaligned_1dint
     ))[0][0]
