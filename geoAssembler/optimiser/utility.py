@@ -46,7 +46,8 @@ class Integrator:
         self.radius = ((self.size[0]/2)**2 + (self.size[1]/2)**2)**(1/2)
         self.azimuth_bins = self.radius * (self.size[0]/self.size[1])
 
-    def integrate2d(self, frame: np.ndarray, centre_offset=None):
+    def integrate2d(self, frame: np.ndarray,
+                    centre_offset: Tuple[float, float]=None):
         """
         Unroll the image - changes the axis from cartesian x/y to
         polar radius/azimuthal angle.

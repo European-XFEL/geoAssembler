@@ -16,25 +16,25 @@ geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[
     ])
 
 frame_path = os.path.dirname(geoAssembler.__file__) + "/tests/optimiser-test-frame.npy"
-frame = np.load(frame_path)
 
 
 def test_integrator():
+    frame = np.load(frame_path)
+
     optimiser = centreOptimiser.CentreOptimiser(geom, frame, sample_dist_m=0.2)
 
-    misaligned_2dint = optimiser.integrate2d(frame).intensity
-    misaligned_2dint_r = optimiser.integrate2d(frame).radial
-    misaligned_2dint_a = optimiser.integrate2d(frame).azimuthal
+    integrated_result = optimiser.integrate2d(frame)
+    misaligned_2dint = integrated_result.intensity
+    misaligned_2dint_r = integrated_result.radial
+    misaligned_2dint_a = integrated_result.azimuthal
 
-    assert misaligned_2dint.shape == (957, 832)
-    assert misaligned_2dint_r.shape == (832,)
-    assert misaligned_2dint_a.shape == (957,)
+    assert 827 < misaligned_2dint_r.shape[0] < 837
+    assert 952 < misaligned_2dint_a.shape[0] < 962
 
     misaligned_1dint = np.nanmean(misaligned_2dint, axis=0)[100:-100]
-    misaligned_1dint_x = optimiser.integrate2d(frame).radial[100:-100]
 
     brightest_ring_idx = np.where(
         misaligned_1dint == np.max(misaligned_1dint
     ))[0][0]
 
-    assert brightest_ring_idx == 106
+    assert 100 < brightest_ring_idx < 110

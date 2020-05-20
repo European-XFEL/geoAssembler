@@ -1,6 +1,5 @@
 from collections import namedtuple
-from itertools import product
-from typing import Union
+from typing import Union, Tuple
 
 import numpy as np
 from extra_geom.detectors import DetectorGeometryBase
@@ -34,7 +33,7 @@ class CentreOptimiser:
             in geom.modules
         ][::4]
 
-    def _loss_function(self, centre_offset):
+    def _loss_function(self, centre_offset: Tuple[float, float]):
         """
         Simple cost function which computes the 1d azimuthal integration
         result with a centre offset, it then returns one over this result
@@ -77,6 +76,10 @@ class CentreOptimiser:
             "OptimiseResult", "optimal_quad_positions optimal_offset results"
         )
 
+        #  This actually passes a list of two values to the loss function, not
+        #  a tuple as the type hint suggests, but that's just an implementation
+        #  detail of the differential evolution function. Conceptually a tuple
+        #  of (x, y) is what should be passed
         results = differential_evolution(
             self._loss_function,
             bounds,
