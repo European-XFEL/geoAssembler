@@ -61,7 +61,7 @@ setup(name="geoAssembler",
           'PyQt5 >= 5.13.2, <= 6.0.0',
           'PyQt5-sip >= 12.7.0, <= 13.0.0',
           'scipy',
-          'xarray <= 0.14.1',
+          'xarray >= 0.14.1',
       ],
       extras_require={
           'docs': [
