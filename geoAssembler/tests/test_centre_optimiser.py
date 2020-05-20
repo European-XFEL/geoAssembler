@@ -15,15 +15,15 @@ geom = AGIPD_1MGeometry.from_quad_positions(quad_pos=[
         (542.5, 475),
     ])
 
-frame_path = os.path.dirname(geoAssembler.__file__) + "/tests/optimiser-test-frame.npy"
+stacked_mean_path = os.path.dirname(geoAssembler.__file__) + "/tests/optimiser-test-frame.npy"
 
 
 def test_integrator():
-    frame = np.load(frame_path)
+    stacked_mean = np.load(stacked_mean_path)
 
-    optimiser = centreOptimiser.CentreOptimiser(geom, frame, sample_dist_m=0.2)
+    optimiser = centreOptimiser.CentreOptimiser(geom, stacked_mean, sample_dist_m=0.2)
 
-    integrated_result = optimiser.integrate2d(frame)
+    integrated_result = optimiser.integrate2d(optimiser.frame)
     misaligned_2dint = integrated_result.intensity
     misaligned_2dint_r = integrated_result.radial
     misaligned_2dint_a = integrated_result.azimuthal
