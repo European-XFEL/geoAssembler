@@ -19,10 +19,23 @@ class CentreOptimiser:
     straight lines in polar coordinates indicates an accurate centre.
     """
     def __init__(self, geom: DetectorGeometryBase,
-                 stacked_mean: np.ndarray, sample_dist_m: Union[int, float],
+                 module_stack: np.ndarray, sample_dist_m: Union[int, float],
                  unit: str = "2th_deg"):
-        self.stacked_mean = stacked_mean
-        self.frame, _ = geom.position_modules_fast(self.stacked_mean)
+        """Init function
+
+        Parameters
+        ----------
+        geom : DetectorGeometryBase
+            Initial geometry used for the optimisation
+        module_stack : np.ndarray
+            Stack of module data, returned by `stack_detector_data`
+        sample_dist_m : Union[int, float]
+            Distance from the detector to the sample
+        unit : str, optional
+            Units used for the pyFAI integrator, by default "2th_deg"
+        """
+        self.module_stack = module_stack
+        self.frame, _ = geom.position_modules_fast(self.module_stack)
 
         self.integrator = Integrator(geom, sample_dist_m, unit)
         self.integrate2d = self.integrator.integrate2d
@@ -46,9 +59,13 @@ class CentreOptimiser:
 
         Parameters
         ----------
-
-        centre_offset: pair of values
+        centre_offset : Tuple[float, float]
             Sets the offset form the current centre value to test for.
+
+        Returns
+        -------
+        float
+            Value of the cost function, 1/max(1d_integration_value[100:-100])
         """
         res = self.integrator.integrate2d(
             self.frame,
@@ -65,14 +82,17 @@ class CentreOptimiser:
 
         Parameters
         ----------
+        bounds : list, optional
+            Set the search area for the optimiser, by default [(-50, 50), (-50, 50)]
+        workers : int, optional
+            Set the number of workers (cores) to use, -1 for auto, by default 1
+        verbose : bool, optional
+            Print scipy optimise progress output, by default False
 
-        bounds: list of tuples
-            set the search area for the optimiser
-
-        workers: int
-            set the number of workers (cores) to use, -1 for auto
-
-        verbose: bool
+        Returns
+        -------
+        OptimiseResult : namedtuple
+            Named tuple of: optimal_quad_positions, optimal_offset, results
         """
         res_tuple = namedtuple(
             "OptimiseResult", "optimal_quad_positions optimal_offset results"

@@ -57,6 +57,19 @@ class Integrator:
 
         Returns a pyFAI `Integrate2dResult` object, check pyFAI
         docs for more information.
+
+        Parameters
+        ----------
+        frame : np.ndarray
+            A 2d detector image
+        centre_offset : Tuple[float, float], optional
+            Centre offset to apply before the integration, added to the original
+            offset value, by default None
+
+        Returns
+        -------
+        pyFAI.Integrate2dResult
+            [description]
         """
         ai = deepcopy(self.ai)
 
