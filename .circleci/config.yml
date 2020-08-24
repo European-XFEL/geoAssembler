@@ -3,7 +3,7 @@ jobs:
   build:
     docker:
       # -browsers image variants have xvfb running
-      - image: circleci/python:3.7.4-stretch-browsers
+      - image: circleci/python:3.7-stretch-browsers
     steps:
       - checkout
       - run:
