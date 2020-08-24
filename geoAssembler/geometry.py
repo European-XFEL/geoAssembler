@@ -317,7 +317,7 @@ class DSSCGeometry(GeometryAssembler):
             mod_grp = f['Q{}/M{}'.format(quad, module)]
             mod_offset = mod_grp['Position'][:]
             tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
-        return (cr_pos * self.unit) - (mod_offset + tile_offset)
+        return (cr_pos / self.unit) - (mod_offset + tile_offset)
 
 
 
