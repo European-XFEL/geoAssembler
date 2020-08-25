@@ -3,14 +3,14 @@ jobs:
   build:
     docker:
       # -browsers image variants have xvfb running
-      - image: circleci/python:3.7.4-stretch-browsers
+      - image: circleci/python:3.7-stretch-browsers
     steps:
       - checkout
       - run:
           name: Install system dependencies for PyQt5
           command: |
             sudo apt-get update
-            sudo apt-get install -y libxi6 libxrender1 libxkbcommon-x11-0 libdbus-1-3
+            sudo apt-get install -y libxi6 libxrender1 libxkbcommon-x11-0 libdbus-1-3 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0
 
       - restore_cache:
           key: deps1-{{ .Branch }}-{{ checksum "setup.py" }}-py37
