@@ -200,14 +200,14 @@ class ShapeTab(widgets.VBox):
         """Add navigation buttons."""
         if pos is not None:
             quad_offset = self.parent.geom.quad_offsets[pos - 1]
-            posy_sel = widgets.BoundedIntText(value=quad_offset[1],
+            self.posy_sel = widgets.BoundedIntText(value=quad_offset[1],
                                               min=-1000,
                                               max=1000,
                                               step=1,
                                               disabled=False,
                                               continuous_update=True,
                                               description='Horz.')
-            posx_sel = widgets.BoundedIntText(value=quad_offset[0],
+            self.posx_sel = widgets.BoundedIntText(value=quad_offset[0],
                                               min=-1000,
                                               max=1000,
                                               step=1,
