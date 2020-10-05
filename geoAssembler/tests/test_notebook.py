@@ -51,9 +51,9 @@ def test_move_quad(agipd_frame):
     q1_x_initial, q1_y_initial = calib.quad_pos.loc['q1']
     print("before:", calib.quad_pos.loc['q1'])
 
-    horz_widg.value += 2
-    vert_widg.value -= 3
-    
-    dh, dv = 2 * calib.geom.pixel_size, 3 * calib.geom.pixel_size
+    dh, dv = 2, -3
+    horz_widg.value += dh
+    vert_widg.value += dv
+
     print("after:", calib.quad_pos.loc['q1'])
-    assert tuple(calib.quad_pos.loc['q1']) == (q1_x_initial + dh, q1_y_initial - dv)
+    assert tuple(calib.quad_pos.loc['q1']) == (q1_x_initial + dh, q1_y_initial + dv)
