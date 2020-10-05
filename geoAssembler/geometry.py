@@ -93,13 +93,13 @@ class GeometryAssembler:
             quad (int): quadrant number
             centre (tuple): y, x coordinates of the detector centre
         """
-        pos = Defaults.quad2index[self.detector_name][quad]
+        modules = Defaults.quad2slice[self.detector_name][quad]
         X = []
         Y = []
-        for i, module in enumerate(self.snapped_geom.modules[pos:pos + 4]):
-            for j, tile in enumerate(module):
+        for module in self.snapped_geom.modules[modules]:
+            for tile in module:
                 # Offset by centre to make all coordinates positive
-                y, x = tile.corner_idx + centre
+                y, x = tile.corner_idx + centre - self.snapped_geom.centre
                 h, w = tile.pixel_dims
                 Y.append(y)
                 Y.append(y+h)
@@ -118,9 +118,9 @@ class GeometryAssembler:
         data : ndarray
           The last three dimensions should be channelno, pixel_ss, pixel_fs
           (lengths 16, 512, 128). ss/fs are slow-scan and fast-scan.
-        canvas : ndarray
-          The canvas the out array will be embeded in. If None is given
-          (default) no embedding will be applied.
+        canvas : tuple
+          The shape of the canvas the out array will be embedded in.
+          If None is given (default) no embedding will be applied.
 
         Returns
         -------
@@ -131,28 +131,21 @@ class GeometryAssembler:
           (y, x) pixel location of the detector centre in this geometry.
         """
         if canvas is None:
-            size_yx, centre = self.snapped_geom._get_dimensions()
-            out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
+            return self.exgeom_obj.position_modules_fast(data)
         else:
-            _, centre = self.snapped_geom._get_dimensions()
-            size_yx = canvas
+            centre = self.snapped_geom.centre
             cv_centre = (canvas[0]//2, canvas[-1]//2)
             shift = np.array(centre) - np.array(cv_centre)
-            out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
-            out = np.roll(out, shift[0], axis=-2)
-            out = np.roll(out, shift[1], axis=-1)
-            centre -= shift
+            out = np.full(data.shape[:-3] + canvas, np.nan, dtype=data.dtype)
         for i, module in enumerate(self.snapped_geom.modules):
             mod_data = data[..., i, :, :]
             tiles_data = self.exgeom_obj.split_tiles(mod_data)
             for j, tile in enumerate(module):
                 tile_data = tiles_data[j]
-                # Offset by centre to make all coordinates positive
-                y, x = tile.corner_idx + centre
+                y, x = tile.corner_idx - shift
                 h, w = tile.pixel_dims
-                s = tile.transform(tile_data)
                 out[..., y: y + h, x: x + w] = tile.transform(tile_data)
-        return out, centre
+        return out, cv_centre
 
     def write_crystfel_geom(self, filename, *,
                             data_path='/entry_1/instrument_1/detector_1/data',
