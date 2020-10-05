@@ -217,7 +217,7 @@ class ShapeTab(widgets.VBox):
             posx_sel.observe(self._move_quadrants, names='value')
             posy_sel.observe(self._move_quadrants, names='value')
             self.buttons = [self.selection, posx_sel, posy_sel]
-            self.posx_self, self.posy_sel = posx_sel, posy_sel
+            self.posx_sel, self.posy_sel = posx_sel, posy_sel
         else:
             self.buttons = [self.selection]
         self.row1 = widgets.HBox(self.buttons)
