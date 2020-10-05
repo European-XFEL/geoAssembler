@@ -189,49 +189,36 @@ class ShapeTab(widgets.VBox):
                                   self.shape_drn]+self._create_spin_boxes(size, angle))
         self.children = [self.row1, self.row2]
 
-    def _move_quadrants(self, pos):
+    def _move_quadrants(self):
         """Shift a quadrant."""
-        d = pos['owner'].description.lower()[0]
-        pn = int(pos['new'])
-        po = int(pos['old'])
-        delta = pn - po
-        if d == 'h':
-            pos = np.array((delta, 0))
-            if self.parent.frontview:
-                pos = -pos
-        else:
-            pos = np.array((0, delta))
-        self.parent.geom.move_quad(self.parent.quad, pos)
+        offset = (self.posx_sel.value, self.posy_sel.value)
+        self.parent.geom.set_quad_offset(self.parent.quad, offset)
         self.parent.draw_quad_bound(self.parent.quad)
         self.parent.update_plot(None)
 
     def _update_navi(self, pos):
         """Add navigation buttons."""
-        posy_sel = widgets.BoundedIntText(value=0,
-                                          min=-1000,
-                                          max=1000,
-                                          step=1,
-                                          disabled=False,
-                                          continuous_update=True,
-                                          description='Horz.')
-        posx_sel = widgets.BoundedIntText(value=0,
-                                          min=-1000,
-                                          max=1000,
-                                          step=1,
-                                          disabled=False,
-                                          continuous_update=True,
-                                          description='Vert.')
-        posx_sel.observe(self._move_quadrants, names='value')
-        posy_sel.observe(self._move_quadrants, names='value')
-
-        if pos is None:
-            self.buttons = [self.buttons[0]]
-
-        elif len(self.buttons) == 1:
-            self.buttons += [posx_sel, posy_sel]
+        if pos is not None:
+            quad_offset = self.parent.geom.quad_offset[pos - 1]
+            posy_sel = widgets.BoundedIntText(value=quad_offset[1],
+                                              min=-1000,
+                                              max=1000,
+                                              step=1,
+                                              disabled=False,
+                                              continuous_update=True,
+                                              description='Horz.')
+            posx_sel = widgets.BoundedIntText(value=quad_offset[0],
+                                              min=-1000,
+                                              max=1000,
+                                              step=1,
+                                              disabled=False,
+                                              continuous_update=True,
+                                              description='Vert.')
+            posx_sel.observe(self._move_quadrants, names='value')
+            posy_sel.observe(self._move_quadrants, names='value')
+            self.buttons = [self.selection, posx_sel, posy_sel]
         else:
-            self.buttons[1] = posx_sel
-            self.buttons[2] = posy_sel
+            self.buttons = [self.selection]
         self.row1 = widgets.HBox(self.buttons)
         self.children = [self.row1, self.row2]
 
