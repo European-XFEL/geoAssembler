@@ -47,7 +47,10 @@ class GeometryAssembler:
 
     def __init__(self, exgeom_obj):
         """The class is instanciated using an extra_geom geometry object."""
-        self.exgeom_obj = exgeom_obj
+        self.exgeom_obj = self.exgeom_obj_orig = exgeom_obj
+        # Store quadrant shifts as integer numbers of pixels, and convert to
+        # metres when we apply them, to avoid accumulating floating point error.
+        self.quad_offsets = np.zeros((4, 2), dtype=np.int32)
 
     @property
     def modules(self):
@@ -70,17 +73,18 @@ class GeometryAssembler:
             quad (int): Quandrant number that is to be moved
             inc (collection): increment of the direction to be moved
         """
-        pos = Defaults.quad2index[self.detector_name][quad]
-        if len(inc) == 2:
-            inc = np.array(list(inc)+[0])
-        new_modules = [_move_mod(m, inc * self.pixel_size) if (pos <= i < pos + 4) else m
-                       for i, m in enumerate(self.modules)]
-        exgeom_cls = type(self.exgeom_obj)
-        self.exgeom_obj = exgeom_cls(new_modules)
+        self.set_quad_offset(quad, self.quad_offsets[quad - 1] + inc)
 
-    @property
-    def _px_conv(self):
-        return self.pixel_size / self.unit
+    def set_quad_offset(self, quad, offset):
+        self.quad_offsets[quad - 1] = offset
+        quad_offsets_m = self.quad_offsets * self.pixel_size
+        q_slices = Defaults.quad2slice[self.detector_name]
+        self.exgeom_obj = (self.exgeom_obj_orig
+                           .offset(quad_offsets_m[0], modules=q_slices[1])
+                           .offset(quad_offsets_m[1], modules=q_slices[2])
+                           .offset(quad_offsets_m[2], modules=q_slices[3])
+                           .offset(quad_offsets_m[3], modules=q_slices[4])
+                           )
 
     def get_quad_corners(self, quad, centre):
         """Get the bounding box of a quad.
@@ -241,21 +245,7 @@ adu_per_eV = 0.0075
     @property
     def quad_pos(self):
         """Get quadrant positions."""
-        quad = {i:[] for i in range(1,5)}
-        for n, mod in enumerate(self.modules):
-            q = n // 4 + 1
-            for a, asic in enumerate(mod):
-                quad[q].append(asic.corner_pos[:2])
-
-        quad_pos = []
-        for i in range(1, 5):
-            if i < 3:
-                quad_pos.append((np.array(quad[i])[:,0].min(),
-                                np.array(quad[i])[:,1].max()))
-            else:
-                quad_pos.append((np.array(quad[i])[:,0].max(),
-                                np.array(quad[i])[:,1].max()))
-        return pd.DataFrame(quad_pos,
+        return pd.DataFrame(self.exgeom_obj.quad_positions(),
                             index=['q{}'.format(i) for i in range(1, 5)],
                             columns=['X', 'Y'])
 
@@ -291,34 +281,10 @@ class DSSCGeometry(GeometryAssembler):
     @property
     def quad_pos(self):
         """Get the quadrant positions from the geometry object."""
-        quad_pos = np.zeros((4, 2))
-        for q in range(1, 5):
-            # Getting the offset for one tile (4th module, 2nd tile)
-            # is sufficient
-            quad_pos[q-1] = self._get_offsets(q, 1, 1)
+        quad_pos = self.exgeom_obj.quad_positions(self.filename)
         return pd.DataFrame(quad_pos,
-                            columns=['Y', 'X'],
+                            columns=['X', 'Y'],
                             index=['q{}'.format(i) for i in range(1, 5)])
-
-    def _get_offsets(self, quad, module, asic):
-        """Get the panel and asic offsets."""
-        quads_x_orientation = [-1, -1, 1, 1]
-        #quads_y_orientation = [1, 1, -1, -1]
-        x_orient = quads_x_orientation[quad - 1]
-        #y_orient = quads_y_orientation[quad - 1]
-        nmod = (quad-1) * 4 + module
-        frag = self.modules[nmod-1][asic-1]
-        if x_orient == -1:
-            cr_pos = (frag.corner_pos + (frag.fs_vec * self.frag_fs_pixels))[:2]
-        else:
-            cr_pos = (frag.corner_pos + (frag.ss_vec * self.frag_ss_pixels))[:2]
-
-        with h5py.File(self.filename, 'r') as f:
-            mod_grp = f['Q{}/M{}'.format(quad, module)]
-            mod_offset = mod_grp['Position'][:]
-            tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
-        return (cr_pos / self.unit) - (mod_offset + tile_offset)
-
 
 
 class LPDGeometry(GeometryAssembler):
@@ -351,28 +317,11 @@ class LPDGeometry(GeometryAssembler):
     @property
     def quad_pos(self):
         """Get the quadrant positions from the geometry object."""
-        quad_pos = np.zeros((4, 2))
-        for q in range(1, 5):
-            # Getting the offset for one tile (4th module, 16th tile)
-            # is sufficient
-            quad_pos[q-1] = self._get_offsets(q, 4, 16)
+        quad_pos = self.exgeom_obj.quad_positions(self.filename)
         return pd.DataFrame(quad_pos,
-                            columns=['Y', 'X'],
+                            columns=['X', 'Y'],
                             index=['q{}'.format(i) for i in range(1, 5)])
 
-    def _get_offsets(self, quad, module, asic):
-        """Get the panel and asic offsets."""
-        nmod = (quad-1) * 4 + module
-        frag = self.modules[nmod-1][asic-1]
-        cr_pos = (frag.corner_pos +
-                  (frag.ss_vec * self.frag_ss_pixels) +
-                  (frag.fs_vec * self.frag_fs_pixels))[:2]
-        with h5py.File(self.filename, 'r') as f:
-            mod_grp = f['Q{}/M{}'.format(quad, module)]
-            mod_offset = mod_grp['Position'][:]
-            tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
-            cr_pos *= self._px_conv
-        return cr_pos - (mod_offset + tile_offset)
 
 CRYSTFEL_HEADER_TEMPLATE = """\
 ; AGIPD-1M geometry file written by geoAssembler {version}
