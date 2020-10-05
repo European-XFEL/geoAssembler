@@ -189,7 +189,7 @@ class ShapeTab(widgets.VBox):
                                   self.shape_drn]+self._create_spin_boxes(size, angle))
         self.children = [self.row1, self.row2]
 
-    def _move_quadrants(self):
+    def _move_quadrants(self, _pos):
         """Shift a quadrant."""
         offset = (self.posx_sel.value, self.posy_sel.value)
         self.parent.geom.set_quad_offset(self.parent.quad, offset)
