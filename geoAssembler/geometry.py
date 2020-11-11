@@ -78,13 +78,10 @@ class GeometryAssembler:
     def set_quad_offset(self, quad, offset):
         self.quad_offsets[quad - 1] = offset
         quad_offsets_m = self.quad_offsets * self.pixel_size
-        q_slices = Defaults.quad2slice[self.detector_name]
-        self.exgeom_obj = (self.exgeom_obj_orig
-                           .offset(quad_offsets_m[0], modules=q_slices[1])
-                           .offset(quad_offsets_m[1], modules=q_slices[2])
-                           .offset(quad_offsets_m[2], modules=q_slices[3])
-                           .offset(quad_offsets_m[3], modules=q_slices[4])
-                           )
+        self.exgeom_obj = self.exgeom_obj_orig.offset(
+            # Repeat each quadrant offset 4 times to get offsets per module
+            np.repeat(quad_offsets_m, repeats=4)
+        )
 
     def get_quad_corners(self, quad, centre):
         """Get the bounding box of a quad.
