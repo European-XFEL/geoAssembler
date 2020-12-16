@@ -110,6 +110,11 @@ class QtMainWidget(QtGui.QMainWindow):
         if run_dir:
             self.run_selector.read_rundir(run_dir)
 
+    def close(self):
+        self.imv.close()
+        self.imv = None
+        return super().close()
+
     # Some properties coming up
     @property
     def shapes(self):
