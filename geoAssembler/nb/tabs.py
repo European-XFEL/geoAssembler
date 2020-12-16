@@ -5,7 +5,6 @@ import logging
 
 from ipywidgets import widgets, Layout
 from matplotlib import cm
-import numpy as np
 import pyFAI
 import pyFAI.calibrant
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
