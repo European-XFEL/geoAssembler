@@ -91,8 +91,7 @@ class FitObjectWidget(QtWidgets.QFrame):
     def _get_shape_type(self):
         """Return the correct shape type."""
         shape_txt = self.cb_shape_type.currentText().lower()
-        shape = self.main_widget.canvas.shape
-        y, x = int(round(shape[0]/2, 0)), int(round(shape[1]/2, 0))
+        y, x = self.main_widget.centre
         if shape_txt == 'circle':
             return CircleShape(pos=(x-x//2, y-x//2), size=self.size)
         elif shape_txt == 'rectangle':

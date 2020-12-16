@@ -54,7 +54,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.initial_levels = levels or [0, 10000]
 
         self.raw_data = None
-        self.canvas = None
+        self.canvas_shape = None
         self.rect = None
         self.quad = -1  # The selected quadrants (-1 none selected)
         self.is_displayed = False
@@ -169,16 +169,13 @@ class QtMainWidget(QtGui.QMainWindow):
             warning('No data in trainId, select a different trainId')
             return
 
+        self.canvas_shape = tuple(
+            np.array(self.geom_obj.snapped_geom.size_yx) + Defaults.canvas_margin
+        )
         try:
-            data, self.centre = self.geom_obj.position_all_modules(self.raw_data)
-        except ValueError:
-            warning('Error while applying geometry, check Detector Settings')
-            return
-        self.canvas = np.full(np.array(data.shape) + Defaults.canvas_margin,
-                              np.nan)
-        try:
-            self.data, _ = self.geom_obj.position_all_modules(self.raw_data,
-                                                              canvas=self.canvas.shape)
+            self.data, self.centre = self.geom_obj.position_all_modules(
+                self.raw_data, canvas=self.canvas_shape,
+            )
         except ValueError:
             warning('Error while applying geometry, check Detector Settings')
             return
@@ -220,7 +217,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.geom_obj.move_quad(quad, inc)
         self.data, self.centre =\
             self.geom_obj.position_all_modules(self.raw_data,
-                                               canvas=self.canvas.shape)
+                                               canvas=self.canvas_shape)
         self._draw_rect(quad)
         self.redraw_image()
 

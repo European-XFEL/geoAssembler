@@ -47,7 +47,10 @@ class GeometryAssembler:
 
     def __init__(self, exgeom_obj):
         """The class is instanciated using an extra_geom geometry object."""
-        self.exgeom_obj = exgeom_obj
+        self.exgeom_obj = self.exgeom_obj_orig = exgeom_obj
+        # Store quadrant shifts as integer numbers of pixels, and convert to
+        # metres when we apply them, to avoid accumulating floating point error.
+        self.quad_offsets = np.zeros((4, 2), dtype=np.int32)
 
     @property
     def modules(self):
@@ -67,20 +70,18 @@ class GeometryAssembler:
         """Move the whole quad in a given direction.
 
         Parameters:
-            quad (int): Quandrant number that is to be moved
+            quad (int): Quandrant number that is to be moved (1 - 4)
             inc (collection): increment of the direction to be moved
         """
-        pos = Defaults.quad2index[self.detector_name][quad]
-        if len(inc) == 2:
-            inc = np.array(list(inc)+[0])
-        new_modules = [_move_mod(m, inc * self.pixel_size) if (pos <= i < pos + 4) else m
-                       for i, m in enumerate(self.modules)]
-        exgeom_cls = type(self.exgeom_obj)
-        self.exgeom_obj = exgeom_cls(new_modules)
+        self.set_quad_offset(quad, self.quad_offsets[quad - 1] + inc)
 
-    @property
-    def _px_conv(self):
-        return self.pixel_size / self.unit
+    def set_quad_offset(self, quad, offset):
+        self.quad_offsets[quad - 1] = offset
+        quad_offsets_m = self.quad_offsets * self.pixel_size
+        self.exgeom_obj = self.exgeom_obj_orig.offset(
+            # Repeat each quadrant offset 4 times to get offsets per module
+            np.repeat(quad_offsets_m, repeats=4, axis=0)
+        )
 
     def get_quad_corners(self, quad, centre):
         """Get the bounding box of a quad.
@@ -89,13 +90,13 @@ class GeometryAssembler:
             quad (int): quadrant number
             centre (tuple): y, x coordinates of the detector centre
         """
-        pos = Defaults.quad2index[self.detector_name][quad]
+        modules = Defaults.quad2slice[self.detector_name][quad]
         X = []
         Y = []
-        for i, module in enumerate(self.snapped_geom.modules[pos:pos + 4]):
-            for j, tile in enumerate(module):
+        for module in self.snapped_geom.modules[modules]:
+            for tile in module:
                 # Offset by centre to make all coordinates positive
-                y, x = tile.corner_idx + centre
+                y, x = tile.corner_idx + centre - self.snapped_geom.centre
                 h, w = tile.pixel_dims
                 Y.append(y)
                 Y.append(y+h)
@@ -114,9 +115,9 @@ class GeometryAssembler:
         data : ndarray
           The last three dimensions should be channelno, pixel_ss, pixel_fs
           (lengths 16, 512, 128). ss/fs are slow-scan and fast-scan.
-        canvas : ndarray
-          The canvas the out array will be embeded in. If None is given
-          (default) no embedding will be applied.
+        canvas : tuple
+          The shape of the canvas the out array will be embedded in.
+          If None is given (default) no embedding will be applied.
 
         Returns
         -------
@@ -127,28 +128,21 @@ class GeometryAssembler:
           (y, x) pixel location of the detector centre in this geometry.
         """
         if canvas is None:
-            size_yx, centre = self.snapped_geom._get_dimensions()
-            out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
+            return self.exgeom_obj.position_modules_fast(data)
         else:
-            _, centre = self.snapped_geom._get_dimensions()
-            size_yx = canvas
+            centre = self.snapped_geom.centre
             cv_centre = (canvas[0]//2, canvas[-1]//2)
             shift = np.array(centre) - np.array(cv_centre)
-            out = np.full(data.shape[:-3] + size_yx, np.nan, dtype=data.dtype)
-            out = np.roll(out, shift[0], axis=-2)
-            out = np.roll(out, shift[1], axis=-1)
-            centre -= shift
+            out = np.full(data.shape[:-3] + canvas, np.nan, dtype=data.dtype)
         for i, module in enumerate(self.snapped_geom.modules):
             mod_data = data[..., i, :, :]
             tiles_data = self.exgeom_obj.split_tiles(mod_data)
             for j, tile in enumerate(module):
                 tile_data = tiles_data[j]
-                # Offset by centre to make all coordinates positive
-                y, x = tile.corner_idx + centre
+                y, x = tile.corner_idx - shift
                 h, w = tile.pixel_dims
-                s = tile.transform(tile_data)
                 out[..., y: y + h, x: x + w] = tile.transform(tile_data)
-        return out, centre
+        return out, cv_centre
 
     def write_crystfel_geom(self, filename, *,
                             data_path='/entry_1/instrument_1/detector_1/data',
@@ -241,21 +235,7 @@ adu_per_eV = 0.0075
     @property
     def quad_pos(self):
         """Get quadrant positions."""
-        quad = {i:[] for i in range(1,5)}
-        for n, mod in enumerate(self.modules):
-            q = n // 4 + 1
-            for a, asic in enumerate(mod):
-                quad[q].append(asic.corner_pos[:2])
-
-        quad_pos = []
-        for i in range(1, 5):
-            if i < 3:
-                quad_pos.append((np.array(quad[i])[:,0].min(),
-                                np.array(quad[i])[:,1].max()))
-            else:
-                quad_pos.append((np.array(quad[i])[:,0].max(),
-                                np.array(quad[i])[:,1].max()))
-        return pd.DataFrame(quad_pos,
+        return pd.DataFrame(self.exgeom_obj.quad_positions(),
                             index=['q{}'.format(i) for i in range(1, 5)],
                             columns=['X', 'Y'])
 
@@ -291,34 +271,10 @@ class DSSCGeometry(GeometryAssembler):
     @property
     def quad_pos(self):
         """Get the quadrant positions from the geometry object."""
-        quad_pos = np.zeros((4, 2))
-        for q in range(1, 5):
-            # Getting the offset for one tile (4th module, 2nd tile)
-            # is sufficient
-            quad_pos[q-1] = self._get_offsets(q, 1, 1)
+        quad_pos = self.exgeom_obj.quad_positions(self.filename)
         return pd.DataFrame(quad_pos,
-                            columns=['Y', 'X'],
+                            columns=['X', 'Y'],
                             index=['q{}'.format(i) for i in range(1, 5)])
-
-    def _get_offsets(self, quad, module, asic):
-        """Get the panel and asic offsets."""
-        quads_x_orientation = [-1, -1, 1, 1]
-        #quads_y_orientation = [1, 1, -1, -1]
-        x_orient = quads_x_orientation[quad - 1]
-        #y_orient = quads_y_orientation[quad - 1]
-        nmod = (quad-1) * 4 + module
-        frag = self.modules[nmod-1][asic-1]
-        if x_orient == -1:
-            cr_pos = (frag.corner_pos + (frag.fs_vec * self.frag_fs_pixels))[:2]
-        else:
-            cr_pos = (frag.corner_pos + (frag.ss_vec * self.frag_ss_pixels))[:2]
-
-        with h5py.File(self.filename, 'r') as f:
-            mod_grp = f['Q{}/M{}'.format(quad, module)]
-            mod_offset = mod_grp['Position'][:]
-            tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
-        return (cr_pos / self.unit) - (mod_offset + tile_offset)
-
 
 
 class LPDGeometry(GeometryAssembler):
@@ -351,28 +307,11 @@ class LPDGeometry(GeometryAssembler):
     @property
     def quad_pos(self):
         """Get the quadrant positions from the geometry object."""
-        quad_pos = np.zeros((4, 2))
-        for q in range(1, 5):
-            # Getting the offset for one tile (4th module, 16th tile)
-            # is sufficient
-            quad_pos[q-1] = self._get_offsets(q, 4, 16)
+        quad_pos = self.exgeom_obj.quad_positions(self.filename)
         return pd.DataFrame(quad_pos,
-                            columns=['Y', 'X'],
+                            columns=['X', 'Y'],
                             index=['q{}'.format(i) for i in range(1, 5)])
 
-    def _get_offsets(self, quad, module, asic):
-        """Get the panel and asic offsets."""
-        nmod = (quad-1) * 4 + module
-        frag = self.modules[nmod-1][asic-1]
-        cr_pos = (frag.corner_pos +
-                  (frag.ss_vec * self.frag_ss_pixels) +
-                  (frag.fs_vec * self.frag_fs_pixels))[:2]
-        with h5py.File(self.filename, 'r') as f:
-            mod_grp = f['Q{}/M{}'.format(quad, module)]
-            mod_offset = mod_grp['Position'][:]
-            tile_offset = mod_grp['T{:02}/Position'.format(asic)][:]
-            cr_pos *= self._px_conv
-        return cr_pos - (mod_offset + tile_offset)
 
 CRYSTFEL_HEADER_TEMPLATE = """\
 ; AGIPD-1M geometry file written by geoAssembler {version}

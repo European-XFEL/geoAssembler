@@ -1,5 +1,5 @@
-
 """Methods and Classes that handle different detectors and their defaults."""
+from numpy import s_
 
 INC = 1
 
@@ -33,11 +33,11 @@ class DefaultGeometryConfig:
                  'r': (INC, 0),
                  'l': (-INC, 0)}
     # Translate quad's into module indices
-    quad2index = {
-                  'AGIPD' : {1: 0, 2: 4, 3: 8, 4: 12},
-                  'LPD' : {1: 0, 2: 4, 3: 8, 4: 12},
-                  'DSSC' : {1: 0, 2: 4, 3: 8, 4: 12},
-                }
+    quad2slice = {
+        'AGIPD': {1: s_[0:4], 2: s_[4:8], 3: s_[8:12], 4: s_[12:16]},
+        'LPD':   {1: s_[0:4], 2: s_[4:8], 3: s_[8:12], 4: s_[12:16]},
+        'DSSC':  {1: s_[0:4], 2: s_[4:8], 3: s_[8:12], 4: s_[12:16]},
+    }
 
     canvas_margin = 300  # pixel, used as margin on each side of detector quadrants
     geom_sel_width = 114
