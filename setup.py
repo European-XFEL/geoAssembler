@@ -53,7 +53,7 @@ setup(name="geoAssembler",
       install_requires=[
           'cfelpyutils',
           'EXtra-data',
-          'EXtra-geom',
+          'EXtra-geom >=1.1.0',
           'matplotlib',
           'numpy',
           'pyqtgraph',
