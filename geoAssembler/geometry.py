@@ -80,7 +80,7 @@ class GeometryAssembler:
         quad_offsets_m = self.quad_offsets * self.pixel_size
         self.exgeom_obj = self.exgeom_obj_orig.offset(
             # Repeat each quadrant offset 4 times to get offsets per module
-            np.repeat(quad_offsets_m, repeats=4)
+            np.repeat(quad_offsets_m, repeats=4, axis=0)
         )
 
     def get_quad_corners(self, quad, centre):
