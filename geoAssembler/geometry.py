@@ -70,7 +70,7 @@ class GeometryAssembler:
         """Move the whole quad in a given direction.
 
         Parameters:
-            quad (int): Quandrant number that is to be moved
+            quad (int): Quandrant number that is to be moved (1 - 4)
             inc (collection): increment of the direction to be moved
         """
         self.set_quad_offset(quad, self.quad_offsets[quad - 1] + inc)
