@@ -333,7 +333,7 @@ class MaterialTab(widgets.VBox):
         self.pxsize_btn.observe(self._set_pxsize, names='value')
         self.energy_btn.observe(self._set_wavelength, names='value')
         self.dist_btn.observe(self._set_cdist, names='value')
-        super(widgets.VBox, self).__init__([self.row1, self.row2])
+        super().__init__([self.row1, self.row2])
 
     @staticmethod
     def _energy2lambda(energy):
