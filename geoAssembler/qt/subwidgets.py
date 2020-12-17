@@ -208,7 +208,7 @@ class RunDataWidget(QtWidgets.QFrame):
         self.sb_train_id.setMaximum(det.data.train_ids[-1])
         self.sb_train_id.setValue(det.data.train_ids[0])
 
-        self.sb_pulse_id.setMaximum(det.frames_per_train - 1)
+        self.sb_pulse_id.setMaximum(int(det.frames_per_train) - 1)
 
         # Enable spin boxes and radio buttons
         self.sb_train_id.setEnabled(True)
