@@ -31,7 +31,7 @@ def test_integrator():
     assert 827 < misaligned_2dint_r.shape[0] < 837
     assert 952 < misaligned_2dint_a.shape[0] < 962
 
-    misaligned_1dint = np.nanmean(misaligned_2dint, axis=0)[100:-100]
+    misaligned_1dint = np.nanmean(misaligned_2dint[:, 100:-100], axis=0)
 
     brightest_ring_idx = np.where(
         misaligned_1dint == np.max(misaligned_1dint
