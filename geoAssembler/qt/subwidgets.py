@@ -34,13 +34,13 @@ class FitObjectWidget(QtWidgets.QFrame):
     delete_shape_signal = Signal()
     show_log_signal = Signal()
 
-    def __init__(self, main_widget, parent=None):
+    def __init__(self, main_widget):
         """Add a spin box with a label to set radii.
 
         Parameters:
            main_widget : Parent widget
         """
-        super().__init__(parent)
+        super().__init__(parent=main_widget)
         ui_file = op.join(op.dirname(__file__), 'editor/fit_object.ui')
         uic.loadUi(ui_file, self)
 

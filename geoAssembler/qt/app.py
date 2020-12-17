@@ -48,7 +48,6 @@ class QtMainWidget(QtGui.QMainWindow):
 
         # pyqtgraph config
         pg.setConfigOptions(imageAxisOrder='row-major')
-        pg.LabelItem(justify='right')
 
         self.geofile = geofile
         self.initial_levels = levels or [0, 10000]
@@ -63,7 +62,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.log_capturer = LogCapturer(self)
 
         # Create new image view
-        self.imv = pg.ImageView()
+        self.imv = pg.ImageView(parent=self)
         self.log.info('Creating main window')
         # Circle Points by Quadrant
         for action, keys in ((self._move_left, ('left', 'H')),
@@ -76,7 +75,7 @@ class QtMainWidget(QtGui.QMainWindow):
                 shortcut.activated.connect(action)
 
         # circle manipulation other input dialogs go to the top
-        self.fit_widget = FitObjectWidget(self, None)
+        self.fit_widget = FitObjectWidget(self)
 
         self.geom_selector = GeometryWidget(self, self.geofile)
         self.geom_selector.new_geometry.connect(self.assemble_draw)
@@ -109,6 +108,11 @@ class QtMainWidget(QtGui.QMainWindow):
         # If a run directory was already given, read it
         if run_dir:
             self.run_selector.read_rundir(run_dir)
+
+    def closeEvent(self, event):
+        self.imv.close()
+        self.imv = None
+        return super().closeEvent(event)
 
     # Some properties coming up
     @property
@@ -266,7 +270,9 @@ class QtMainWidget(QtGui.QMainWindow):
                                movable=False,
                                removable=False,
                                pen=pen,
-                               invertible=False)
+                               invertible=False,
+                               parent=self.imv,
+                              )
         self.rect.handleSize = 0
         self.imv.getView().addItem(self.rect)
         _ = [self.rect.removeHandle(handle)
