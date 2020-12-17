@@ -1,7 +1,6 @@
 import geoAssembler.optimiser as centreOptimiser
 import geoAssembler
 
-from extra_data import RunDirectory, stack_detector_data
 from extra_geom import AGIPD_1MGeometry
 
 import numpy as np
