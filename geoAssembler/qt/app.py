@@ -109,10 +109,10 @@ class QtMainWidget(QtGui.QMainWindow):
         if run_dir:
             self.run_selector.read_rundir(run_dir)
 
-    def close(self):
+    def closeEvent(self, event):
         self.imv.close()
         self.imv = None
-        return super().close()
+        return super().closeEvent(event)
 
     # Some properties coming up
     @property
