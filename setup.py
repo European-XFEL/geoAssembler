@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Setup script for intalling the geoAssembler."""
+"""Setup script for installing the geoAssembler."""
 import glob
 import os.path as osp
 import re
