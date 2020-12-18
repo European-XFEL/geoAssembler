@@ -41,12 +41,15 @@ setup(
     long_description_content_type='text/markdown',
     license="BSD-3-Clause",
     packages=find_packages(),
-    data_files=[('templates', find_files('templates')),
-                ('cells', find_files('cells'))],
-    package_data={'': ['cells/*.D', 'templates/*.tmpl', 'icons/*.png'],
-                'geoAssembler.tests': ['data_*.npz', 'test.geom'],
-                'geoAssembler.qt.editor': ['*.ui'],
-                },
+    data_files=[
+        ('templates', find_files('templates')),
+        ('cells', find_files('cells'))
+    ],
+    package_data={
+        '': ['cells/*.D', 'templates/*.tmpl', 'icons/*.png'],
+        'geoAssembler.tests': ['data_*.npz', 'test.geom'],
+        'geoAssembler.qt.editor': ['*.ui'],
+    },
     entry_points={
         'gui_scripts': [
             'geoAssembler = geoAssembler.main:main'
