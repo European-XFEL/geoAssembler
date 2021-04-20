@@ -371,7 +371,7 @@ class MaterialTab(widgets.VBox):
 
     def _draw_overlay(self, *args):
         """Draw the ring structure with pyFAI."""
-        if self.calibrant is 'None':
+        if self.calibrant == 'None':
             return
         try:
             cal = pyFAI.calibrant.get_calibrant(self.calibrant)
