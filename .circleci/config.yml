@@ -27,3 +27,5 @@ jobs:
             - "venv"
       - run:
           command: venv/bin/pytest -v
+          environment:
+            QT_DEBUG_PLUGINS: 1
