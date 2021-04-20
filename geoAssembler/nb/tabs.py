@@ -413,7 +413,7 @@ class MaterialTab(widgets.VBox):
         """Do not display the ring structure."""
         if self.img is None:
             return
-        cmp = cm.Reds
+        cmp = cm.get_cmap('Reds').copy()
         cmp.set_bad('w', alpha=0)
         cmp.set_under('w', alpha=0)
         self.img.set_visible(False)
