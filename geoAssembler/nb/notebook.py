@@ -195,7 +195,7 @@ class MainWidget:
         self.shapes = {}
         self.quad = None
         self.frontview = frontview
-        self.cmap = cm.get_cmap(Defaults.cmaps[0])
+        self.cmap = cm.get_cmap(Defaults.cmaps[0]).copy()
         try:
             self.cmap.set_bad(self.bg)
         except (ValueError, KeyError):
@@ -307,7 +307,7 @@ class MainWidget:
             return
 
         try:
-            cmap = cm.get_cmap(cmap_val)
+            cmap = cm.get_cmap(cmap_val).copy()
             cmap.set_bad(self.bg)
             self.im.set_cmap(cmap)
         except ValueError:
