@@ -1,5 +1,9 @@
 name: Build Image using Dockerfile
-on: [push]
+on:
+  push:
+    paths:  # We normally won't need to rebuild the image
+      - '.circleci/Dockerfile'
+      - '.github/workflows/test-image.yml'
 
 jobs:
   build:
