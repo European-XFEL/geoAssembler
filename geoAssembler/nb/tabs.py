@@ -371,7 +371,7 @@ class MaterialTab(widgets.VBox):
 
     def _draw_overlay(self, *args):
         """Draw the ring structure with pyFAI."""
-        if self.calibrant is 'None':
+        if self.calibrant == 'None':
             return
         try:
             cal = pyFAI.calibrant.get_calibrant(self.calibrant)
@@ -413,7 +413,7 @@ class MaterialTab(widgets.VBox):
         """Do not display the ring structure."""
         if self.img is None:
             return
-        cmp = cm.Reds
+        cmp = cm.get_cmap('Reds').copy()
         cmp.set_bad('w', alpha=0)
         cmp.set_under('w', alpha=0)
         self.img.set_visible(False)

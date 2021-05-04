@@ -1,0 +1,22 @@
+name: Build Image using Dockerfile
+on:
+  push:
+    paths:  # We normally won't need to rebuild the image
+      - '.circleci/Dockerfile'
+      - '.github/workflows/test-image.yml'
+
+jobs:
+  build:
+    name: Build image
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Publish Image
+      uses: matootie/github-docker@v3.1.0
+      with:
+        accessToken: ${{ secrets.GITHUB_TOKEN }}
+        imageName: geoAssembler-testing
+        context: .circleci/
+        containerRegistry: true
