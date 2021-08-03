@@ -96,12 +96,20 @@ class StartDialog(QtWidgets.QDialog):
                 f"Loaded run with {len(self.available_detectors)} detectors"
             )
 
-    def _have_detector(self, have=False):
+    def _have_detector(self, have=False, can_load_geom=True):
         self.rb_geom_default.setEnabled(have)
         self.rb_geom_quadpos.setEnabled(have)
-        self.rb_geom_cfel.setEnabled(have)
+        self.rb_geom_cfel.setEnabled(have and can_load_geom)
         if have:
             self.rb_geom_default.setChecked(True)
+
+            if can_load_geom:
+                self.rb_geom_cfel.setText("&CrystFEL format geometry (.geom)")
+            else:
+                self.rb_geom_cfel.setText(
+                    "CrystFEL format geometry (not supported for this detector)"
+                )
+
         self._have_geometry(have)
 
     @QtCore.pyqtSlot()
@@ -110,10 +118,13 @@ class StartDialog(QtWidgets.QDialog):
         # The signal seems to send index=-1 even when a real selection is made.
         # Retrieve currentIndex instead:
         index = self.combobox_detectors.currentIndex()
-        self._have_detector(index != -1)
+        if index == -1:
+            self._have_detector(False)
+            return
 
         cls = self.available_detectors[index][1]
         det_type = data_classes_to_names[cls]
+        self._have_detector(True, can_load_geom=(det_type != 'DSSC'))
         unit = Defaults.quad_pos_units[det_type]
         self.rb_geom_quadpos.setText(f"Specified quadrant positions ({unit})")
         self.populate_quadpos_table(Defaults.fallback_quad_pos[det_type])
