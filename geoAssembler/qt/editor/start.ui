@@ -53,9 +53,6 @@
        <property name="enabled">
         <bool>false</bool>
        </property>
-       <property name="placeholderText">
-        <string>xyz</string>
-       </property>
       </widget>
      </item>
     </layout>
