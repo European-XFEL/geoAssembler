@@ -313,8 +313,11 @@ class LPDGeometry(GeometryAssembler):
                             index=['q{}'.format(i) for i in range(1, 5)])
 
 
-GEOM_MODULES = {'AGIPD': AGIPDGeometry,
-                'LPD': LPDGeometry}
+GEOM_CLASSES = {
+    'AGIPD': AGIPDGeometry,
+    'LPD': LPDGeometry,
+    'DSSC': DSSCGeometry,
+}
 
 
 

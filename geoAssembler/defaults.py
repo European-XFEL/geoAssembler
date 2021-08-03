@@ -26,6 +26,12 @@ class DefaultGeometryConfig:
                                  (130, 140)],
                         }
 
+    quad_pos_units = {
+        'AGIPD': 'pixels',
+        'LPD': 'mm',
+        'DSSC': 'mm',
+    }
+
     # Definition of increments (INC) the quadrants should move
     # (u = up, d = down, r = right, l = left is given:
     direction = {'u': (0, INC),
