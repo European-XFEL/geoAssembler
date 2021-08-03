@@ -97,14 +97,14 @@ class DetectorHelper(QtGui.QDialog):
 
         self.setWindowTitle('{} Geometry'.format(det_type))
 
-        self.quad_pos = quad_pos
+        self.quad_pos = list(quad_pos.itertuples(index=False))
 
         self.populate_table()
         self.bt_copy_csv.clicked.connect(self._copy_csv)
 
     def populate_table(self):
         """Update the Qudrant table."""
-        for n, quad_pos in enumerate(self.quad_pos.itertuples(index=False)):
+        for n, quad_pos in enumerate(self.quad_pos):
             self.tb_quadrants.setItem(
                 n, 0, QtGui.QTableWidgetItem(str(quad_pos[0])))
             self.tb_quadrants.setItem(
