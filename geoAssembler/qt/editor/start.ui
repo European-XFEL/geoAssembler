@@ -143,6 +143,9 @@
       </item>
       <item>
        <widget class="QLabel" name="label_h5_geom">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="text">
          <string>With HDF5 geometry (optional):</string>
         </property>

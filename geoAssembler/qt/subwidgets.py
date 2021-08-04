@@ -220,6 +220,7 @@ class StartDialog(QtWidgets.QDialog):
         )
 
     def _enable_h5_geom(self, enabled):
+        self.label_h5_geom.setEnabled(enabled)
         self.edit_h5_path.setEnabled(enabled)
         self.button_open_h5.setEnabled(enabled)
         self.button_clear_h5.setEnabled(enabled)
