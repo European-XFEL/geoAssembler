@@ -46,6 +46,8 @@ class StartDialog(QtWidgets.QDialog):
 
         self.button_open_run.clicked.connect(self._choose_run_path)
         self.combobox_detectors.currentIndexChanged.connect(self._select_detector)
+        self.button_open_h5.clicked.connect(self._choose_h5_file)
+        self.button_clear_h5.clicked.connect(self.edit_h5_path.clear)
         self.button_open_geom.clicked.connect(self._choose_geom_file)
 
         self.rb_geom_default.toggled.connect(self._geom_option_changed)
@@ -96,7 +98,7 @@ class StartDialog(QtWidgets.QDialog):
                 f"Loaded run with {len(self.available_detectors)} detectors"
             )
 
-    def _have_detector(self, have=False, can_load_geom=True):
+    def _have_detector(self, have=False, can_load_geom=True, can_load_h5=True):
         self.rb_geom_default.setEnabled(have)
         self.rb_geom_quadpos.setEnabled(have)
         self.rb_geom_cfel.setEnabled(have and can_load_geom)
@@ -108,6 +110,13 @@ class StartDialog(QtWidgets.QDialog):
             else:
                 self.rb_geom_cfel.setText(
                     "CrystFEL format geometry (not supported for this detector)"
+                )
+
+            if can_load_h5:
+                self.label_h5_geom.setText("With HDF5 geometry (optional):")
+            else:
+                self.label_h5_geom.setText(
+                    "With HDF5 geometry (not supported for this detector):"
                 )
 
         self._have_geometry(have)
@@ -124,10 +133,14 @@ class StartDialog(QtWidgets.QDialog):
 
         cls = self.available_detectors[index][1]
         det_type = data_classes_to_names[cls]
-        self._have_detector(True, can_load_geom=(det_type != 'DSSC'))
+        self._have_detector(True,
+            can_load_geom=(det_type != 'DSSC'),
+            can_load_h5=(det_type != 'AGIPD'),
+        )
         unit = Defaults.quad_pos_units[det_type]
         self.rb_geom_quadpos.setText(f"Specified quadrant positions ({unit})")
         self.populate_quadpos_table(Defaults.fallback_quad_pos[det_type])
+        self.edit_h5_path.clear()
 
     def populate_quadpos_table(self, quad_pos):
         """Fill the Quadrant positions table."""
@@ -147,6 +160,22 @@ class StartDialog(QtWidgets.QDialog):
             self.tb_quadrants.item(i, 0).data(QtCore.Qt.EditRole),
             self.tb_quadrants.item(i, 1).data(QtCore.Qt.EditRole),
         ) for i in range(4)]
+
+    def _choose_h5_file(self):
+        path = QtGui.QFileDialog.getOpenFileName(
+            self, filter="EuXFEL HDF5 geometry (*.h5)"
+        )
+        if path:
+            det_type = self.selected_detector_type
+            try:
+                # Load the file to check it's valid for this detector
+                geom_cls = GEOM_CLASSES[det_type]
+                quadpos = Defaults.fallback_quad_pos[det_type]
+                geom_cls.from_h5_file_and_quad_positions(path, quadpos)
+            except Exception as e:
+                self.label_status.setText(f"Error loading geometry from HDF5: {e}")
+            else:
+                self.edit_h5_path.setText(path)
 
     @property
     def selected_detector(self):
@@ -183,18 +212,32 @@ class StartDialog(QtWidgets.QDialog):
         else:
             self._have_geometry(True)
 
+        if (
+                self.rb_geom_quadpos.isChecked()
+                and self.selected_detector_type != 'AGIPD'
+        ):
+            self.button_open_h5.setEnabled(False)
+            self.button_clear_h5.setEnabled(False)
+        else:
+            self.button_open_h5.setEnabled(True)
+            self.button_clear_h5.setEnabled(True)
+
     def geometry(self):
         """Make a geometry object from the information in the dialog"""
         if self.rb_geom_cfel.isChecked():
             return self._geom_from_geom_file
         else:
             det_type = self.selected_detector_type
+            geom_cls = GEOM_CLASSES[det_type]
+
             if self.rb_geom_quadpos.isChecked():
                 quadpos = self.quadpos_from_table()
+                h5_path = self.edit_h5_path.text()
+                if h5_path:
+                    return geom_cls.from_h5_file_and_quad_positions(h5_path, quadpos)
             else:  # rb_geom_default
                 quadpos = Defaults.fallback_quad_pos[det_type]
 
-            geom_cls = GEOM_CLASSES[det_type]
             return geom_cls.from_quad_positions(quadpos)
 
 class FitObjectWidget(QtWidgets.QFrame):
