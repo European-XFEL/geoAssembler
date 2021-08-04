@@ -3,7 +3,6 @@
 import logging
 import tempfile
 
-import h5py
 from extra_geom import (
     AGIPD_1MGeometry, DSSC_1MGeometry, LPD_1MGeometry,
 )

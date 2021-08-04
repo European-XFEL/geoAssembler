@@ -1,7 +1,7 @@
 """Definitions of all widgets that go into the geoAssembler."""
 
 import os
-from os import path as op
+import os.path as op
 
 from extra_data import RunDirectory, stack_detector_data
 from extra_data.components import AGIPD1M, LPD1M, DSSC1M, identify_multimod_detectors
@@ -9,7 +9,7 @@ import numpy as np
 from PyQt5 import uic
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
-from .objects import (CircleShape, DetectorHelper, SquareShape, warning)
+from .objects import (CircleShape, DetectorHelper, SquareShape)
 from .utils import get_icon
 
 from ..defaults import DefaultGeometryConfig as Defaults
