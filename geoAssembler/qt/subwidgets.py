@@ -506,19 +506,25 @@ class GeometryWidget(QtWidgets.QFrame):
         self.main_widget = main_widget
 
         self.bt_quad_pos.clicked.connect(self._show_quadpos)
+        # CrystFEL format geometry not currently supported for DSSC
+        self.bt_save.setEnabled(self.det_type != 'DSSC')
         self.bt_save.clicked.connect(self._save_geometry_obj)
         self.bt_save.setIcon(get_icon('save.png'))
 
-        self.label_geom.setText(f"{self.main_widget.det_type} geometry")
+        self.label_geom.setText(f"{self.det_type} geometry")
 
     @property
     def geom(self):
         return self.main_widget.geom_obj
 
+    @property
+    def det_type(self):
+        return self.main_widget.det_type
+
     def _show_quadpos(self):
         """Show the quad posistions."""
         geom_window = DetectorHelper(
-            self.geom.quad_pos, self.main_widget.det_type, self
+            self.geom.quad_pos, self.det_type, self
         )
         geom_window.show()
 
@@ -526,7 +532,7 @@ class GeometryWidget(QtWidgets.QFrame):
         """Save the loaded geometry to file."""
         fname, _ = QtGui.QFileDialog.getSaveFileName(
             self, 'Save geometry file',
-            f'{self.main_widget.det_type}.geom',
+            f'{self.det_type}.geom',
             filter='CrystFEL geometry (*.geom)'
         )
         if fname:
