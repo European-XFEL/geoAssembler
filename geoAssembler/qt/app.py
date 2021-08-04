@@ -1,6 +1,5 @@
 """Qt Version of the detector geometry calibration."""
 import logging
-import os.path as op
 
 import numpy as np
 import pyqtgraph as pg

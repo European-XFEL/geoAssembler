@@ -1,6 +1,5 @@
 """Definition of additional qt helper objects."""
 from collections import deque
-from itertools import product
 import logging
 from os import path as op
 
@@ -8,8 +7,7 @@ import pyqtgraph as pg
 from PyQt5 import uic
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
-from ..defaults import DefaultGeometryConfig as Defaults
-from .utils import create_button, get_icon
+from .utils import create_button
 
 
 def warning(txt, title="Warning"):

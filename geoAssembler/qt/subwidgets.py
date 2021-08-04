@@ -14,7 +14,7 @@ from .utils import get_icon
 
 from ..defaults import DefaultGeometryConfig as Defaults
 from ..geometry import GEOM_CLASSES
-from ..io_utils import read_geometry, write_geometry
+from ..io_utils import write_geometry
 
 
 Slot = QtCore.pyqtSlot
