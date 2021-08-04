@@ -130,19 +130,14 @@ class GeometryAssembler:
         if canvas is None:
             return self.exgeom_obj.position_modules_fast(data)
         else:
-            centre = self.snapped_geom.centre
+            out_shape = data.shape[:-3] + tuple(canvas)
+            if np.issubdtype(data.dtype, np.floating):
+                out = np.full(out_shape, np.nan, dtype=data.dtype)
+            else:
+                out = np.zeros(out_shape, dtype=data.dtype)
+            self.exgeom_obj.position_modules_symmetric(data, out=out)
             cv_centre = (canvas[0]//2, canvas[-1]//2)
-            shift = np.array(centre) - np.array(cv_centre)
-            out = np.full(data.shape[:-3] + canvas, np.nan, dtype=data.dtype)
-        for i, module in enumerate(self.snapped_geom.modules):
-            mod_data = data[..., i, :, :]
-            tiles_data = self.exgeom_obj.split_tiles(mod_data)
-            for j, tile in enumerate(module):
-                tile_data = tiles_data[j]
-                y, x = tile.corner_idx - shift
-                h, w = tile.pixel_dims
-                out[..., y: y + h, x: x + w] = tile.transform(tile_data)
-        return out, cv_centre
+            return out, cv_centre
 
     def write_crystfel_geom(self, filename, *,
                             data_path='/entry_1/instrument_1/detector_1/data',
