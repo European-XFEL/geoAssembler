@@ -371,6 +371,13 @@ class LPDGeometry(GeometryAssembler):
         exgeom_obj = LPD_1MGeometry.from_quad_positions(quad_pos)
         return cls(exgeom_obj, None)
 
+    @classmethod
+    def from_crystfel_geom(cls, filename):
+        exgeom_obj = LPD_1MGeometry.from_crystfel_geom(filename)
+        # filename used in .quad_pos is expected to be HDF5, so we don't store
+        # the .geom filename here
+        return cls(exgeom_obj, None)
+
     @property
     def quad_pos(self):
         """Get the quadrant positions from the geometry object."""
