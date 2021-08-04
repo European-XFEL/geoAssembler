@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>514</width>
-    <height>427</height>
+    <height>490</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -28,7 +28,10 @@
        <item>
         <widget class="QLineEdit" name="edit_run_path">
          <property name="enabled">
-          <bool>false</bool>
+          <bool>true</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -152,6 +155,9 @@
           <property name="enabled">
            <bool>false</bool>
           </property>
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
          </widget>
         </item>
         <item>
@@ -192,6 +198,9 @@
          <widget class="QLineEdit" name="edit_geom_path">
           <property name="enabled">
            <bool>false</bool>
+          </property>
+          <property name="readOnly">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -241,8 +250,8 @@
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>224</x>
-     <y>399</y>
+     <x>230</x>
+     <y>483</y>
     </hint>
     <hint type="destinationlabel">
      <x>157</x>
@@ -257,8 +266,8 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>292</x>
-     <y>405</y>
+     <x>298</x>
+     <y>483</y>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>
@@ -289,12 +298,28 @@
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>191</x>
-     <y>287</y>
+     <x>219</x>
+     <y>366</y>
     </hint>
     <hint type="destinationlabel">
-     <x>439</x>
-     <y>318</y>
+     <x>500</x>
+     <y>409</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>rb_geom_cfel</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>edit_geom_path</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>114</x>
+     <y>353</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>127</x>
+     <y>396</y>
     </hint>
    </hints>
   </connection>

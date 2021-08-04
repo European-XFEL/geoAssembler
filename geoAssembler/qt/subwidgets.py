@@ -214,15 +214,15 @@ class StartDialog(QtWidgets.QDialog):
         else:
             self._have_geometry(True)
 
-        if (
-                self.rb_geom_quadpos.isChecked()
-                and self.selected_detector_type != 'AGIPD'
-        ):
-            self.button_open_h5.setEnabled(True)
-            self.button_clear_h5.setEnabled(True)
-        else:
-            self.button_open_h5.setEnabled(False)
-            self.button_clear_h5.setEnabled(False)
+        self._enable_h5_geom(
+            self.rb_geom_quadpos.isChecked()
+            and self.selected_detector_type != 'AGIPD'
+        )
+
+    def _enable_h5_geom(self, enabled):
+        self.edit_h5_path.setEnabled(enabled)
+        self.button_open_h5.setEnabled(enabled)
+        self.button_clear_h5.setEnabled(enabled)
 
     def geometry(self):
         """Make a geometry object from the information in the dialog"""
