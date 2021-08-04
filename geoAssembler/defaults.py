@@ -20,10 +20,11 @@ class DefaultGeometryConfig:
                                 (254.5, -16),
                                 (278.5, 275)],
 
-                        'DSSC': [(-5, 140),
-                                 (-5, -5),
-                                 (130, -5),
-                                 (130, 140)],
+                        # FIXME: these are made up; replace with measurements?
+                        'DSSC': [(-130, 5),
+                                 (-130, -125),
+                                 (5, -125),
+                                 (5, 5),],
                         }
 
     quad_pos_units = {
