@@ -77,7 +77,7 @@ class SquareShape(pg.RectROI):
 
 
 class DetectorHelper(QtGui.QDialog):
-    """Setup widgets for quad. positions and geometry file selection."""
+    """Show quadrant positions in a table"""
 
     filename_set_signal = QtCore.pyqtSignal()
 

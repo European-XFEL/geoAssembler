@@ -516,7 +516,9 @@ class GeometryWidget(QtWidgets.QFrame):
 
     def _show_quadpos(self):
         """Show the quad posistions."""
-        geom_window = DetectorHelper(self.geom.quad_pos, self.det_type, self)
+        geom_window = DetectorHelper(
+            self.geom.quad_pos, self.main_widget.det_type, self
+        )
         geom_window.setWindowTitle('{} Geometry'.format(self.det_type))
         geom_window.show()
 
