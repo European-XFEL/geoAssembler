@@ -162,7 +162,7 @@ class StartDialog(QtWidgets.QDialog):
         ) for i in range(4)]
 
     def _choose_h5_file(self):
-        path = QtGui.QFileDialog.getOpenFileName(
+        path, _ = QtGui.QFileDialog.getOpenFileName(
             self, filter="EuXFEL HDF5 geometry (*.h5)"
         )
         if path:
@@ -188,7 +188,7 @@ class StartDialog(QtWidgets.QDialog):
         return data_classes_to_names[data_cls]
 
     def _choose_geom_file(self):
-        path = QtGui.QFileDialog.getOpenFileName(
+        path, _ = QtGui.QFileDialog.getOpenFileName(
             self, filter="CrystFEL geometry (*.geom)"
         )
         try:
