@@ -14,7 +14,6 @@ from .utils import get_icon
 
 from ..defaults import DefaultGeometryConfig as Defaults
 from ..geometry import GEOM_CLASSES
-from ..io_utils import write_geometry
 
 
 Slot = QtCore.pyqtSlot
@@ -541,7 +540,5 @@ class GeometryWidget(QtWidgets.QFrame):
                 os.remove(fname)
             except (FileNotFoundError, PermissionError):
                 pass
-            write_geometry(self.geom, fname, self.main_widget.log)
-            txt = ' Geometry information saved to {}'.format(fname)
-            self.main_widget.log.info(txt)
-            warning(txt, title='Info')
+            self.geom.write_crystfel_geom(fname)
+            self.main_widget.log.info('Geometry information saved to %r', fname)
