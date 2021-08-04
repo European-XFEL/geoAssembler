@@ -519,7 +519,6 @@ class GeometryWidget(QtWidgets.QFrame):
         geom_window = DetectorHelper(
             self.geom.quad_pos, self.main_widget.det_type, self
         )
-        geom_window.setWindowTitle('{} Geometry'.format(self.det_type))
         geom_window.show()
 
     def _save_geometry_obj(self):
