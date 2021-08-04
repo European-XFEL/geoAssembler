@@ -496,20 +496,19 @@ class GeometryWidget(QtWidgets.QFrame):
 
     new_geometry = Signal()
 
-    def __init__(self, main_widget, det_type='AGIPD'):
+    def __init__(self, main_widget):
         """Create nested widgets to select and save geometry files."""
         super().__init__(main_widget)
         ui_file = op.join(op.dirname(__file__), 'editor/geometry_editor.ui')
         uic.loadUi(ui_file, self)
 
         self.main_widget = main_widget
-        self.det_type = det_type
 
         self.bt_quad_pos.clicked.connect(self._show_quadpos)
         self.bt_save.clicked.connect(self._save_geometry_obj)
         self.bt_save.setIcon(get_icon('save.png'))
 
-        self.label_geom.setText(f"{det_type} geometry")
+        self.label_geom.setText(f"{self.main_widget.det_type} geometry")
 
     @property
     def geom(self):
@@ -523,9 +522,10 @@ class GeometryWidget(QtWidgets.QFrame):
 
     def _save_geometry_obj(self):
         """Save the loaded geometry to file."""
-        file_type = 'CrystFEL geometry (*.geom)'
         fname, _ = QtGui.QFileDialog.getSaveFileName(
-            self, 'Save geometry file', f'{self.det_type}.geom', filter=file_type
+            self, 'Save geometry file',
+            f'{self.main_widget.det_type}.geom',
+            filter='CrystFEL geometry (*.geom)'
         )
         if fname:
             self.main_widget.log.info(' Saving output to {}'.format(fname))
