@@ -188,6 +188,7 @@ class StartDialog(QtWidgets.QDialog):
         return data_classes_to_names[data_cls]
 
     def _choose_geom_file(self):
+        self.edit_geom_path.clear()
         path, _ = QtGui.QFileDialog.getOpenFileName(
             self, filter="CrystFEL geometry (*.geom)"
         )
@@ -200,6 +201,7 @@ class StartDialog(QtWidgets.QDialog):
             self._have_geometry(False)
             raise
 
+        self.edit_geom_path.setText(path)
         self._geom_from_geom_file = geom
         self._have_geometry(True)
 
