@@ -194,15 +194,25 @@ class GeometryAssembler:
     def wrap_extra_geom(geom_obj):
         """Wrap an EXtra-geom geometry object in the appropriate class
         """
+        filename = None
         if isinstance(geom_obj, GeometryAssembler):
             return geom_obj
+
         elif isinstance(geom_obj, AGIPD_1MGeometry):
             return AGIPDGeometry(geom_obj)
+
         elif isinstance(geom_obj, DSSC_1MGeometry):
-            # TODO: Use filename if HDF5?
-            return DSSCGeometry(geom_obj, None)
+            # If this geometry was made with an HDF5 file, we want to retrieve
+            # quadrant positions to go with that.
+            if geom_obj.filename and h5py.is_hdf5(geom_obj.filename):
+                filename = geom_obj.filename
+            return DSSCGeometry(geom_obj, filename)
+
         elif isinstance(geom_obj, LPD_1MGeometry):
-            return LPDGeometry(geom_obj, None)
+            if geom_obj.filename and h5py.is_hdf5(geom_obj.filename):
+                filename = geom_obj.filename
+            return LPDGeometry(geom_obj, filename)
+
         else:
             raise TypeError("Unexpected geometry object: %r" % geom_obj)
 
