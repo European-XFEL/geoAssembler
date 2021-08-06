@@ -153,11 +153,12 @@ class MainWidget:
             raw_data (3d-array)  : Data array, containing detector image
                                    (nmodules, y, x)
         Keywords:
-            geometry : geoAssembler.geometry.*Geometry object
-              May be None to use default geometry for AGIPD
+            geometry : EXtra-geom object or path to geometry file
+              May also be None to use default geometry for AGIPD
 
             det : str
-            detector to be used (if geometry is None)
+              detector type to be used, if geometry is None or a path
+              ('AGIPD'/'DSSC'/'LPD')
 
             vmin : int
             minimal value in the data array (default: -1000) anything below
