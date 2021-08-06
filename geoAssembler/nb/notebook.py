@@ -1,6 +1,6 @@
 
 """Jupyter Version of the detector geometry calibration."""
-
+from copy import copy
 import logging
 import os
 
@@ -153,9 +153,8 @@ class MainWidget:
             raw_data (3d-array)  : Data array, containing detector image
                                    (nmodules, y, x)
         Keywords:
-            geometry : None/extra_geom geometry object
-            The geometry file can either be an AGIPD_1MGeometry object or
-            the filename to the geometry file in CFEL fromat
+            geometry : geoAssembler.geometry.*Geometry object
+              May be None to use default geometry for AGIPD
 
             det : str
             detector to be used (if geometry is None)
@@ -197,7 +196,7 @@ class MainWidget:
         self.shapes = {}
         self.quad = None
         self.frontview = frontview
-        self.cmap = cm.get_cmap(Defaults.cmaps[0]).copy()
+        self.cmap = copy(cm.get_cmap(Defaults.cmaps[0]))
         try:
             self.cmap.set_bad(self.bg)
         except (ValueError, KeyError):
