@@ -2,6 +2,7 @@
 """Jupyter Version of the detector geometry calibration."""
 
 import logging
+import os
 
 import numpy as np
 
@@ -13,8 +14,9 @@ from matplotlib.patches import Ellipse, Rectangle
 
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from .tabs import ShapeTab, MaterialTab
+from ..geometry import GeometryAssembler
 from ..io_utils import read_geometry
+from .tabs import ShapeTab, MaterialTab
 
 log = logging.getLogger(__name__)
 
@@ -201,11 +203,10 @@ class MainWidget:
         except (ValueError, KeyError):
             self.bg = 'w'
 
-        # Try to assemble the data (if geom is None)
-        if geometry is None:
-            self.geom = read_geometry(det, None, None)
+        if (geometry is None) or isinstance(geometry, (str, bytes, os.PathLike)):
+            self.geom = read_geometry(det, geometry)
         else:
-            self.geom = geometry
+            self.geom = GeometryAssembler.wrap_extra_geom(geometry)
 
         data, _ = self.geom.position_all_modules(self.raw_data)
         # Create a canvas

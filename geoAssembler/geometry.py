@@ -190,7 +190,21 @@ class GeometryAssembler:
         log.info(' Quadrant positions:\n{}'.format(df))
         df.to_csv(filename)
 
-
+    @staticmethod
+    def wrap_extra_geom(geom_obj):
+        """Wrap an EXtra-geom geometry object in the appropriate class
+        """
+        if isinstance(geom_obj, GeometryAssembler):
+            return geom_obj
+        elif isinstance(geom_obj, AGIPD_1MGeometry):
+            return AGIPDGeometry(geom_obj)
+        elif isinstance(geom_obj, DSSC_1MGeometry):
+            # TODO: Use filename if HDF5?
+            return DSSCGeometry(geom_obj, None)
+        elif isinstance(geom_obj, LPD_1MGeometry):
+            return LPDGeometry(geom_obj, None)
+        else:
+            raise TypeError("Unexpected geometry object: %r" % geom_obj)
 
 class AGIPDGeometry(GeometryAssembler):
     """Detector layout for AGIPD-1M."""
