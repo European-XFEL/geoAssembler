@@ -1,6 +1,6 @@
 
 """Jupyter Version of the detector geometry calibration."""
-
+from copy import copy
 import logging
 
 import numpy as np
@@ -195,7 +195,7 @@ class MainWidget:
         self.shapes = {}
         self.quad = None
         self.frontview = frontview
-        self.cmap = cm.get_cmap(Defaults.cmaps[0]).copy()
+        self.cmap = copy(cm.get_cmap(Defaults.cmaps[0]))
         try:
             self.cmap.set_bad(self.bg)
         except (ValueError, KeyError):
