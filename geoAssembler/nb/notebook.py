@@ -145,7 +145,7 @@ class MainWidget:
     """Ipython Widget version of the Calibration Class."""
 
     def __init__(self, raw_data, geometry=None, det='AGIPD', vmin=None,
-                 vmax=None, figsize=None, bg=None, aspect=1, frontview=False, 
+                 vmax=None, figsize=None, bg=None, aspect=None, frontview=False,
                  **kwargs):
         """Display detector data and arrange panels.
 
@@ -188,7 +188,6 @@ class MainWidget:
         self.data = raw_data
         Defaults.check_detector(det)
         self.im = None
-        self.aspect = aspect
         self.vmin = vmin or np.nanmin(self.data)
         self.vmax = vmax or np.nanmax(self.data)
         self.raw_data = np.clip(raw_data, self.vmin, self.vmax)
@@ -207,6 +206,7 @@ class MainWidget:
             self.geom = read_geometry(det, geometry)
         else:
             self.geom = GeometryAssembler.wrap_extra_geom(geometry)
+        self.aspect = aspect or self.geom.pixel_aspect_ratio
 
         data, _ = self.geom.position_all_modules(self.raw_data)
         # Create a canvas

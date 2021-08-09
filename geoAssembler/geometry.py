@@ -43,6 +43,7 @@ class GeometryAssembler:
     frag_ss_pixels = None
     frag_fs_pixels = None
     pixel_size = None
+    pixel_aspect_ratio = 1.
     detector_name = 'generic'
 
     def __init__(self, exgeom_obj):
@@ -267,6 +268,7 @@ adu_per_eV = 0.0075
 class DSSCGeometry(GeometryAssembler):
     """Detector layout for DSSC."""
     detector_name = 'DSSC'
+    pixel_aspect_ratio = 1.5/np.sqrt(3)
 
     def __init__(self, exgeom_obj, filename):
         """Set the properties for DSSC detector.
