@@ -23,18 +23,18 @@ def read_geometry(detector, filename, quad_pos=None):
             return AGIPDGeometry.from_crystfel_geom(filename)
         else:
             return AGIPDGeometry.from_quad_positions(quad_pos)
-    elif detector == 'LPD':
-        if not filename:
-            raise ValueError(
-                "Constructing LPD geometry without file not yet supported"
-            )
-        return LPDGeometry.from_h5_file_and_quad_positions(filename, quad_pos)
     elif detector == 'DSSC':
         if not filename:
             raise ValueError(
                 "Constructing DSSC geometry without file not yet supported"
             )
         return DSSCGeometry.from_h5_file_and_quad_positions(filename, quad_pos)
+    elif detector == 'LPD':
+        if not filename:
+            raise ValueError(
+                "Constructing LPD geometry without file not yet supported"
+            )
+        return LPDGeometry.from_h5_file_and_quad_positions(filename, quad_pos)
     else:
         raise ValueError("Unknown detector type: %r" % detector)
 
@@ -50,7 +50,7 @@ def write_geometry(geom, filename, logger):
     from .geometry import AGIPDGeometry, DSSCGeometry, LPDGeometry
     if isinstance(geom, AGIPDGeometry):
         geom.write_crystfel_geom(filename)
-    elif isinstance(geom, (LPDGeometry, DSSCGeometry)):
+    elif isinstance(geom, (DSSCGeometry, LPDGeometry)):
         geom.write_quad_pos(filename)
         logger.info('Quadpos {}'.format(geom.quad_pos))
     else:
