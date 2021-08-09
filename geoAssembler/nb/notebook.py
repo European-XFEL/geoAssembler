@@ -25,7 +25,7 @@ class CircleShape(Ellipse):
     type = 'circle'
 
     def __str__(self):
-        return "Circle(%i)"%self.width
+        return f"Circle({self.height})"
 
     def __init__(self, centre, diameter, ax, aspect, **kwargs):
         """Create an circle on top of an image with a given aspect ratio.
@@ -45,10 +45,9 @@ class CircleShape(Ellipse):
         Aspect ratio (width / height)
         """
 
-        a = diameter * aspect
-        b = diameter
+        width = diameter * aspect
         self.aspect = aspect
-        super().__init__(centre[::-1], a, b,
+        super().__init__(centre[::-1], width, diameter,
                          facecolor='none', edgecolor='r', lw=1)
 
     def set_size(self, diameter):
@@ -66,7 +65,7 @@ class CircleShape(Ellipse):
         return 0
 
     def get_size(self):
-        return self.width
+        return self.height
 
 class SquareShape(Rectangle):
     """Circular Shape that supporting different aspect ratios."""
