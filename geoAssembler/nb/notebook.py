@@ -72,7 +72,7 @@ class SquareShape(Rectangle):
     type = 'square'
 
     def __str__(self):
-        return "Square(%i)"%self.get_width()
+        return f"Square({self.get_height()})"
 
     def __init__(self, centre, size, ax, aspect, angle=0):
         """Create an square on top of an image with a given aspect ratio.
@@ -126,7 +126,7 @@ class SquareShape(Rectangle):
         self.stale = True
 
     def get_size(self):
-        return self.get_width()
+        return self.get_height()
 
     def set_angle(self, angle):
         """Rotate the square by a given angle."""
