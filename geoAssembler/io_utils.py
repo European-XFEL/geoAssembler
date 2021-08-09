@@ -1,8 +1,7 @@
 """Provide helper methods for the gui."""
 
-import os
-
 from .defaults import DefaultGeometryConfig as Defaults
+from .geometry import AGIPDGeometry, DSSCGeometry, LPDGeometry
 
 
 def read_geometry(detector, filename, quad_pos=None):
@@ -11,30 +10,33 @@ def read_geometry(detector, filename, quad_pos=None):
     Parameters:
         detector (str): Name of the considered detector
         filename (str): Path to the geometry file
-    Keywords:
         quad_pos (list): X,Y coordinates of quadrants (default None)
 
     Retruns:
         GeometryAssembler Object
     """
-    filename = filename or ''
-    try:
-        quad_pos = quad_pos or Defaults.fallback_quad_pos[detector]
-    except KeyError:
-        raise NotImplementedError('Detector Class not available')
+    if quad_pos is None:
+        quad_pos = Defaults.fallback_quad_pos.get(detector)
 
     if detector == 'AGIPD':
-        from .geometry import AGIPDGeometry
-        if os.path.isfile(filename):
+        if filename:
             return AGIPDGeometry.from_crystfel_geom(filename)
         else:
             return AGIPDGeometry.from_quad_positions(quad_pos)
-    elif detector == 'LPD':
-        from .geometry import LPDGeometry
-        return LPDGeometry.from_h5_file_and_quad_positions(filename, quad_pos)
     elif detector == 'DSSC':
-        from .geometry import DSSCGeometry
+        if not filename:
+            raise ValueError(
+                "Constructing DSSC geometry without file not yet supported"
+            )
         return DSSCGeometry.from_h5_file_and_quad_positions(filename, quad_pos)
+    elif detector == 'LPD':
+        if not filename:
+            raise ValueError(
+                "Constructing LPD geometry without file not yet supported"
+            )
+        return LPDGeometry.from_h5_file_and_quad_positions(filename, quad_pos)
+    else:
+        raise ValueError("Unknown detector type: %r" % detector)
 
 
 def write_geometry(geom, filename, logger):
@@ -48,7 +50,7 @@ def write_geometry(geom, filename, logger):
     from .geometry import AGIPDGeometry, DSSCGeometry, LPDGeometry
     if isinstance(geom, AGIPDGeometry):
         geom.write_crystfel_geom(filename)
-    elif isinstance(geom, (LPDGeometry, DSSCGeometry)):
+    elif isinstance(geom, (DSSCGeometry, LPDGeometry)):
         geom.write_quad_pos(filename)
         logger.info('Quadpos {}'.format(geom.quad_pos))
     else:

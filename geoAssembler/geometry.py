@@ -190,7 +190,31 @@ class GeometryAssembler:
         log.info(' Quadrant positions:\n{}'.format(df))
         df.to_csv(filename)
 
+    @staticmethod
+    def wrap_extra_geom(geom_obj):
+        """Wrap an EXtra-geom geometry object in the appropriate class
+        """
+        filename = None
+        if isinstance(geom_obj, GeometryAssembler):
+            return geom_obj
 
+        elif isinstance(geom_obj, AGIPD_1MGeometry):
+            return AGIPDGeometry(geom_obj)
+
+        elif isinstance(geom_obj, DSSC_1MGeometry):
+            # If this geometry was made with an HDF5 file, we want to retrieve
+            # quadrant positions to go with that.
+            if geom_obj.filename and h5py.is_hdf5(geom_obj.filename):
+                filename = geom_obj.filename
+            return DSSCGeometry(geom_obj, filename)
+
+        elif isinstance(geom_obj, LPD_1MGeometry):
+            if geom_obj.filename and h5py.is_hdf5(geom_obj.filename):
+                filename = geom_obj.filename
+            return LPDGeometry(geom_obj, filename)
+
+        else:
+            raise TypeError("Unexpected geometry object: %r" % geom_obj)
 
 class AGIPDGeometry(GeometryAssembler):
     """Detector layout for AGIPD-1M."""

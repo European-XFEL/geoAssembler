@@ -1,7 +1,8 @@
 
 """Jupyter Version of the detector geometry calibration."""
-
+from copy import copy
 import logging
+import os
 
 import numpy as np
 
@@ -13,8 +14,9 @@ from matplotlib.patches import Ellipse, Rectangle
 
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from .tabs import ShapeTab, MaterialTab
+from ..geometry import GeometryAssembler
 from ..io_utils import read_geometry
+from .tabs import ShapeTab, MaterialTab
 
 log = logging.getLogger(__name__)
 
@@ -151,12 +153,12 @@ class MainWidget:
             raw_data (3d-array)  : Data array, containing detector image
                                    (nmodules, y, x)
         Keywords:
-            geometry : None/extra_geom geometry object
-            The geometry file can either be an AGIPD_1MGeometry object or
-            the filename to the geometry file in CFEL fromat
+            geometry : EXtra-geom object or path to geometry file
+              May also be None to use default geometry for AGIPD
 
             det : str
-            detector to be used (if geometry is None)
+              detector type to be used, if geometry is None or a path
+              ('AGIPD'/'DSSC'/'LPD')
 
             vmin : int
             minimal value in the data array (default: -1000) anything below
@@ -195,17 +197,16 @@ class MainWidget:
         self.shapes = {}
         self.quad = None
         self.frontview = frontview
-        self.cmap = cm.get_cmap(Defaults.cmaps[0]).copy()
+        self.cmap = copy(cm.get_cmap(Defaults.cmaps[0]))
         try:
             self.cmap.set_bad(self.bg)
         except (ValueError, KeyError):
             self.bg = 'w'
 
-        # Try to assemble the data (if geom is None)
-        if geometry is None:
-            self.geom = read_geometry(det, None, None)
+        if (geometry is None) or isinstance(geometry, (str, bytes, os.PathLike)):
+            self.geom = read_geometry(det, geometry)
         else:
-            self.geom = geometry
+            self.geom = GeometryAssembler.wrap_extra_geom(geometry)
 
         data, _ = self.geom.position_all_modules(self.raw_data)
         # Create a canvas
