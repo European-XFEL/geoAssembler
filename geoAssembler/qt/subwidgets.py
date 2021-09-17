@@ -399,9 +399,6 @@ class RunDataWidget(QtWidgets.QFrame):
         self.rundir = rundir
         self._cached_train_stack = (None, None)  # (tid, data)
 
-        # self.bt_select_run_dir.clicked.connect(self._sel_run)
-        # self.bt_select_run_dir.setIcon(get_icon('open.png'))
-
         for radio_btn in (self.rb_pulse, self.rb_mean):
             radio_btn.clicked.connect(self._set_sel_method)
 

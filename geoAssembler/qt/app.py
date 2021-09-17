@@ -20,7 +20,6 @@ def run_gui(rundir, *args, **kwargs):
     if start_dialog.exec() == QtGui.QDialog.Rejected:
         return 0
 
-    start_dialog.geometry()
     calib = QtMainWidget(
         app,
         start_dialog.xd_run,
@@ -96,7 +95,6 @@ class QtMainWidget(QtGui.QMainWindow):
         self.geom_selector.new_geometry.connect(self.assemble_draw)
 
         self.run_selector = RunDataWidget(self, xd_run, run_path)
-        # self.run_selector.run_changed.connect(self.draw_reset_levels)
         self.run_selector.selection_changed.connect(self.assemble_draw)
 
         self.fit_widget.draw_shape_signal.connect(self._draw_shape)
