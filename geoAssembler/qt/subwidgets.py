@@ -191,6 +191,9 @@ class StartDialog(QtWidgets.QDialog):
         path, _ = QtGui.QFileDialog.getOpenFileName(
             self, filter="CrystFEL geometry (*.geom)"
         )
+        if not path:  # File dialog cancelled
+            return
+
         try:
             geom_cls = GEOM_CLASSES[self.selected_detector_type]
             geom = geom_cls.from_crystfel_geom(path)
