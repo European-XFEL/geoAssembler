@@ -142,19 +142,9 @@ class QtMainWidget(QtGui.QMainWindow):
         return self.imv.getView()
 
     @property
-    def det(self):
-        """Get the currently selected detector from the geometry widget."""
-        return self.geom_selector.det
-
-    @property
     def run_dir(self):
         """Get the currently set run directory from the run dir widget."""
         return self.run_selector.rundir
-
-    @property
-    def geom_file(self):
-        """Get the current geometry file from the geom selector widget."""
-        return self.geom_selector.geom_file
 
     @QtCore.pyqtSlot()
     def draw_reset_levels(self):
