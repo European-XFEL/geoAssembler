@@ -2,6 +2,11 @@ import os.path
 import pytest
 from unittest import mock
 
+from extra_data import RunDirectory
+
+from ..defaults import DefaultGeometryConfig as Defaults
+from ..geometry import AGIPDGeometry
+
 @pytest.fixture(scope='session', autouse=True)
 def gui_app():
     import sys
@@ -20,7 +25,7 @@ def mock_run():
          yield td
 
 @pytest.fixture(scope='module')
-def mock_dialog(mock_run):
+def mock_directory_dialog(mock_run):
     """Create a mock dialog for opening a mock_run."""
     from pyqtgraph import QtGui as QG
 
@@ -63,10 +68,19 @@ def save_geo():
         yield save_geo.name
 
 @pytest.fixture()
-def calib(gui_app):
+def calib(gui_app, mock_run):
     """Create the calibration gui"""
     from geoAssembler.qt.app import QtMainWidget
 
-    main_gui = QtMainWidget(gui_app)
+    xd_run = RunDirectory(mock_run)
+    geom = AGIPDGeometry.from_quad_positions(Defaults.fallback_quad_pos['AGIPD'])
+    main_gui = QtMainWidget(gui_app, xd_run, mock_run, geom, det_type='AGIPD')
     yield main_gui
     main_gui.close()
+
+@pytest.fixture()
+def start_dialog(gui_app):
+    from geoAssembler.qt.subwidgets import StartDialog
+    dlg = StartDialog()
+    yield dlg
+    dlg.close()

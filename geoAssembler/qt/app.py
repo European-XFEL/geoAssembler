@@ -6,17 +6,28 @@ import pyqtgraph as pg
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 from pyqtgraph.Qt import QtCore, QtGui
 
-from .subwidgets import GeometryWidget, RunDataWidget, FitObjectWidget
+from .subwidgets import GeometryWidget, RunDataWidget, FitObjectWidget, StartDialog
 from .objects import LogCapturer, LogDialog, warning
 
 from ..defaults import DefaultGeometryConfig as Defaults
 from .utils import get_icon
 
 
-def run_gui(*args, **kwargs):
+def run_gui(rundir, *args, **kwargs):
     """Run the Qt calibration windows in a QtGui application"""
     app = QtGui.QApplication([])
-    calib = QtMainWidget(app, *args, **kwargs)
+    start_dialog = StartDialog(rundir)
+    if start_dialog.exec() == QtGui.QDialog.Rejected:
+        return 0
+
+    calib = QtMainWidget(
+        app,
+        start_dialog.xd_run,
+        start_dialog.run_path,
+        start_dialog.geometry(),
+        start_dialog.selected_detector_type,
+        **kwargs,
+    )
     logging.getLogger().addHandler(calib.log_capturer)
     app.exec_()
     app.closeAllWindows()
@@ -28,7 +39,7 @@ class QtMainWidget(QtGui.QMainWindow):
     log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
 
-    def __init__(self, app, run_dir=None, geofile=None, levels=None):
+    def __init__(self, app, xd_run, run_path, geom_obj, det_type='AGIPD', levels=None):
         """Display detector data and arrange panels.
 
         Parameters:
@@ -49,7 +60,6 @@ class QtMainWidget(QtGui.QMainWindow):
         # pyqtgraph config
         pg.setConfigOptions(imageAxisOrder='row-major')
 
-        self.geofile = geofile
         self.initial_levels = levels or [0, 10000]
 
         self.raw_data = None
@@ -57,6 +67,10 @@ class QtMainWidget(QtGui.QMainWindow):
         self.rect = None
         self.quad = -1  # The selected quadrants (-1 none selected)
         self.is_displayed = False
+
+        self.geom_obj = geom_obj
+        self.xd_run = xd_run
+        self.det_type = det_type
 
         # This is hooked up to the Python logging system outside the class
         self.log_capturer = LogCapturer(self)
@@ -77,11 +91,10 @@ class QtMainWidget(QtGui.QMainWindow):
         # circle manipulation other input dialogs go to the top
         self.fit_widget = FitObjectWidget(self)
 
-        self.geom_selector = GeometryWidget(self, self.geofile)
+        self.geom_selector = GeometryWidget(self)
         self.geom_selector.new_geometry.connect(self.assemble_draw)
 
-        self.run_selector = RunDataWidget(self)
-        self.run_selector.run_changed.connect(self.draw_reset_levels)
+        self.run_selector = RunDataWidget(self, xd_run, run_path)
         self.run_selector.selection_changed.connect(self.assemble_draw)
 
         self.fit_widget.draw_shape_signal.connect(self._draw_shape)
@@ -105,9 +118,7 @@ class QtMainWidget(QtGui.QMainWindow):
         self.showMaximized()
         self.frontview = False
 
-        # If a run directory was already given, read it
-        if run_dir:
-            self.run_selector.read_rundir(run_dir)
+        self.draw_reset_levels()
 
     def closeEvent(self, event):
         self.imv.close()
@@ -131,24 +142,9 @@ class QtMainWidget(QtGui.QMainWindow):
         return self.imv.getView()
 
     @property
-    def det(self):
-        """Get the currently selected detector from the geometry widget."""
-        return self.geom_selector.det
-
-    @property
     def run_dir(self):
         """Get the currently set run directory from the run dir widget."""
         return self.run_selector.rundir
-
-    @property
-    def geom_file(self):
-        """Get the current geometry file from the geom selector widget."""
-        return self.geom_selector.geom_file
-
-    @property
-    def geom_obj(self):
-        """Get the karabo data geometry object."""
-        return self.geom_selector.get_geom()
 
     @QtCore.pyqtSlot()
     def draw_reset_levels(self):
@@ -191,7 +187,6 @@ class QtMainWidget(QtGui.QMainWindow):
         self.imv.getImageItem().mouseClickEvent = self._click
         # Set a custom color map
         self.imv.setColorMap(pg.ColorMap(*zip(*Gradients['grey']['ticks'])))
-        self.geom_selector.activate()
         self.quad = -1
         self.fit_widget.bt_add_shape.setEnabled(True)
 
@@ -271,7 +266,6 @@ class QtMainWidget(QtGui.QMainWindow):
                                removable=False,
                                pen=pen,
                                invertible=False,
-                               parent=self.imv,
                               )
         self.rect.handleSize = 0
         self.imv.getView().addItem(self.rect)

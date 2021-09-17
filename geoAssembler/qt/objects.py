@@ -1,6 +1,5 @@
 """Definition of additional qt helper objects."""
 from collections import deque
-from itertools import product
 import logging
 from os import path as op
 
@@ -8,8 +7,7 @@ import pyqtgraph as pg
 from PyQt5 import uic
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
-from ..defaults import DefaultGeometryConfig as Defaults
-from .utils import create_button, get_icon
+from .utils import create_button
 
 
 def warning(txt, title="Warning"):
@@ -77,11 +75,11 @@ class SquareShape(pg.RectROI):
 
 
 class DetectorHelper(QtGui.QDialog):
-    """Setup widgets for quad. positions and geometry file selection."""
+    """Show quadrant positions in a table"""
 
     filename_set_signal = QtCore.pyqtSignal()
 
-    def __init__(self, det, fname, parent=None):
+    def __init__(self, quad_pos, det_type='AGIPD', parent=None):
         """Create a table element for quad selection and file selection.
 
         Parameters:
@@ -95,68 +93,25 @@ class DetectorHelper(QtGui.QDialog):
         ui_file = op.join(op.dirname(__file__), 'editor/load_detector.ui')
         uic.loadUi(ui_file, self)
 
-        self.setWindowTitle('{} Geometry'.format(det))
+        self.setWindowTitle('{} Geometry'.format(det_type))
 
-        self._det = det
-        self.filename = fname
-        self.quad_pos = None
+        self.quad_pos = list(quad_pos.itertuples(index=False))
 
         self.populate_table()
-
-        self.bt_load_geometry.clicked.connect(self._get_files)
-        self.bt_load_geometry.setIcon(get_icon('file.png'))
-        self.bt_ok.clicked.connect(self._apply)
-        self.bt_ok.setIcon(get_icon('gtk-ok.png'))
-        self.bt_cancel.clicked.connect(self.close)
-        self.bt_cancel.setIcon(get_icon('gtk-cancel.png'))
-
-    def set_detector(self, det):
-        """Sets a new detector"""
-        self._det = det
-        self.quad_pos = None
-        self.populate_table()
-
-    def _get_files(self):
-        """Read the geometry filename of from the dialog."""
-        file_format = Defaults.file_formats[self._det]
-        f_type = '{} file format (*.{})'.format(*file_format)
-        filename, _ = QtGui.QFileDialog.getOpenFileName(self,
-                                                        'Load geometry file',
-                                                        '.',
-                                                        f_type)
-
-        if filename is not None and filename:
-            self.filename = filename
-            #self.filename_set_signal.emit()
+        self.bt_copy_csv.clicked.connect(self._copy_csv)
 
     def populate_table(self):
         """Update the Qudrant table."""
-        quad_pos = self.quad_pos or Defaults.fallback_quad_pos[self._det]
-        for n, quad_pos in enumerate(quad_pos):
+        for n, quad_pos in enumerate(self.quad_pos):
             self.tb_quadrants.setItem(
                 n, 0, QtGui.QTableWidgetItem(str(quad_pos[0])))
             self.tb_quadrants.setItem(
                 n, 1, QtGui.QTableWidgetItem(str(quad_pos[1])))
         self.tb_quadrants.move(0, 0)
 
-    def _apply(self):
-        """Read quad. pos and update the detectors fallback positions."""
-        quad_pos = [[None, None] for _ in range(self.tb_quadrants.rowCount())]
-        for i, j in product(
-                range(self.tb_quadrants.rowCount()),
-                range(self.tb_quadrants.columnCount())):
-            table_element = self.tb_quadrants.item(i, j)
-            try:
-                quad_pos[i][j] = float(table_element.text())
-            except ValueError:
-                warning('Table Elements must be Float')
-                return
-        if not self.filename and self._det != 'AGIPD':
-            warning('You must Select a Geometry File')
-            return
-        self.quad_pos = quad_pos
-        self.filename_set_signal.emit()
-        self.close()
+    def _copy_csv(self):
+        clipboard = QtGui.QGuiApplication.clipboard()
+        clipboard.setText("\n".join(f"{x},{y}" for (x, y) in self.quad_pos))
 
 
 class LogCapturer(logging.Handler, QtCore.QObject):

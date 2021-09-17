@@ -1,19 +1,19 @@
 """Definitions of all widgets that go into the geoAssembler."""
 
 import os
-from os import path as op
+import os.path as op
 
 from extra_data import RunDirectory, stack_detector_data
-from extra_data.components import AGIPD1M, LPD1M, DSSC1M
+from extra_data.components import AGIPD1M, LPD1M, DSSC1M, identify_multimod_detectors
 import numpy as np
 from PyQt5 import uic
 from pyqtgraph.Qt import (QtCore, QtGui, QtWidgets)
 
-from .objects import (CircleShape, DetectorHelper, SquareShape, warning)
+from .objects import (CircleShape, DetectorHelper, SquareShape)
 from .utils import get_icon
 
 from ..defaults import DefaultGeometryConfig as Defaults
-from ..io_utils import read_geometry, write_geometry
+from ..geometry import GEOM_CLASSES
 
 
 Slot = QtCore.pyqtSlot
@@ -25,7 +25,225 @@ det_data_classes = {
     'LPD': LPD1M,
     'DSSC': DSSC1M
 }
+data_classes_to_names = {v: k for (k, v) in det_data_classes.items()}
 
+
+class StartDialog(QtWidgets.QDialog):
+    """Dialog to select run data, detector and initial geometry"""
+    run_chosen = Signal(str)
+    run_opened = Signal(str)
+    xd_run = None  # An EXtra-data DataCollection object
+    run_path = None
+    _geom_from_geom_file = None
+
+    def __init__(self, run_path=None):
+        super().__init__()
+        ui_file = op.join(op.dirname(__file__), 'editor/start.ui')
+        uic.loadUi(ui_file, self)
+
+        self.available_detectors = []
+
+        self.button_open_run.clicked.connect(self._choose_run_path)
+        self.combobox_detectors.currentIndexChanged.connect(self._select_detector)
+        self.button_open_h5.clicked.connect(self._choose_h5_file)
+        self.button_clear_h5.clicked.connect(self.edit_h5_path.clear)
+        self.button_open_geom.clicked.connect(self._choose_geom_file)
+
+        self.rb_geom_default.toggled.connect(self._geom_option_changed)
+        self.rb_geom_quadpos.toggled.connect(self._geom_option_changed)
+        self.rb_geom_cfel.toggled.connect(self._geom_option_changed)
+
+        self.run_opened.connect(self.edit_run_path.setText)
+
+        if run_path:
+            self.load_run(run_path)
+
+    @QtCore.pyqtSlot()
+    def _choose_run_path(self):
+        """Select a run directory."""
+        rfolder = QtGui.QFileDialog.getExistingDirectory(
+            self, 'Select run directory'
+        )
+        if rfolder:
+            self.load_run(rfolder)
+
+    def load_run(self, path):
+        try:
+            self.xd_run = RunDirectory(path)
+        except Exception as e:
+            self.label_status.setText(f"Error opening run: {e}")
+            self.xd_run = None
+            self.run_path = None
+            self.group_geom_options.setEnabled(False)
+            self.dialog_buttons.setEnabled(False)
+            raise
+
+        self.run_path = path
+        self.run_opened.emit(path)
+
+        self.available_detectors = sorted(identify_multimod_detectors(
+            self.xd_run, clses=[AGIPD1M, LPD1M, DSSC1M]
+        ))
+        self.combobox_detectors.clear()
+        self.combobox_detectors.addItems([
+            f'{name} ({cls.__name__})' for (name, cls) in self.available_detectors
+        ])
+        self.combobox_detectors.setEnabled(True)
+        self.combobox_detectors.setCurrentIndex(0)
+        if not self.available_detectors:
+            self.label_status.setText("No recognised detectors in run")
+        else:
+            self.label_status.setText(
+                f"Loaded run with {len(self.available_detectors)} detectors"
+            )
+
+    def _have_detector(self, have=False, can_load_geom=True, can_load_h5=True):
+        self.rb_geom_default.setEnabled(have)
+        self.rb_geom_quadpos.setEnabled(have)
+        self.rb_geom_cfel.setEnabled(have and can_load_geom)
+        if have:
+            self.rb_geom_default.setChecked(True)
+
+            if can_load_geom:
+                self.rb_geom_cfel.setText("&CrystFEL format geometry (.geom)")
+            else:
+                self.rb_geom_cfel.setText(
+                    "CrystFEL format geometry (not supported for this detector)"
+                )
+
+            if can_load_h5:
+                self.label_h5_geom.setText("With HDF5 geometry (optional):")
+            else:
+                self.label_h5_geom.setText(
+                    "With HDF5 geometry (not supported for this detector):"
+                )
+
+        self._have_geometry(have)
+
+    @QtCore.pyqtSlot()
+    def _select_detector(self, index=-1):
+        """Update widgets when detector dropdown changes"""
+        # The signal seems to send index=-1 even when a real selection is made.
+        # Retrieve currentIndex instead:
+        index = self.combobox_detectors.currentIndex()
+        if index == -1:
+            self._have_detector(False)
+            return
+
+        cls = self.available_detectors[index][1]
+        det_type = data_classes_to_names[cls]
+        self._have_detector(True,
+            can_load_geom=(det_type != 'DSSC'),
+            can_load_h5=(det_type != 'AGIPD'),
+        )
+        unit = Defaults.quad_pos_units[det_type]
+        self.rb_geom_quadpos.setText(f"Specified quadrant positions ({unit})")
+        self.populate_quadpos_table(Defaults.fallback_quad_pos[det_type])
+        self.edit_h5_path.clear()
+
+    def populate_quadpos_table(self, quad_pos):
+        """Fill the Quadrant positions table."""
+        def numeric_table_item(val):
+            # https://stackoverflow.com/a/37623147/434217
+            item = QtGui.QTableWidgetItem()
+            item.setData(QtCore.Qt.EditRole, val)
+            return item
+
+        for n, (quad_x, quad_y) in enumerate(quad_pos):
+            self.tb_quadrants.setItem(n, 0, numeric_table_item(quad_x))
+            self.tb_quadrants.setItem(n, 1, numeric_table_item(quad_y))
+        self.tb_quadrants.move(0, 0)
+
+    def quadpos_from_table(self):
+        return [(
+            self.tb_quadrants.item(i, 0).data(QtCore.Qt.EditRole),
+            self.tb_quadrants.item(i, 1).data(QtCore.Qt.EditRole),
+        ) for i in range(4)]
+
+    def _choose_h5_file(self):
+        path, _ = QtGui.QFileDialog.getOpenFileName(
+            self, filter="EuXFEL HDF5 geometry (*.h5)"
+        )
+        if path:
+            det_type = self.selected_detector_type
+            try:
+                # Load the file to check it's valid for this detector
+                geom_cls = GEOM_CLASSES[det_type]
+                quadpos = Defaults.fallback_quad_pos[det_type]
+                geom_cls.from_h5_file_and_quad_positions(path, quadpos)
+            except Exception as e:
+                self.label_status.setText(f"Error loading geometry from HDF5: {e}")
+            else:
+                self.edit_h5_path.setText(path)
+
+    @property
+    def selected_detector(self):
+        index = self.combobox_detectors.currentIndex()
+        return self.available_detectors[index]
+
+    @property
+    def selected_detector_type(self):
+        _, data_cls = self.selected_detector
+        return data_classes_to_names[data_cls]
+
+    def _choose_geom_file(self):
+        self.edit_geom_path.clear()
+        path, _ = QtGui.QFileDialog.getOpenFileName(
+            self, filter="CrystFEL geometry (*.geom)"
+        )
+        if not path:  # File dialog cancelled
+            return
+
+        try:
+            geom_cls = GEOM_CLASSES[self.selected_detector_type]
+            geom = geom_cls.from_crystfel_geom(path)
+        except Exception as e:
+            self.label_status.setText(f"Error loading geometry file: {e}")
+            self._geom_from_geom_file = None
+            self._have_geometry(False)
+            raise
+
+        self.edit_geom_path.setText(path)
+        self._geom_from_geom_file = geom
+        self._have_geometry(True)
+
+    def _have_geometry(self, have=False):
+        self.dialog_buttons.setEnabled(have)
+
+    def _geom_option_changed(self, _checked):
+        if self.rb_geom_cfel.isChecked():
+            self._have_geometry(self._geom_from_geom_file is not None)
+        else:
+            self._have_geometry(True)
+
+        self._enable_h5_geom(
+            self.rb_geom_quadpos.isChecked()
+            and self.selected_detector_type != 'AGIPD'
+        )
+
+    def _enable_h5_geom(self, enabled):
+        self.label_h5_geom.setEnabled(enabled)
+        self.edit_h5_path.setEnabled(enabled)
+        self.button_open_h5.setEnabled(enabled)
+        self.button_clear_h5.setEnabled(enabled)
+
+    def geometry(self):
+        """Make a geometry object from the information in the dialog"""
+        if self.rb_geom_cfel.isChecked():
+            return self._geom_from_geom_file
+        else:
+            det_type = self.selected_detector_type
+            geom_cls = GEOM_CLASSES[det_type]
+
+            if self.rb_geom_quadpos.isChecked():
+                quadpos = self.quadpos_from_table()
+                h5_path = self.edit_h5_path.text()
+                if h5_path:
+                    return geom_cls.from_h5_file_and_quad_positions(h5_path, quadpos)
+            else:  # rb_geom_default
+                quadpos = Defaults.fallback_quad_pos[det_type]
+
+            return geom_cls.from_quad_positions(quadpos)
 
 class FitObjectWidget(QtWidgets.QFrame):
     """Define a Hbox containing a Spinbox with a Label."""
@@ -167,10 +385,9 @@ class FitObjectWidget(QtWidgets.QFrame):
 class RunDataWidget(QtWidgets.QFrame):
     """A widget that defines run-directory, trainId and self.rb_pulse selection."""
 
-    run_changed = Signal()
     selection_changed = Signal()
 
-    def __init__(self, main_widget):
+    def __init__(self, main_widget, rundir, run_path):
         """Create a btn for run-dir select and 2 spin boxes for train, self.rb_pulse.
 
         Parameters:
@@ -182,11 +399,8 @@ class RunDataWidget(QtWidgets.QFrame):
         uic.loadUi(ui_file, self)
 
         self.main_widget = main_widget
-        self.rundir = None
+        self.rundir = rundir
         self._cached_train_stack = (None, None)  # (tid, data)
-
-        self.bt_select_run_dir.clicked.connect(self._sel_run)
-        self.bt_select_run_dir.setIcon(get_icon('open.png'))
 
         for radio_btn in (self.rb_pulse, self.rb_mean):
             radio_btn.clicked.connect(self._set_sel_method)
@@ -198,12 +412,17 @@ class RunDataWidget(QtWidgets.QFrame):
         self.sb_train_id.valueChanged.connect(self.selection_changed.emit)
         self.sb_pulse_id.valueChanged.connect(self.selection_changed.emit)
 
+        if rundir is not None:
+            self.run_loaded()
+        if run_path is not None:
+            self.le_run_directory.setText(run_path)
+
     def get_train_id(self):
         return self.sb_train_id.value()
 
     def run_loaded(self):
         """Update the UI after a run is successfully loaded"""
-        det = det_data_classes[self.main_widget.det](self.rundir, min_modules=9)
+        det = det_data_classes[self.main_widget.det_type](self.rundir, min_modules=9)
         self.sb_train_id.setMinimum(det.data.train_ids[0])
         self.sb_train_id.setMaximum(det.data.train_ids[-1])
         self.sb_train_id.setValue(det.data.train_ids[0])
@@ -216,7 +435,6 @@ class RunDataWidget(QtWidgets.QFrame):
         for radio_btn in (self.rb_pulse, self.rb_mean):
             radio_btn.setEnabled(True)
 
-        self.run_changed.emit()
 
     @QtCore.pyqtSlot()
     def _set_sel_method(self):
@@ -230,30 +448,6 @@ class RunDataWidget(QtWidgets.QFrame):
 
         self.sb_pulse_id.setEnabled(select_pulse)
         self.selection_changed.emit()
-
-    @QtCore.pyqtSlot()
-    def _sel_run(self):
-        """Select a run directory."""
-        rfolder = QtGui.QFileDialog.getExistingDirectory(self,
-                                                         'Select run directory')
-        if rfolder:
-            self.read_rundir(rfolder)
-
-    def read_rundir(self, rfolder):
-        """Read a selected run directory."""
-        self.main_widget.log.info('Opening run directory {}'.format(rfolder))
-        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-        try:
-            self.rundir = RunDirectory(rfolder)
-        except Exception:
-            QtGui.QApplication.restoreOverrideCursor()
-            self.main_widget.log.info('Could not find HDF5-Files')
-            warning('No HDF5-Files found', title='Info')
-            return
-
-        self.le_run_directory.setText(rfolder)
-        self.run_loaded()
-        QtGui.QApplication.restoreOverrideCursor()
 
     def get_train_stack(self):
         """Get a 4D array representing detector data in a train
@@ -302,91 +496,49 @@ class GeometryWidget(QtWidgets.QFrame):
 
     new_geometry = Signal()
 
-    def __init__(self, main_widget, filename):
+    def __init__(self, main_widget):
         """Create nested widgets to select and save geometry files."""
         super().__init__(main_widget)
         ui_file = op.join(op.dirname(__file__), 'editor/geometry_editor.ui')
         uic.loadUi(ui_file, self)
 
         self.main_widget = main_widget
-        self.geom = None
 
-        for det in Defaults.detectors:
-            self.cb_detectors.addItem(det)
-
-        self.cb_detectors.currentIndexChanged.connect(
-            self._update_quadpos)
-        self.cb_detectors.setCurrentIndex(0)
-        self.le_geometry_file.setText(filename)
-        self._geom_window = DetectorHelper(self.det, filename, self)
-        self._geom_window.filename_set_signal.connect(self._set_geom)
-
-        self.bt_load.clicked.connect(self._load)
-        self.bt_load.setIcon(get_icon('file.png'))
+        self.bt_quad_pos.clicked.connect(self._show_quadpos)
+        # CrystFEL format geometry not currently supported for DSSC
+        self.bt_save.setEnabled(self.det_type != 'DSSC')
         self.bt_save.clicked.connect(self._save_geometry_obj)
         self.bt_save.setIcon(get_icon('save.png'))
 
-    def _update_quadpos(self):
-        """Update the quad posistions."""
-        self._geom_window.set_detector(self.det)
-        self._geom_window.setWindowTitle('{} Geometry'.format(self.det))
+        self.label_geom.setText(f"{self.det_type} geometry")
 
-    def _load(self):
-        """Open a dialog box to select a file."""
-        self._geom_window.show()
+    @property
+    def geom(self):
+        return self.main_widget.geom_obj
+
+    @property
+    def det_type(self):
+        return self.main_widget.det_type
+
+    def _show_quadpos(self):
+        """Show the quad posistions."""
+        geom_window = DetectorHelper(
+            self.geom.quad_pos, self.det_type, self
+        )
+        geom_window.show()
 
     def _save_geometry_obj(self):
         """Save the loaded geometry to file."""
-        file_format = Defaults.file_formats[self.det][0]
-        out_format = Defaults.file_formats[self.det][-1]
-        file_type = '{} file format (*.{})'.format(file_format, out_format)
-        fname, _ = QtGui.QFileDialog.getSaveFileName(self,
-                                                     'Save geometry file',
-                                                     'geo_assembled.{}'.format(
-                                                         out_format),
-                                                     file_type)
+        fname, _ = QtGui.QFileDialog.getSaveFileName(
+            self, 'Save geometry file',
+            f'{self.det_type}.geom',
+            filter='CrystFEL geometry (*.geom)'
+        )
         if fname:
             self.main_widget.log.info(' Saving output to {}'.format(fname))
             try:
                 os.remove(fname)
             except (FileNotFoundError, PermissionError):
                 pass
-            write_geometry(self.geom, fname, self.main_widget.log)
-            txt = ' Geometry information saved to {}'.format(fname)
-            self.main_widget.log.info(txt)
-            warning(txt, title='Info')
-
-    @Slot()
-    def _set_geom(self):
-        """Put the geometry file name into the text box."""
-        self.le_geometry_file.setText(self._geom_window.filename)
-        self.geom = None
-        self.new_geometry.emit()
-
-    @property
-    def geom_file(self):
-        """Return the text of the QLinEdit element."""
-        return self.le_geometry_file.text()
-
-    def activate(self):
-        """Change the content of buttons and QLineEdit elements."""
-        self.bt_save.setEnabled(True)
-
-    @property
-    def det(self):
-        """Set Detector from combobox."""
-        return self.cb_detectors.currentText()
-
-    def _create_gemetry_obj(self):
-        """Create the extra_geom geometry object."""
-        if self.det != 'AGIPD' and not self.geom_file:
-            warning('Click the load button to load a geometry file')
-            return
-        if self.geom is None:
-            quad_pos = self._geom_window.quad_pos
-            self.geom = read_geometry(self.det, self.geom_file, quad_pos)
-
-    def get_geom(self):
-        if self.geom is None:
-            self._create_gemetry_obj()
-        return self.geom
+            self.geom.write_crystfel_geom(fname)
+            self.main_widget.log.info('Geometry information saved to %r', fname)

@@ -3,7 +3,6 @@
 import logging
 import tempfile
 
-import h5py
 from extra_geom import (
     AGIPD_1MGeometry, DSSC_1MGeometry, LPD_1MGeometry,
 )
@@ -130,19 +129,14 @@ class GeometryAssembler:
         if canvas is None:
             return self.exgeom_obj.position_modules_fast(data)
         else:
-            centre = self.snapped_geom.centre
+            out_shape = data.shape[:-3] + tuple(canvas)
+            if np.issubdtype(data.dtype, np.floating):
+                out = np.full(out_shape, np.nan, dtype=data.dtype)
+            else:
+                out = np.zeros(out_shape, dtype=data.dtype)
+            self.exgeom_obj.position_modules_symmetric(data, out=out)
             cv_centre = (canvas[0]//2, canvas[-1]//2)
-            shift = np.array(centre) - np.array(cv_centre)
-            out = np.full(data.shape[:-3] + canvas, np.nan, dtype=data.dtype)
-        for i, module in enumerate(self.snapped_geom.modules):
-            mod_data = data[..., i, :, :]
-            tiles_data = self.exgeom_obj.split_tiles(mod_data)
-            for j, tile in enumerate(module):
-                tile_data = tiles_data[j]
-                y, x = tile.corner_idx - shift
-                h, w = tile.pixel_dims
-                out[..., y: y + h, x: x + w] = tile.transform(tile_data)
-        return out, cv_centre
+            return out, cv_centre
 
     def write_crystfel_geom(self, filename, *,
                             data_path='/entry_1/instrument_1/detector_1/data',
@@ -292,6 +286,73 @@ class DSSCGeometry(GeometryAssembler):
         )
         return cls(exgeom_obj, geom_file)
 
+    @classmethod
+    def from_quad_positions(cls, quad_pos):
+        exgeom_obj = cls._extra_geom_from_quad_positions(quad_pos)
+        return cls(exgeom_obj, None)
+
+    @staticmethod
+    def _extra_geom_from_quad_positions(quad_pos, *, unit=1e-3):
+        # Copied here until the relevant code is merged in EXtra-geom
+        assert len(quad_pos) == 4
+        asic_gap_m = 2e-3
+        panel_gap_m = 4e-3
+
+        quads_x_orientation = [-1, -1, 1, 1]
+        quads_y_orientation = [1, 1, -1, -1]
+
+        cls = DSSC_1MGeometry
+        frag_width = cls._pixel_shape[0] * cls.frag_fs_pixels
+        frag_height = cls._pixel_shape[1] * cls.frag_ss_pixels
+        module_width = (2 * frag_width) + asic_gap_m
+        quad_height = (4 * frag_height) + (3 * panel_gap_m)
+
+        module_step_vec = np.array([0, frag_height + panel_gap_m, 0])
+        tile_step_vec = np.array([frag_width + asic_gap_m, 0, 0])
+
+        modules = []
+
+        for p in range(cls.n_modules):
+            Q = p // 4
+            x_orient = quads_x_orientation[Q]
+            y_orient = quads_y_orientation[Q]
+            quad_corner_x = quad_pos[Q][0] * unit
+            quad_corner_y = quad_pos[Q][1] * unit
+
+            p_in_quad = p % 4
+
+            # Measuring in terms of the step within a row, the
+            # step to the next row of hexagons is 1.5/sqrt(3).
+            ss_vec = np.array([0, y_orient, 0]) * cls.pixel_size * 1.5 / np.sqrt(3)
+            fs_vec = np.array([x_orient, 0, 0]) * cls.pixel_size
+
+            # Corner position is measured at low-x, low-y corner (bottom
+            # right as plotted). We want the position of the corner
+            # with the first pixel, which is either high-x low-y or
+            # low-x high-y.
+            if x_orient == -1:
+                quad_start_x = quad_corner_x + module_width
+                quad_start_y = quad_corner_y
+            else:  # y_orient == -1
+                quad_start_x = quad_corner_x
+                quad_start_y = quad_corner_y + quad_height
+
+            quad_start = np.array([quad_start_x, quad_start_y, 0.])
+            module_start = quad_start + (y_orient * p_in_quad * module_step_vec)
+
+            modules.append([
+                GeometryFragment(
+                    corner_pos=module_start + (x_orient * t * tile_step_vec),
+                    ss_vec=ss_vec,
+                    fs_vec=fs_vec,
+                    ss_pixels=cls.frag_ss_pixels,
+                    fs_pixels=cls.frag_fs_pixels,
+                ) for t in range(cls.n_tiles_per_module)
+            ])
+
+        return cls(modules)
+
+
     @property
     def quad_pos(self):
         """Get the quadrant positions from the geometry object."""
@@ -328,6 +389,18 @@ class LPDGeometry(GeometryAssembler):
         )
         return cls(exgeom_obj, geom_file)
 
+    @classmethod
+    def from_quad_positions(cls, quad_pos):
+        exgeom_obj = LPD_1MGeometry.from_quad_positions(quad_pos)
+        return cls(exgeom_obj, None)
+
+    @classmethod
+    def from_crystfel_geom(cls, filename):
+        exgeom_obj = LPD_1MGeometry.from_crystfel_geom(filename)
+        # filename used in .quad_pos is expected to be HDF5, so we don't store
+        # the .geom filename here
+        return cls(exgeom_obj, None)
+
     @property
     def quad_pos(self):
         """Get the quadrant positions from the geometry object."""
@@ -337,8 +410,11 @@ class LPDGeometry(GeometryAssembler):
                             index=['q{}'.format(i) for i in range(1, 5)])
 
 
-GEOM_MODULES = {'AGIPD': AGIPDGeometry,
-                'LPD': LPDGeometry}
+GEOM_CLASSES = {
+    'AGIPD': AGIPDGeometry,
+    'LPD': LPDGeometry,
+    'DSSC': DSSCGeometry,
+}
 
 
 
