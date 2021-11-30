@@ -1,5 +1,6 @@
 """Define the Widget tabs that are using in CalibrateNb."""
 
+from copy import copy
 import os
 import logging
 
@@ -413,7 +414,7 @@ class MaterialTab(widgets.VBox):
         """Do not display the ring structure."""
         if self.img is None:
             return
-        cmp = cm.get_cmap('Reds').copy()
+        cmp = copy(cm.get_cmap('Reds'))
         cmp.set_bad('w', alpha=0)
         cmp.set_under('w', alpha=0)
         self.img.set_visible(False)
