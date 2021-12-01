@@ -307,7 +307,7 @@ class MainWidget:
             return
 
         try:
-            cmap = cm.get_cmap(cmap_val).copy()
+            cmap = copy(cm.get_cmap(cmap_val))
             cmap.set_bad(self.bg)
             self.im.set_cmap(cmap)
         except ValueError:
