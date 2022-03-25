@@ -1,4 +1,4 @@
-cfelpyutils==1.0.0
+cfelpyutils==2.0.6
 EXtra-data==1.3.0
 EXtra-geom==1.1.1
 ipywidgets==7.5.1
