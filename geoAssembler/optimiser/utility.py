@@ -44,8 +44,10 @@ class Integrator:
         )
         self.ai = ai
 
-        self.radius = ((self.size[0] / 2) ** 2 + (self.size[1] / 2) ** 2) ** (1 / 2)
-        self.azimuth_bins = self.radius * (self.size[0] / self.size[1])
+        self.radius = round(
+            ((self.size[0] / 2) ** 2 + (self.size[1] / 2) ** 2) ** (1 / 2)
+        )
+        self.azimuth_bins = round(self.radius * (self.size[0] / self.size[1]))
 
     def integrate2d(
         self,
