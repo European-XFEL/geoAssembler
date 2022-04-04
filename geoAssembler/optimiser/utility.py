@@ -1,12 +1,9 @@
 from copy import deepcopy
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
-from extra_data import stack_detector_data
-from extra_data.reader import DataCollection
 from extra_geom.detectors import DetectorGeometryBase
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
-from pyFAI.detectors import Detector
 
 
 class Integrator:
@@ -23,8 +20,12 @@ class Integrator:
     integration result.
     """
 
-    def __init__(self, geom: DetectorGeometryBase,
-                 sample_dist_m: Union[int, float], unit: str = "2th_deg"):
+    def __init__(
+        self,
+        geom: DetectorGeometryBase,
+        sample_dist_m: Union[int, float],
+        unit: str = "2th_deg",
+    ):
         self.unit = unit
         self.sample_dist_m = sample_dist_m
 
@@ -43,11 +44,14 @@ class Integrator:
         )
         self.ai = ai
 
-        self.radius = ((self.size[0]/2)**2 + (self.size[1]/2)**2)**(1/2)
-        self.azimuth_bins = self.radius * (self.size[0]/self.size[1])
+        self.radius = ((self.size[0] / 2) ** 2 + (self.size[1] / 2) ** 2) ** (1 / 2)
+        self.azimuth_bins = self.radius * (self.size[0] / self.size[1])
 
-    def integrate2d(self, frame: np.ndarray,
-                    centre_offset: Tuple[float, float]=None):
+    def integrate2d(
+        self,
+        frame: np.ndarray,
+        centre_offset: Optional[Tuple[float, float]] = None,
+    ):
         """
         Unroll the image - changes the axis from cartesian x/y to
         polar radius/azimuthal angle.
@@ -78,8 +82,8 @@ class Integrator:
             #  order of x y for both the centre position and for the centre
             #  offset between pyFAI and extra-geom is not clear to me at all
             ai.setPyFAI(
-                pixel1=self.ai.get_pixel1(), #  setPyFai loses pixel size info
-                pixel2=self.ai.get_pixel2(), #  so re-set it here
+                pixel1=self.ai.get_pixel1(),  #  setPyFai loses pixel size info
+                pixel2=self.ai.get_pixel2(),  #  so re-set it here
                 dist=self.sample_dist_m,
                 poni1=(centre_offset[1] + self.centre[0]) * ai.pixel1,
                 poni2=(centre_offset[0] + self.centre[1]) * ai.pixel2,
@@ -91,5 +95,5 @@ class Integrator:
             self.azimuth_bins,
             unit=self.unit,
             dummy=np.nan,
-            method='cython'
+            method="cython",
         )
