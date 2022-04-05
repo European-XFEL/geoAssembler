@@ -18,9 +18,14 @@ class CentreOptimiser:
     rings form as straight a line as possible, and the rings becoming
     straight lines in polar coordinates indicates an accurate centre.
     """
-    def __init__(self, geom: DetectorGeometryBase,
-                 module_stack: np.ndarray, sample_dist_m: Union[int, float],
-                 unit: str = "2th_deg"):
+
+    def __init__(
+        self,
+        geom: DetectorGeometryBase,
+        module_stack: np.ndarray,
+        sample_dist_m: Union[int, float],
+        unit: str = "2th_deg",
+    ):
         """Init function
 
         Parameters
@@ -43,9 +48,7 @@ class CentreOptimiser:
         #  Slightly dodgy way to pull the quadrant corner positions out of geom
         #  TODO: Suggest adding this in to extra-geom?
         self.original_quadrant_pos = [
-            m[0].corners()[0, :2]/geom.pixel_size
-            for m
-            in geom.modules
+            m[0].corners()[0, :2] / geom.pixel_size for m in geom.modules
         ][::4]
 
     def _loss_function(self, centre_offset: Tuple[float, float]):
@@ -68,12 +71,11 @@ class CentreOptimiser:
             Value of the cost function, 1/max(1d_integration_value[100:-100])
         """
         res = self.integrator.integrate2d(
-            self.frame,
-            centre_offset=centre_offset
+            self.frame, centre_offset=centre_offset
         ).intensity
 
         #  Slice off the ends as they are not reliable
-        return 1/np.max(np.nanmean(res, axis=0)[100:-100])
+        return 1 / np.max(np.nanmean(res, axis=0)[100:-100])
 
     def optimise(self, bounds=[(-50, 50), (-50, 50)], workers=1, verbose=False):
         """
@@ -103,10 +105,7 @@ class CentreOptimiser:
         #  detail of the differential evolution function. Conceptually a tuple
         #  of (x, y) is what should be passed
         results = differential_evolution(
-            self._loss_function,
-            bounds,
-            workers=workers,
-            disp=verbose
+            self._loss_function, bounds, workers=workers, disp=verbose
         )
 
         centre_offset = results.x
@@ -114,16 +113,10 @@ class CentreOptimiser:
         #  Subtract the centre offset to move the modules in the correct
         #  way to shift the centre
         optimal_quad_positions = [
-            tuple(qp - centre_offset)
-            for qp
-            in self.original_quadrant_pos
+            tuple(qp - centre_offset) for qp in self.original_quadrant_pos
         ]
 
-        oqp = (
-            "[",
-            "".join([f"\n    {c}," for c in optimal_quad_positions]),
-            "\n]"
-        )
+        oqp = ("[", "".join([f"\n    {c}," for c in optimal_quad_positions]), "\n]")
         print("Optimal quad positions: ", "".join(oqp))
 
         return res_tuple(optimal_quad_positions, centre_offset, results)
