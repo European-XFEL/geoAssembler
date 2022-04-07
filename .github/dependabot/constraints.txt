@@ -1,0 +1,12 @@
+cfelpyutils==2.0.6
+EXtra-data==1.11.0
+EXtra-geom==1.7.0
+ipywidgets==7.7.0
+matplotlib==3.5.1
+numpy==1.22.3
+pyFAI==0.21.3
+PyQt5==5.15.6
+PyQt5-sip==12.9.1
+pyqtgraph==0.12.4
+scipy==1.8.0
+xarray==2022.3.0
