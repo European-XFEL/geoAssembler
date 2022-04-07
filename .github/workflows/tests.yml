@@ -40,10 +40,7 @@ jobs:
 
     - name: Test with pytest
       run: |
-        export DISPLAY=:99.0
-        Xvfb -ac :99 -screen 0 1280x1024x16 > /dev/null 2>&1 &
-
-        python3 -m pytest -v
+        xvfb-run python3 -m pytest -v
       env:
         MPLBACKEND: agg
 
